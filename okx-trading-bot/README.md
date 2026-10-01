@@ -128,6 +128,22 @@ API key. Права: Read + Trade. IP: адрес сервера. Задайте
 
 Хватит самого простого VPS: 1 vCPU, 1 ГБ RAM, Ubuntu 22.04/24.04. Желательно в регионе, где OKX доступен.
 
+### Быстрый запуск одной командой
+
+Подготовьте API-ключ OKX (см. раздел выше) и, при желании, токен Telegram-бота и свой `chat_id`.
+Затем на сервере выполните:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NNnn11094554/bounty-/ccr-89fb83dc-nmy9lt/okx-trading-bot/install.sh -o install.sh && bash install.sh
+```
+
+Скрипт синхронизирует время, установит Docker, скачает бота в `~/okx-bot`, покажет IP сервера для API-ключа,
+спросит ключи (secret и passphrase вводятся скрытно и сохраняются только в `.env` на сервере), выполнит
+проверку `check` и, если она пройдена, запустит бота в DEMO. Повторный `bash install.sh` обновит код
+и перезапустит бота, ничего не спрашивая.
+
+### Пошагово вручную
+
 **1. Подготовка сервера**
 
 ```bash
@@ -147,7 +163,7 @@ docker compose version                 # проверка
 **3. Код бота**
 
 ```bash
-git clone https://github.com/nnnn11094554/bounty-.git
+git clone -b ccr-89fb83dc-nmy9lt https://github.com/NNnn11094554/bounty-.git
 cd bounty-/okx-trading-bot
 mkdir -p data logs reports && sudo chown -R 1000:1000 data logs reports
 curl -4 ifconfig.me                    # IP сервера — укажите его при создании API-ключа OKX
