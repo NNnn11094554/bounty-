@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Установка и запуск OKX-бота на Ubuntu/Debian одной командой:
 #   curl -fsSL https://raw.githubusercontent.com/NNnn11094554/bounty-/ccr-89fb83dc-nmy9lt/okx-trading-bot/install.sh -o install.sh && bash install.sh
-# Повторный запуск обновляет код и перезапускает бота (ключи в .env сохраняются).
+# Повторный запуск обновляет код и перезапускает бота (.env и ваш config.yaml сохраняются).
 set -euo pipefail
+trap 'printf "\n\033[1;31mОшибка: команда в строке %s завершилась неудачно (см. сообщение выше)\033[0m\n" "$LINENO" >&2' ERR
 
 REPO="${BOT_REPO:-https://github.com/NNnn11094554/bounty-.git}"
 BRANCH="${BOT_BRANCH:-ccr-89fb83dc-nmy9lt}"
@@ -41,9 +42,23 @@ $DOCKER compose version >/dev/null 2>&1 || die "не найден плагин d
 
 say "Код бота → $DIR"
 if [ -d "$DIR/.git" ]; then
+  CFG="okx-trading-bot/config.yaml"
+  BACKUP=""
+  if ! git -C "$DIR" diff --quiet -- "$CFG"; then  # ваши настройки не мешают обновлению кода
+    BACKUP="$(mktemp)"
+    cp "$DIR/$CFG" "$BACKUP"
+    git -C "$DIR" checkout -q -- "$CFG"
+  fi
   git -C "$DIR" fetch -q origin "$BRANCH"
   git -C "$DIR" checkout -q "$BRANCH"
-  git -C "$DIR" pull -q --ff-only origin "$BRANCH"
+  if ! git -C "$DIR" pull -q --ff-only origin "$BRANCH"; then
+    [ -n "$BACKUP" ] && cp "$BACKUP" "$DIR/$CFG"
+    die "не удалось обновить код: в $DIR есть изменённые файлы (git -C $DIR status)"
+  fi
+  if [ -n "$BACKUP" ]; then
+    cp "$BACKUP" "$DIR/$CFG" && rm -f "$BACKUP"
+    echo "Ваш config.yaml сохранён (новые параметры из обновления берутся по умолчанию)."
+  fi
 else
   git clone -q -b "$BRANCH" "$REPO" "$DIR"
 fi
@@ -103,7 +118,7 @@ $DOCKER compose build -q
 
 say "Проверка ключей, связи с OKX, WebSocket и Telegram"
 if ! $DOCKER compose run --rm bot check; then
-  die "проверка не пройдена — исправьте .env (nano $PWD/.env) и запустите скрипт снова: bash install.sh"
+  die "проверка не пройдена — см. строки с ❌ выше. Ключи меняются в $PWD/.env (nano), время — sudo timedatectl set-ntp true. Затем снова: bash install.sh"
 fi
 
 say "Запуск"

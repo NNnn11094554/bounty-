@@ -41,6 +41,12 @@ T = TypeVar("T")
 
 CLIENT_ID_PREFIX = "okxb"  # все clOrdId/algoClOrdId бота начинаются с него
 TPSL_TYPES = "conditional,oco"
+# OKX выравнивает бары от 6H и длиннее по Гонконгу (UTC+8); суффикс utc — по UTC, как считает бот
+_UTC_BARS = {"6H", "12H", "1D", "2D", "3D", "1W", "1M"}
+
+
+def okx_bar(timeframe: str) -> str:
+    return f"{timeframe}utc" if timeframe in _UTC_BARS else timeframe
 ALL_ALGO_TYPES = (TPSL_TYPES, "trigger", "move_order_stop")
 
 
@@ -215,7 +221,7 @@ class OkxClient:
         after: int | None = None
         while len(rows) < limit:
             batch = min(300, limit - len(rows))
-            params = {"instId": inst_id, "bar": bar, "limit": str(batch)}
+            params = {"instId": inst_id, "bar": okx_bar(bar), "limit": str(batch)}
             if after is not None:
                 params["after"] = str(after)
             data = await self._request("public_get_market_candles", params)
@@ -238,7 +244,8 @@ class OkxClient:
         after = end_ms
         while True:
             data = await self._request("public_get_market_history_candles",
-                                       {"instId": inst_id, "bar": bar, "after": str(after), "limit": "100"})
+                                       {"instId": inst_id, "bar": okx_bar(bar), "after": str(after),
+                                        "limit": "100"})
             if not data:
                 break
             for r in data:
@@ -313,7 +320,6 @@ class OkxClient:
         tp_trigger: str | None = None,
         attach_algo_cl_id: str | None = None,
         trigger_px_type: str = "last",
-        reduce_only: bool = False,
     ) -> str:
         """Рыночный ордер. SL/TP прикрепляются к ордеру (attachAlgoOrds) и появляются на бирже
         одновременно с позицией."""
@@ -321,8 +327,6 @@ class OkxClient:
                                   "ordType": "market", "sz": sz, "clOrdId": cl_ord_id}
         if pos_side != "net":
             params["posSide"] = pos_side
-        elif reduce_only:
-            params["reduceOnly"] = True
         if sl_trigger or tp_trigger:
             attach: dict[str, Any] = {}
             if attach_algo_cl_id:
@@ -493,26 +497,38 @@ class OkxClient:
             raise
 
     async def get_closed_position(self, inst_id: str, side: str, since_ms: int) -> ClosedPosition | None:
-        """Итог закрытой позиции из /account/positions-history (самая ранняя после since_ms)."""
+        """Итог полностью закрытой позиции, открытой около since_ms, из /account/positions-history."""
         data = await self._request("private_get_account_positions_history",
                                    {"instType": "SWAP", "instId": inst_id, "limit": "50"})
-        candidates = []
-        for d in data:
-            direction = d.get("direction") or d.get("posSide")
-            if direction != side:
-                continue
-            u_time = int(_f(d.get("uTime")))
-            if u_time < since_ms - 60_000:
-                continue
-            candidates.append(d)
-        if not candidates:
-            return None
-        full = [d for d in candidates if str(d.get("type")) in ("2", "3", "4", "5")] or candidates
-        d = min(full, key=lambda x: int(_f(x.get("uTime"))))
-        return ClosedPosition(
-            inst_id=inst_id, side=side, open_avg_px=_f(d.get("openAvgPx")),
-            close_avg_px=_f(d.get("closeAvgPx")),
-            realized_pnl=_first(d, "realizedPnl", "pnl"), fee=_f(d.get("fee")),
-            funding_fee=_f(d.get("fundingFee")), close_type=str(d.get("type", "")),
-            u_time=int(_f(d.get("uTime"))),
-        )
+        return select_closed_position(data, inst_id, side, since_ms)
+
+
+def select_closed_position(records: list[dict], inst_id: str, side: str, since_ms: int) -> ClosedPosition | None:
+    """Выбрать из истории позиций OKX ту, что открыта нашей сделкой (около since_ms) и закрыта целиком.
+
+    Позиция, закрытая до открытия нашей сделки (например, предыдущая сделка того же направления,
+    закрывшаяся за секунды до входа), не подходит: её отсекают время закрытия и время открытия."""
+    candidates = []
+    for d in records:
+        if d.get("instId", inst_id) != inst_id:
+            continue
+        direction = d.get("direction") or d.get("posSide")
+        if direction != side or str(d.get("type")) not in ("2", "3", "4", "5"):  # только полное закрытие
+            continue
+        u_time = int(_f(d.get("uTime")))
+        c_time = int(_f(d.get("cTime")))
+        if u_time < since_ms - 5_000:  # закрыта раньше, чем открыта наша сделка
+            continue
+        if c_time and c_time < since_ms - 120_000:  # открыта задолго до нашей сделки — другая позиция
+            continue
+        candidates.append(d)
+    if not candidates:
+        return None
+    d = min(candidates, key=lambda x: int(_f(x.get("uTime"))))
+    return ClosedPosition(
+        inst_id=inst_id, side=side, open_avg_px=_f(d.get("openAvgPx")),
+        close_avg_px=_f(d.get("closeAvgPx")),
+        realized_pnl=_first(d, "realizedPnl", "pnl"), fee=_f(d.get("fee")),
+        funding_fee=_f(d.get("fundingFee")), close_type=str(d.get("type", "")),
+        u_time=int(_f(d.get("uTime"))),
+    )

@@ -9,6 +9,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from html import escape
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -22,9 +23,18 @@ from .notifier import Notifier
 from .risk import RiskManager, calculate_position_size, stop_beyond_liquidation
 from .stats import trade_stats
 from .strategies.base import Signal, Strategy
+from .trailing import trail_step
 from .ws_prices import PriceFeed
 
 log = logging.getLogger("bot.trader")
+
+# сколько ждать появления закрытой позиции в истории OKX, прежде чем оценить PnL по текущей цене
+HISTORY_WAIT_MS = 120_000
+
+
+def _err(exc: BaseException, limit: int = 300) -> str:
+    """Текст исключения для HTML-сообщения Telegram (биржа может вернуть HTML-страницу ошибки)."""
+    return escape(str(exc)[:limit])
 
 
 class FatalConfigError(RuntimeError):
@@ -133,6 +143,14 @@ class Trader:
             return await self.price_feed.get_price(inst_id)
         return await self.client.fetch_ticker_price(inst_id)
 
+    def _reset_price_range(self, inst_id: str) -> None:
+        """Экстремумы цены копятся в PriceFeed и без позиции — для новой сделки считаем их заново."""
+        if self.price_feed is not None:
+            self.price_feed.reset_range(inst_id)
+
+    async def _position_exists(self, trade: Trade) -> bool:
+        return any(p.inst_id == trade.inst_id and p.side == trade.side for p in await self.client.get_positions())
+
     async def _price_range(self, inst_id: str) -> tuple[float, float, float]:
         if self.price_feed is not None:
             return await self.price_feed.take_range(inst_id)
@@ -141,14 +159,34 @@ class Trader:
 
     # ================= запуск и основной цикл =================
 
-    async def start(self) -> None:
+    async def prepare(self) -> None:
+        """Инструменты, режим аккаунта и открытые сделки из БД — общее для запуска и консольного closeall."""
+        open_trades = self.storage.open_trades()
         self.instruments = await self.client.load_instruments(self.symbols)
+        for inst_id in dict.fromkeys(t.inst_id for t in open_trades if t.inst_id not in self.instruments):
+            try:  # инструмент убрали из config.yaml, а позиция по нему ещё открыта — сопровождаем до закрытия
+                self.instruments.update(await self.client.load_instruments([inst_id]))
+                log.warning("%s нет в config.yaml, но по нему открыта сделка — сопровождаю её до закрытия", inst_id)
+            except ValueError as exc:
+                log.error("%s: %s", inst_id, exc)
         account = await self.client.get_account_config()
         if account.acct_lv == "1":
             raise FatalConfigError(
                 "Аккаунт OKX в режиме Spot: бессрочные свопы недоступны. Переключите режим аккаунта "
                 "(Settings → Account mode) на Futures / Single-currency margin.")
         self.pos_mode = account.pos_mode
+        self.trades = {}
+        for t in open_trades:  # по возрастанию id
+            old = self.trades.get(t.inst_id)
+            if old is not None:  # две записи об одной позиции (например, её взяли на сопровождение дважды)
+                log.warning("В БД две открытые сделки по %s: #%s помечена как дубль #%s", t.inst_id, old.id, t.id)
+                old.status, old.note = "merged", f"{old.note}; дубль сделки #{t.id}"[:500]
+                self.storage.update_trade(old, "status", "note")
+            self.trades[t.inst_id] = t
+            self._reset_price_range(t.inst_id)
+
+    async def start(self) -> None:
+        await self.prepare()
         for inst_id in self.symbols:
             info = self.instruments[inst_id]
             lever = int(min(self.s.exchange.leverage, info.max_lever))
@@ -158,13 +196,7 @@ class Trader:
             except ExchangeError as exc:
                 log.warning("Не удалось установить плечо %sx для %s: %s", lever, inst_id, exc)
                 await self.notifier.error(f"lever-{inst_id}", f"⚠️ Не удалось установить плечо {lever}x для "
-                                                               f"{inst_id}: {exc}")
-        self.trades = {}
-        for t in self.storage.open_trades():
-            if t.inst_id in self.trades:  # не должно случаться; оставляем самую свежую
-                log.warning("В БД две открытые сделки по %s, старая #%s будет сверена с биржей", t.inst_id,
-                            self.trades[t.inst_id].id)
-            self.trades[t.inst_id] = t
+                                                               f"{inst_id}: {_err(exc)}")
         await self._roll_day()
         async with self._lock:
             await self._reconcile()
@@ -200,7 +232,7 @@ class Trader:
                 hint = " Проверьте API-ключи и режим DEMO/LIVE." if isinstance(exc, AuthenticationError) else ""
                 log.error("Запуск не удался (%s: %s), повтор через %.0fс", type(exc).__name__, exc, delay)
                 await self.notifier.error("startup", f"⚠️ Не удаётся запуститься: {type(exc).__name__}: "
-                                                     f"{str(exc)[:300]}.{hint} Повторяю попытки.")
+                                                     f"{_err(exc)}.{hint} Повторяю попытки.")
                 self.touch_heartbeat()
                 await self._sleep(delay)
         errors = 0
@@ -212,7 +244,7 @@ class Trader:
                 errors += 1
                 log.exception("Ошибка в торговом цикле")
                 await self.notifier.error(f"loop-{type(exc).__name__}",
-                                          f"⚠️ Ошибка: {type(exc).__name__}: {str(exc)[:300]}")
+                                          f"⚠️ Ошибка: {type(exc).__name__}: {_err(exc)}")
                 await self._sleep(min(60.0, 2.0 ** errors))
             self.touch_heartbeat()
             await self._sleep(self.s.trading.loop_interval_sec)
@@ -400,7 +432,7 @@ class Trader:
                 size_factor = 0.6  # биржа считает маржу строже (комиссии, лимиты) — повтор с меньшим объёмом
             except InvalidOrder as exc:
                 log.error("%s: биржа отклонила ордер: %s", label, exc)
-                await self.notifier.notify(f"❌ {label}: биржа отклонила ордер: {str(exc)[:300]}")
+                await self.notifier.notify(f"❌ {label}: биржа отклонила ордер: {_err(exc)}")
                 return None
         assert ord_id is not None and algo_cl is not None
 
@@ -417,9 +449,11 @@ class Trader:
             initial_stop=info.round_price(entry - sign * sl_dist), atr=signal.levels.atr,
             trail_activation=signal.levels.trail_activation, trail_distance=signal.levels.trail_distance,
             opened_at=self.now_ms(), ct_val=info.ct_val, mode=self.mode, strategy=self.strategy.name,
-            best_price=entry, ord_id=ord_id, algo_cl_id=algo_cl, note=signal.reason[:500])
+            best_price=entry, ord_id=ord_id, algo_cl_id=algo_cl, note=signal.reason[:500],
+            mgn_mode=self.s.exchange.margin_mode)
         self.storage.insert_trade(trade)
         self.trades[inst_id] = trade
+        self._reset_price_range(inst_id)
         log.info("Открыта %s: %s конт. @ %s, SL %s, TP %s", label, trade.contracts, entry,
                  trade.stop_loss, trade.take_profit)
         protected = await self._secure_new_trade(trade, attached_sl=sl, attached_tp=tp)
@@ -478,7 +512,7 @@ class Trader:
             return True
         except Exception as exc:  # noqa: BLE001
             log.exception("%s: не удалось выставить SL/TP", trade.inst_id)
-            await self.notifier.notify(f"🚨 {trade.inst_id}: не удалось выставить SL/TP ({str(exc)[:200]}). "
+            await self.notifier.notify(f"🚨 {trade.inst_id}: не удалось выставить SL/TP ({_err(exc, 200)}). "
                                        f"Закрываю позицию по рынку.")
             await self._close_trade_market(trade, "no_protection")
             return False
@@ -488,7 +522,7 @@ class Trader:
         algo_cl = new_client_id("s")
         algo_id = await self.client.place_tpsl(
             inst_id=trade.inst_id, close_side="sell" if trade.side == "long" else "buy",
-            pos_side=trade.pos_side, td_mode=self.s.exchange.margin_mode, sz=info.fmt_size(trade.contracts),
+            pos_side=trade.pos_side, td_mode=trade.mgn_mode, sz=info.fmt_size(trade.contracts),
             sl_trigger=info.fmt_price(trade.stop_loss),
             tp_trigger=info.fmt_price(trade.take_profit) if trade.take_profit and not sl_only else None,
             algo_cl_id=algo_cl, trigger_px_type=self.s.exchange.trigger_price_type)
@@ -511,31 +545,27 @@ class Trader:
             await self._update_trailing(trade, last, high, low)
 
     async def _update_trailing(self, trade: Trade, last: float, high: float, low: float) -> None:
-        long = trade.side == "long"
-        trade.best_price = max(trade.best_price or high, high) if long else min(trade.best_price or low, low)
-        if trade.trail_activation is None or trade.trail_distance is None or not trade.algo_id:
-            return
         info = self.instruments[trade.inst_id]
-        activated_now = False
-        if not trade.trailing_active:
-            moved = trade.best_price - trade.entry_price if long else trade.entry_price - trade.best_price
-            if moved < trade.trail_activation:
-                return
-            trade.trailing_active = activated_now = True
+        step = trail_step(
+            side=trade.side, entry=trade.entry_price, stop=trade.stop_loss, best=trade.best_price,
+            active=trade.trailing_active, high=high, low=low, activation=trade.trail_activation,
+            distance=trade.trail_distance, atr=trade.atr, tick=info.tick_size,
+            min_step_atr=self.s.trading.trailing_min_step_atr, round_price=info.round_price)
+        trade.best_price = step.best_price
+        if not trade.algo_id:
+            return
+        if step.activated_now:
+            trade.trailing_active = True
             self.storage.update_trade(trade, "trailing_active", "best_price")
             log.info("%s: трейлинг активирован (лучшая цена %s)", trade.inst_id, trade.best_price)
-        sign = 1 if long else -1
-        candidate = info.round_price(trade.best_price - sign * trade.trail_distance)
-        min_step = max(info.tick_size, self.s.trading.trailing_min_step_atr * (trade.atr or 0))
-        if activated_now:
-            min_step = info.tick_size / 2  # первый перенос — при любом улучшении
-        improvement = (candidate - trade.stop_loss) * sign
-        if improvement < min_step:
+        if step.new_stop is None:
             return
-        # стоп должен остаться по «правильную» сторону от текущей цены
-        if (long and candidate >= last - info.tick_size) or (not long and candidate <= last + info.tick_size):
+        # стоп должен остаться по «правильную» сторону от текущей цены, иначе биржа отклонит перенос
+        long = trade.side == "long"
+        if (long and step.new_stop >= last - info.tick_size) or (not long and step.new_stop <= last + info.tick_size):
             return
-        await self._move_stop(trade, candidate, announce=activated_now)
+        first_move = abs(trade.stop_loss - trade.initial_stop) < info.tick_size / 2
+        await self._move_stop(trade, step.new_stop, announce=first_move)
 
     async def _move_stop(self, trade: Trade, new_sl: float, announce: bool = False) -> bool:
         info = self.instruments[trade.inst_id]
@@ -558,7 +588,7 @@ class Trader:
                 trade.stop_loss, trade.algo_id = prev_sl, old_algo
                 log.error("%s: не удалось заменить TP/SL: %s", trade.inst_id, exc2)
                 await self.notifier.error(f"trail-{trade.inst_id}",
-                                          f"⚠️ {trade.inst_id}: не удалось перенести трейлинг-стоп: {exc2}")
+                                          f"⚠️ {trade.inst_id}: не удалось перенести трейлинг-стоп: {_err(exc2)}")
                 return False
             await self.client.cancel_algos([(trade.inst_id, old_algo)])
         trade.stop_loss = new_sl
@@ -583,7 +613,8 @@ class Trader:
         await self._check_daily_limit(balance)
         by_inst: dict[str, list[Position]] = {}
         for p in positions:
-            if p.inst_id not in self.symbols:
+            # позиции по инструментам из config и по тем, где сделка уже сопровождается (даже если их убрали)
+            if p.inst_id not in self.symbols and p.inst_id not in self.trades:
                 if p.inst_id not in self._warned:
                     self._warned.add(p.inst_id)
                     log.warning("Позиция %s не входит в список инструментов бота и не сопровождается", p.inst_id)
@@ -600,7 +631,10 @@ class Trader:
                     continue
                 await self._finalize_closed(trade)
             else:
-                trade.close_checks = 0
+                trade.missing_since = None
+                if pos.mgn_mode and pos.mgn_mode != trade.mgn_mode:
+                    trade.mgn_mode = pos.mgn_mode
+                    self.storage.update_trade(trade, "mgn_mode")
                 if abs(pos.contracts - trade.contracts) > 1e-9:
                     log.info("%s: размер позиции изменился %s → %s", inst_id, trade.contracts, pos.contracts)
                     trade.contracts = pos.contracts
@@ -611,7 +645,8 @@ class Trader:
             for p in plist:
                 trade = self.trades.get(inst_id)
                 if trade is None:
-                    await self._adopt(p)
+                    if inst_id in self.symbols:
+                        await self._adopt(p)
                 elif trade.side != p.side and f"hedge-{inst_id}" not in self._warned:
                     self._warned.add(f"hedge-{inst_id}")
                     log.warning("%s: есть встречная позиция %s, она не сопровождается", inst_id, p.side)
@@ -654,9 +689,10 @@ class Trader:
             opened_at=pos.c_time or self.now_ms(), ct_val=info.ct_val, mode=self.mode,
             strategy=self.strategy.name, best_price=pos.avg_px,
             algo_id=algo.algo_id if algo else "", algo_cl_id=algo.algo_cl_id if algo else "",
-            note="adopted: позиция найдена на бирже")
+            note="adopted: позиция найдена на бирже", mgn_mode=pos.mgn_mode or self.s.exchange.margin_mode)
         self.storage.insert_trade(trade)
         self.trades[pos.inst_id] = trade
+        self._reset_price_range(pos.inst_id)
         log.warning("Найдена позиция без записи в БД, беру на сопровождение: %s %s %s @ %s",
                     pos.side, pos.inst_id, pos.contracts, pos.avg_px)
         await self.notifier.notify(
@@ -698,7 +734,7 @@ class Trader:
 
         # защиты нет совсем. Срезы позиций и ордеров не атомарны: возможно, TP/SL только что сработал
         # и позиции уже нет — перепроверяем, прежде чем что-то делать
-        if not any(p.inst_id == trade.inst_id and p.side == trade.side for p in await self.client.get_positions()):
+        if not await self._position_exists(trade):
             return
         if any(a.protects(trade.side) for a in await self.client.get_pending_tpsl(trade.inst_id)):
             return  # ордер уже появился — привяжем на следующей сверке
@@ -720,15 +756,23 @@ class Trader:
                 f"(SL {info.fmt_price(trade.stop_loss)}"
                 + (f", TP {info.fmt_price(trade.take_profit)})" if trade.take_profit else ")"))
         except InvalidOrder as exc:
-            await self.notifier.notify(f"🚨 {trade.inst_id}: биржа не приняла SL/TP ({exc}). Закрываю по рынку.")
+            await self.notifier.notify(f"🚨 {trade.inst_id}: биржа не приняла SL/TP ({_err(exc)}). "
+                                       f"Закрываю по рынку.")
             await self._close_trade_market(trade, "no_protection")
 
-    async def _finalize_closed(self, trade: Trade) -> bool:
+    async def _finalize_closed(self, trade: Trade, allow_estimate: bool = True) -> bool:
+        """Записать итог сделки, позиции которой больше нет. False — данных пока нет, повторить позже."""
         closed = await self.client.get_closed_position(trade.inst_id, trade.side, trade.opened_at)
         info = self.instruments.get(trade.inst_id)
         if closed is None:
-            trade.close_checks += 1
-            if trade.close_checks < 4:  # история позиций на бирже обновляется с задержкой
+            now = self.now_ms()
+            if trade.missing_since is None:
+                trade.missing_since = now
+            # история позиций OKX обновляется с задержкой — ждём, прежде чем оценивать PnL самим
+            if not allow_estimate or now - trade.missing_since < HISTORY_WAIT_MS:
+                return False
+            if await self._position_exists(trade):  # позиция на месте: пустой ответ биржи был сбоем
+                trade.missing_since = None
                 return False
             exit_px = await self.price(trade.inst_id)
             pnl = trade.unrealized(exit_px)
@@ -744,9 +788,12 @@ class Trader:
         self.storage.update_trade(trade)
         self.trades.pop(trade.inst_id, None)
         try:
-            leftovers = [a for a in await self.client.get_pending_tpsl(trade.inst_id) if a.protects(trade.side)]
-            if leftovers:
-                await self.client.cancel_algos([(a.inst_id, a.algo_id) for a in leftovers])
+            # остаточные TP/SL снимаем, только убедившись, что позиции по инструменту действительно нет
+            if not await self._position_exists(trade):
+                leftovers = [a for a in await self.client.get_pending_tpsl(trade.inst_id)
+                             if a.protects(trade.side)]
+                if leftovers:
+                    await self.client.cancel_algos([(a.inst_id, a.algo_id) for a in leftovers])
         except (ExchangeError, NetworkError) as exc:
             log.warning("%s: не удалось убрать остаточные TP/SL: %s", trade.inst_id, exc)
         log.info("Закрыта %s %s: %s → %s, PnL %.4f (%s)", trade.side, trade.inst_id, trade.entry_price,
@@ -769,7 +816,7 @@ class Trader:
         return "closed_externally"
 
     async def _close_trade_market(self, trade: Trade, reason: str) -> None:
-        if await self.client.close_position(trade.inst_id, self.s.exchange.margin_mode, trade.pos_side):
+        if await self.client.close_position(trade.inst_id, trade.mgn_mode, trade.pos_side):
             trade.close_reason = reason
             self.storage.update_trade(trade, "close_reason")
         for _ in range(5):
@@ -781,9 +828,10 @@ class Trader:
             log.error("%s: позиция всё ещё открыта после закрытия по рынку", trade.inst_id)
             return
         for _ in range(4):
-            if await self._finalize_closed(trade):
+            if await self._finalize_closed(trade, allow_estimate=False):
                 return
             await asyncio.sleep(self.poll_delay)
+        log.info("%s: итог закрытия ещё не в истории OKX — зафиксирую на следующих сверках", trade.inst_id)
 
     # ================= команды =================
 
@@ -801,9 +849,9 @@ class Trader:
                 result.orders_canceled = await self.client.cancel_all_orders()
             except Exception as exc:  # noqa: BLE001
                 result.errors.append(f"ордера: {exc}")
-            positions: list[Position] = []
+            positions: list[Position] = await self.client.get_positions()
+            initial = {(p.inst_id, p.side) for p in positions}
             for _ in range(5):
-                positions = await self.client.get_positions()
                 if not positions:
                     break
                 for p in positions:
@@ -813,13 +861,14 @@ class Trader:
                         result.errors.append(f"{p.inst_id}: {exc}")
                         continue
                     if closed:
-                        result.positions_closed += 1
                         trade = self.trades.get(p.inst_id)
                         if trade and trade.side == p.side and not trade.close_reason:
                             trade.close_reason = "close_all"
                             self.storage.update_trade(trade, "close_reason")
                 await asyncio.sleep(self.poll_delay * 2)
+                positions = await self.client.get_positions()  # итог — всегда по свежему запросу
             result.remaining = [f"{p.side} {p.inst_id}" for p in positions]
+            result.positions_closed = len(initial - {(p.inst_id, p.side) for p in positions})
             for _ in range(4):
                 await self._reconcile()
                 if not self.trades:
@@ -831,14 +880,13 @@ class Trader:
         if result.remaining:
             text += f"\n🚨 Остались открытыми: {', '.join(result.remaining)} — проверьте на бирже!"
         if result.errors:
-            text += "\nОшибки: " + "; ".join(e[:150] for e in result.errors[:5])
+            text += "\nОшибки: " + "; ".join(escape(e[:150]) for e in result.errors[:5])
         await self.notifier.notify(text)
         return result
 
     async def status_view(self) -> messages.StatusView:
-        balance = await self.client.get_balance()
+        balance, positions = await asyncio.gather(self.client.get_balance(), self.client.get_positions())
         self.balance = balance
-        positions = await self.client.get_positions()
         start = self.storage.get_state("day_start_equity")
         day_pnl = balance.equity - start if start else None
         day_pct = day_pnl / start * 100 if start else None

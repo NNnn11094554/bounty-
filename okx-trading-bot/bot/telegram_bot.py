@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from html import escape
 from typing import TYPE_CHECKING
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -155,9 +156,13 @@ class TelegramBot(Notifier):
     # ---------- команды ----------
 
     async def _reply(self, update: Update, text: str, **kwargs) -> None:
-        if update.effective_message:
+        if not update.effective_message:
+            return
+        try:
             await update.effective_message.reply_text(text[:4096], parse_mode=ParseMode.HTML,
                                                       disable_web_page_preview=True, **kwargs)
+        except BadRequest:  # не разобрался HTML — отправляем как обычный текст
+            await update.effective_message.reply_text(_TAG_RE.sub("", text)[:4096], **kwargs)
 
     def _trader_ready(self) -> bool:
         return self.trader is not None and self.trader.ready
@@ -174,7 +179,8 @@ class TelegramBot(Notifier):
             await self._reply(update, messages.status(view))
         except Exception as exc:  # noqa: BLE001
             log.exception("/status")
-            await self._reply(update, f"⚠️ Не удалось получить статус: {type(exc).__name__}: {str(exc)[:200]}")
+            await self._reply(update, f"⚠️ Не удалось получить статус: {type(exc).__name__}: "
+                                      f"{escape(str(exc)[:200])}")
 
     async def cmd_stop(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if self.trader is None:
@@ -238,7 +244,7 @@ class TelegramBot(Notifier):
         except Exception as exc:  # noqa: BLE001
             log.exception("closeall")
             await query.edit_message_text(f"🚨 Ошибка аварийного закрытия: {str(exc)[:300]}. "
-                                          f"Проверьте позиции на бирже!")
+                                          f"Проверьте позиции на бирже!")  # без parse_mode — HTML не нужен
 
     async def on_stranger(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.effective_user

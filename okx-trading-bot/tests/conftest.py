@@ -13,12 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from bot.backtest import DEFAULT_INSTRUMENTS  # noqa: E402
 from bot.config import Settings  # noqa: E402
+from bot.exchange import select_closed_position  # noqa: E402
 from bot.models import (  # noqa: E402
     AccountConfig,
     AlgoOrder,
     Balance,
     Candles,
-    ClosedPosition,
     OrderInfo,
     Position,
 )
@@ -65,7 +65,10 @@ class FakeOkx:
         self.algos: dict[str, AlgoOrder] = {}
         self.orders: dict[str, OrderInfo] = {}
         self.order_cl: dict[str, str] = {}
-        self.history: list[ClosedPosition] = []
+        self.history: list[dict] = []  # записи в формате /account/positions-history
+        self.history_visible = True  # False — история OKX «запаздывает»
+        self.empty_positions = 0  # столько следующих запросов позиций вернут пустой список (сбой биржи)
+        self.stubborn_close: dict[str, int] = {}  # сколько раз close-position «принимается», но не закрывает
         self.candles: dict[str, Candles] = {}
         self.leverage_calls: list[tuple] = []
         self.placed_orders: list[dict] = []
@@ -78,8 +81,12 @@ class FakeOkx:
         self.insufficient_funds = 0
         self.pos_mode = "net_mode"
         self.equity_override: float | None = None
-        self.now_ms = int(T0 * 1000)
+        self.clock = lambda: T0
         self._seq = 0
+
+    @property
+    def now_ms(self) -> int:
+        return int(self.clock() * 1000)
 
     def _id(self) -> str:
         self._seq += 1
@@ -90,10 +97,10 @@ class FakeOkx:
     def set_price(self, inst_id: str, price: float) -> None:
         self.prices[inst_id] = price
 
-    def open_manual(self, inst_id: str, side: str, contracts: float, price: float) -> None:
+    def open_manual(self, inst_id: str, side: str, contracts: float, price: float, mgn_mode: str = "isolated"):
         info = self.instruments[inst_id]
         self.positions[inst_id] = dict(side=side, contracts=contracts, avg_px=price, c_time=self.now_ms - 3_600_000,
-                                       margin=contracts * info.ct_val * price / 3)
+                                       margin=contracts * info.ct_val * price / 3, mgn_mode=mgn_mode)
 
     def _close(self, inst_id: str, price: float, close_type: str = "2") -> None:
         p = self.positions.pop(inst_id)
@@ -103,9 +110,10 @@ class FakeOkx:
         gross = sign * (price - p["avg_px"]) * qty
         fee = -qty * price * self.fee_rate
         self.cash += gross + fee
-        self.history.append(ClosedPosition(inst_id=inst_id, side=p["side"], open_avg_px=p["avg_px"],
-                                           close_avg_px=price, realized_pnl=gross + fee, fee=fee, funding_fee=0.0,
-                                           close_type=close_type, u_time=self.now_ms))
+        self.history.append({"instId": inst_id, "direction": p["side"], "type": close_type,
+                             "cTime": str(p["c_time"]), "uTime": str(self.now_ms), "openAvgPx": str(p["avg_px"]),
+                             "closeAvgPx": str(price), "realizedPnl": str(gross + fee), "fee": str(fee),
+                             "fundingFee": "0"})
 
     def trigger(self, inst_id: str) -> str | None:
         """Сработать TP/SL по текущей цене, как это сделала бы биржа."""
@@ -154,12 +162,16 @@ class FakeOkx:
         return Balance(equity=equity, available=self.cash - used)
 
     async def get_positions(self):
+        if self.empty_positions > 0:
+            self.empty_positions -= 1
+            return []
         out = []
         for inst_id, p in self.positions.items():
             sign = 1 if p["side"] == "long" else -1
             upl = sign * (self.prices[inst_id] - p["avg_px"]) * p["contracts"] * self.instruments[inst_id].ct_val
             out.append(Position(inst_id=inst_id, side=p["side"], pos_side="net", contracts=p["contracts"],
-                                avg_px=p["avg_px"], upl=upl, mark_px=self.prices[inst_id], c_time=p["c_time"]))
+                                avg_px=p["avg_px"], upl=upl, mark_px=self.prices[inst_id], c_time=p["c_time"],
+                                mgn_mode=p.get("mgn_mode", "isolated")))
         return out
 
     async def fetch_candles(self, inst_id, bar, limit=600, closed_only=True):
@@ -169,8 +181,7 @@ class FakeOkx:
         return self.prices[inst_id]
 
     async def place_market_order(self, *, inst_id, side, sz, td_mode, pos_side, cl_ord_id, sl_trigger=None,
-                                 tp_trigger=None, attach_algo_cl_id=None, trigger_px_type="last",
-                                 reduce_only=False):
+                                 tp_trigger=None, attach_algo_cl_id=None, trigger_px_type="last"):
         self.placed_orders.append(dict(inst_id=inst_id, side=side, sz=sz, td_mode=td_mode, pos_side=pos_side,
                                        sl=sl_trigger, tp=tp_trigger))
         if self.insufficient_funds > 0:
@@ -185,7 +196,7 @@ class FakeOkx:
         self.cash -= contracts * info.ct_val * price * self.fee_rate
         new_side = "long" if side == "buy" else "short"
         self.positions[inst_id] = dict(side=new_side, contracts=contracts, avg_px=price, c_time=self.now_ms,
-                                       margin=margin)
+                                       margin=margin, mgn_mode=td_mode)
         ord_id = self._id()
         self.orders[ord_id] = OrderInfo(ord_id=ord_id, state="filled", avg_px=price, filled_sz=contracts)
         self.order_cl[cl_ord_id] = ord_id
@@ -211,7 +222,8 @@ class FakeOkx:
 
     async def place_tpsl(self, *, inst_id, close_side, pos_side, td_mode, sz, sl_trigger, tp_trigger, algo_cl_id,
                          trigger_px_type="last"):
-        self.placed_algos.append(dict(inst_id=inst_id, close_side=close_side, sz=sz, sl=sl_trigger, tp=tp_trigger))
+        self.placed_algos.append(dict(inst_id=inst_id, close_side=close_side, sz=sz, sl=sl_trigger, tp=tp_trigger,
+                                      td_mode=td_mode))
         if self.fail_tpsl:
             raise InvalidOrder("okx 51000 tpsl rejected")
         algo_id = self._id()
@@ -253,15 +265,19 @@ class FakeOkx:
         return 0
 
     async def close_position(self, inst_id, mgn_mode, pos_side):
-        self.closed_calls.append(inst_id)
+        self.closed_calls.append((inst_id, mgn_mode))
         if inst_id not in self.positions:
             return False
+        if self.stubborn_close.get(inst_id, 0) > 0:
+            self.stubborn_close[inst_id] -= 1
+            return True
         self._close(inst_id, self.prices[inst_id])
         return True
 
     async def get_closed_position(self, inst_id, side, since_ms):
-        found = [h for h in self.history if h.inst_id == inst_id and h.side == side and h.u_time >= since_ms - 60_000]
-        return min(found, key=lambda h: h.u_time) if found else None
+        if not self.history_visible:
+            return None
+        return select_closed_position(list(reversed(self.history)), inst_id, side, since_ms)
 
 
 def make_signal(side: str = "long", price: float = 60_000.0, atr: float = 100.0, ts: int = 0) -> Signal:
@@ -306,10 +322,35 @@ def notifier() -> RecordingNotifier:
 
 
 @pytest.fixture
-def fake() -> FakeOkx:
-    return FakeOkx()
+def fake(clock) -> FakeOkx:
+    f = FakeOkx()
+    f.clock = clock
+    return f
 
 
 @pytest.fixture
 def clock() -> Clock:
     return Clock()
+
+
+def make_trade_record(storage: Storage, inst_id: str = BTC, side: str = "long", contracts: float = 1.0) -> int:
+    from bot.models import Trade
+    t = Trade(inst_id=inst_id, side=side, pos_side="net", contracts=contracts, entry_price=60_000,
+              stop_loss=59_000, take_profit=62_000, initial_stop=59_000, atr=100, trail_activation=100,
+              trail_distance=100, opened_at=int(T0 * 1000) - 3_600_000, ct_val=0.01)
+    return storage.insert_trade(t)
+
+
+@pytest.fixture
+def trader_factory(settings, fake, storage, notifier, clock):
+    from bot.strategies import create_strategy
+    from bot.trader import Trader
+
+    async def make(**overrides):
+        t = Trader(overrides.get("settings", settings), fake, storage, create_strategy("ema_cross"), notifier,
+                   clock=clock)
+        t.poll_delay = 0
+        await t.start()
+        return t
+
+    return make

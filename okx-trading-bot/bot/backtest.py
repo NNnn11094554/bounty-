@@ -25,9 +25,10 @@ import numpy as np
 
 from .config import BacktestConfig, RiskConfig
 from .models import Candles, InstrumentInfo
-from .risk import calculate_position_size, stop_beyond_liquidation
+from .risk import RiskManager, calculate_position_size, stop_beyond_liquidation
 from .stats import TradeStats, fmt_pf, max_drawdown, trade_stats
 from .strategies.base import Signal, Strategy
+from .trailing import trail_step
 
 FUNDING_PERIOD_MS = 8 * 3_600_000
 
@@ -146,6 +147,7 @@ class Backtester:
         self.timeframe = timeframe
         self.trailing_min_step_atr = trailing_min_step_atr
         self.tz = ZoneInfo(risk.day_reset_timezone)
+        self.risk_manager = RiskManager(risk)
 
     def run(self, data: dict[str, Candles]) -> BacktestResult:
         symbols = [s for s in data if len(data[s])]
@@ -274,8 +276,7 @@ class Backtester:
             eq = mtm()
             equity_ts.append(ts)
             equity.append(eq)
-            if not limit_hit and day_start_eq > 0 and \
-                    (eq - day_start_eq) / day_start_eq * 100 <= -self.risk.daily_loss_limit_pct:
+            if not limit_hit and self.risk_manager.daily_limit_reached(day_start_eq, eq):
                 limit_hit = True
                 limit_days += 1
 
@@ -320,21 +321,14 @@ class Backtester:
         return None
 
     def _trail(self, p: BTPosition, h: float, low: float) -> None:
-        if p.trail_activation is None or p.trail_distance is None:
-            return
         info = self.instruments[p.inst_id]
-        long = p.side == "long"
-        p.best_price = max(p.best_price, h) if long else min(p.best_price, low)
-        first = False
-        if not p.trailing_active:
-            moved = p.best_price - p.entry_price if long else p.entry_price - p.best_price
-            if moved < p.trail_activation:
-                return
-            p.trailing_active = first = True
-        candidate = info.round_price(p.best_price - p.sign * p.trail_distance)
-        min_step = info.tick_size / 2 if first else max(info.tick_size, self.trailing_min_step_atr * p.atr)
-        if (candidate - p.stop_loss) * p.sign >= min_step:
-            p.stop_loss = candidate
+        step = trail_step(
+            side=p.side, entry=p.entry_price, stop=p.stop_loss, best=p.best_price, active=p.trailing_active,
+            high=h, low=low, activation=p.trail_activation, distance=p.trail_distance, atr=p.atr,
+            tick=info.tick_size, min_step_atr=self.trailing_min_step_atr, round_price=info.round_price)
+        p.best_price, p.trailing_active = step.best_price, step.active
+        if step.new_stop is not None:
+            p.stop_loss = step.new_stop
 
 
 # ---------------- отчёт ----------------

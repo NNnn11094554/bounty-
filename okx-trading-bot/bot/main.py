@@ -152,9 +152,7 @@ async def run_closeall(settings: Settings) -> int:
     trader = Trader(settings, client, storage, create_strategy(settings.strategy.name, settings.strategy.params),
                     notifier)
     try:
-        trader.instruments = await client.load_instruments(settings.exchange.symbols)
-        trader.pos_mode = (await client.get_account_config()).pos_mode
-        trader.trades = {t.inst_id: t for t in storage.open_trades()}
+        await trader.prepare()
         trader.ready = True
         result = await trader.close_all()
         print(f"Закрыто позиций: {result.positions_closed}, отменено algo: {result.algos_canceled}, "
@@ -203,7 +201,10 @@ async def run_check(settings: Settings) -> int:
         try:
             server = await client.server_time_ms()
             drift = abs(server - time.time() * 1000) / 1000
-            report(drift < 5, f"Связь с OKX, расхождение часов {drift:.2f} с (нужно < 30 с)")
+            report(True, f"Связь с OKX ({settings.exchange.hostname})")
+            # OKX отклоняет запросы при расхождении > 30 с; от 5 с — повод проверить синхронизацию
+            report(drift < 5, f"Расхождение часов с OKX {drift:.1f} с (OKX допускает до 30 с)",
+                   critical=drift >= 25)
         except Exception as exc:  # noqa: BLE001
             report(False, f"Нет связи с OKX ({settings.exchange.hostname}): {exc}")
             return 1

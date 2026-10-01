@@ -38,7 +38,6 @@ class Candles:
         if not rows:
             empty = np.array([], dtype=float)
             return cls(np.array([], dtype=np.int64), empty, empty, empty, empty, empty)
-        rows = sorted(rows, key=lambda r: int(r[0]))
         dedup: dict[int, list] = {}
         for r in rows:
             dedup[int(r[0])] = list(r)
@@ -210,8 +209,9 @@ class Trade:
     fee: float | None = None
     close_reason: str = ""
     note: str = ""
-    # только в памяти
-    close_checks: int = field(default=0, compare=False)
+    mgn_mode: str = "isolated"
+    # только в памяти: когда впервые заметили, что позиции на бирже нет (мс)
+    missing_since: int | None = field(default=None, compare=False)
 
     @property
     def qty(self) -> float:

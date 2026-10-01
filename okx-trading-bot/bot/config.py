@@ -12,16 +12,18 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-TIMEFRAME_RE = re.compile(r"^(\d+)([mHDW])$")
-_UNIT_MS = {"m": 60_000, "H": 3_600_000, "D": 86_400_000, "W": 604_800_000}
+TIMEFRAME_RE = re.compile(r"^(\d+)([mHD])$")
+_UNIT_MS = {"m": 60_000, "H": 3_600_000, "D": 86_400_000}
+# бары, границы которых совпадают с границами, отсчитанными от 1970-01-01 UTC
+SUPPORTED_TIMEFRAMES = ("1m", "3m", "5m", "15m", "30m", "1H", "2H", "4H", "6H", "12H", "1D")
 _TRUE = {"1", "true", "yes", "on"}
 
 
 def timeframe_to_ms(timeframe: str) -> int:
-    """'15m' -> 900000. Формат баров OKX: 1m, 5m, 15m, 1H, 4H, 1D, 1W."""
+    """'15m' -> 900000. Поддерживаются: 1m 3m 5m 15m 30m 1H 2H 4H 6H 12H 1D."""
     m = TIMEFRAME_RE.match(timeframe)
-    if not m:
-        raise ValueError(f"Неверный таймфрейм {timeframe!r}: используйте формат OKX (15m, 1H, 4H, 1D)")
+    if not m or timeframe not in SUPPORTED_TIMEFRAMES:
+        raise ValueError(f"Неверный таймфрейм {timeframe!r}: поддерживаются {', '.join(SUPPORTED_TIMEFRAMES)}")
     return int(m.group(1)) * _UNIT_MS[m.group(2)]
 
 

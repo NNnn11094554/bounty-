@@ -71,6 +71,12 @@ class PriceFeed:
         self.update(inst_id, price)
         return price
 
+    def reset_range(self, inst_id: str) -> None:
+        """Забыть накопленные экстремумы (например, при открытии новой позиции)."""
+        q = self._quotes.get(inst_id)
+        if q is not None:
+            q.high = q.low = q.last
+
     async def take_range(self, inst_id: str) -> tuple[float, float, float]:
         """(last, high, low) с момента предыдущего вызова; затем экстремумы сбрасываются."""
         last = await self.get_price(inst_id)

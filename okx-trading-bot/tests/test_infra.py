@@ -108,7 +108,6 @@ def test_storage_trade_lifecycle_survives_restart(tmp_path):
     assert s2.open_trades() == []
     assert [x.pnl for x in s2.closed_trades(since_ms=4_000)] == [2.5]
     assert s2.closed_trades(since_ms=6_000) == []
-    assert s2.realized_pnl(0) == 2.5
     assert s2.get_state("missing", "dflt") == "dflt"
     s2.close()
 

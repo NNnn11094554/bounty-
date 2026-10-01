@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS trades (
     pnl             REAL,
     fee             REAL,
     close_reason    TEXT NOT NULL DEFAULT '',
-    note            TEXT NOT NULL DEFAULT ''
+    note            TEXT NOT NULL DEFAULT '',
+    mgn_mode        TEXT NOT NULL DEFAULT 'isolated'
 );
 CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status);
 CREATE INDEX IF NOT EXISTS idx_trades_closed ON trades(closed_at);
@@ -50,7 +51,9 @@ CREATE TABLE IF NOT EXISTS state (
 );
 """
 
-_TRADE_COLUMNS = [f.name for f in fields(Trade) if f.name not in ("id", "close_checks")]
+_TRADE_COLUMNS = [f.name for f in fields(Trade) if f.name not in ("id", "missing_since")]
+# колонки, добавленные после первой версии: досоздаются в существующей БД
+_MIGRATIONS = {"mgn_mode": "TEXT NOT NULL DEFAULT 'isolated'"}
 
 
 class Storage:
@@ -63,6 +66,10 @@ class Storage:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.executescript(SCHEMA)
+        existing = {row["name"] for row in self._db.execute("PRAGMA table_info(trades)")}
+        for column, ddl in _MIGRATIONS.items():
+            if column not in existing:
+                self._db.execute(f"ALTER TABLE trades ADD COLUMN {column} {ddl}")
 
     def close(self) -> None:
         with self._lock:
@@ -119,9 +126,6 @@ class Storage:
         with self._lock:
             rows = self._db.execute(sql, args).fetchall()
         return [self._row_to_trade(r) for r in rows]
-
-    def realized_pnl(self, since_ms: int, until_ms: int | None = None) -> float:
-        return sum(t.pnl or 0.0 for t in self.closed_trades(since_ms, until_ms))
 
     # ---------- состояние ----------
 
