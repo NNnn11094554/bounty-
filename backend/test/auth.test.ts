@@ -152,6 +152,28 @@ describe('POST /api/auth', () => {
     expect(auth.json<AuthResponse>().state.profile).toMatchObject({ telegramId: '555', isPremium: true });
   });
 
+  it('reports offline income after an absence of more than a minute', async () => {
+    const c = client(app, tgUser(1010));
+    expect((await c.post('/api/auth')).json<AuthResponse>().offline).toBeNull();
+    await prisma.user.update({
+      where: { telegramId: 1010n },
+      data: { profitPerHour: 3600n, lastSyncAt: new Date(Date.now() - 30_000) },
+    });
+    // меньше минуты — доход начислен, но без модалки
+    let res = (await c.post('/api/auth')).json<AuthResponse>();
+    expect(res.offline).toBeNull();
+    expect(res.state.balance).toBeGreaterThanOrEqual(30);
+
+    await prisma.user.update({
+      where: { telegramId: 1010n },
+      data: { balance: 0, lastSyncAt: new Date(Date.now() - 5 * 3600_000) },
+    });
+    res = (await c.post('/api/auth')).json<AuthResponse>();
+    expect(res.offline).toMatchObject({ earned: 10_800, creditedSeconds: 3 * 3600 });
+    expect(res.offline?.seconds).toBeGreaterThanOrEqual(5 * 3600);
+    expect(res.state.balance).toBe(10_800);
+  });
+
   it('rate limits per player', async () => {
     await client(app, tgUser(1008)).post('/api/auth');
     const c = client(app, tgUser(1008));

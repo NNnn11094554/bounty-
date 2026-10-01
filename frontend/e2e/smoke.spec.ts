@@ -21,3 +21,22 @@ for (const width of [320, 375, 390, 430]) {
       await page.screenshot({ path: `${process.env.SCREENSHOTS}/office-${width}.png` });
   });
 }
+
+for (const width of [320, 390]) {
+  test(`mine fits ${width}px without horizontal scroll`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 320 ? 568 : 780 });
+    await page.goto(`/?uid=70000012${width % 7}&name=Кот`);
+    await page.getByTestId('nav-mine').click();
+    await expect(page.getByTestId('card-mk_spot')).toBeVisible();
+    await page.getByTestId('mine-cat-SPECIALS').click();
+    await expect(page.getByTestId('card-sp_ceo_photo')).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    const tile = (await page.getByTestId('card-sp_cardboard_hq').boundingBox())!;
+    expect(tile.x + tile.width).toBeLessThanOrEqual(width);
+    const nav = (await page.getByTestId('bottom-nav').boundingBox())!;
+    expect(nav.y + nav.height).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) + 1);
+    if (process.env.SCREENSHOTS)
+      await page.screenshot({ path: `${process.env.SCREENSHOTS}/mine-${width}.png` });
+  });
+}

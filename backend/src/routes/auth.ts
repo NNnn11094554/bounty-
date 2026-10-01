@@ -26,7 +26,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const earned = toCoins(passive.amount);
     const offline =
       passive.elapsedSeconds >= GAME.passive.offlineModalMinSec && earned > 0
-        ? { earned, seconds: passive.creditedSeconds }
+        ? { earned, seconds: passive.elapsedSeconds, creditedSeconds: passive.creditedSeconds }
         : null;
     return { state: buildPlayerState(synced, now), config: clientConfig(), offline, isNew };
   });

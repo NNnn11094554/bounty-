@@ -10,6 +10,7 @@ import { ApiError } from './lib/errors.js';
 import { loggerOptions } from './lib/logger.js';
 import { authRoutes } from './routes/auth.js';
 import { boostRoutes } from './routes/boosts.js';
+import { cardRoutes } from './routes/cards.js';
 import { devRoutes } from './routes/dev.js';
 import { tapRoutes } from './routes/tap.js';
 import { APP_VERSION } from './version.js';
@@ -107,6 +108,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(authRoutes);
   await app.register(tapRoutes);
   await app.register(boostRoutes);
+  await app.register(cardRoutes);
   await app.register(devRoutes);
 
   return app;

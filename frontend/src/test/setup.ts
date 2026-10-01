@@ -21,3 +21,5 @@ if (!Element.prototype.animate) {
     return { cancel() {}, finish() {}, onfinish: null } as unknown as Animation;
   };
 }
+// canvas в jsdom не реализован: слой эффектов (конфетти) без контекста просто ничего не рисует
+HTMLCanvasElement.prototype.getContext = (() => null) as unknown as HTMLCanvasElement['getContext'];

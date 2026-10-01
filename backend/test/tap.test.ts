@@ -143,7 +143,8 @@ describe('POST /api/tap', () => {
     const auth = (await c.post('/api/auth')).json<AuthResponse>();
     expect(auth.offline).not.toBeNull();
     expect(auth.offline!.earned).toBe(10_800); // 3600/ч × 3 ч, а не × 10 ч
-    expect(auth.offline!.seconds).toBe(3 * 3600);
+    expect(auth.offline!.creditedSeconds).toBe(3 * 3600);
+    expect(auth.offline!.seconds).toBeGreaterThanOrEqual(10 * 3600);
     expect(auth.state.balance).toBe(10_800);
     const again = (await c.post('/api/auth')).json<AuthResponse>();
     expect(again.offline).toBeNull();

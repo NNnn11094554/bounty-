@@ -3,16 +3,19 @@ import { buildApp } from '../src/app.js';
 import { signInitData, type TelegramUser } from '../src/auth/initData.js';
 import { env } from '../src/env.js';
 import { prisma } from '../src/lib/db.js';
+import { seedCards } from '../src/services/cards.js';
 
 export const TEST_TOKEN = env.BOT_TOKEN;
 
-/** Очистить все таблицы тестовой БД. */
+/** Очистить все таблицы тестовой БД и заново заполнить справочники. */
 export async function resetDb(): Promise<void> {
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
   if (tables.length === 0) return;
   const list = tables.map((t) => `"${t.tablename}"`).join(', ');
   await prisma.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
+  // справочник карточек — как после старта сервера
+  await seedCards();
 }
 
 export function tgUser(id: number, extra: Partial<TelegramUser> = {}): TelegramUser {

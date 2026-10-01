@@ -96,7 +96,10 @@ export interface PlayerState {
 
 export interface OfflineIncome {
   earned: number;
+  /** сколько игрока не было, сек */
   seconds: number;
+  /** за сколько секунд начислен доход (не больше лимита накопления) */
+  creditedSeconds: number;
 }
 
 export interface AuthResponse {

@@ -2,10 +2,14 @@ import { buildApp } from './app.js';
 import { env } from './env.js';
 import { prisma } from './lib/db.js';
 import { logger } from './lib/logger.js';
+import { seedCards } from './services/cards.js';
 
 async function main(): Promise<void> {
   const app = await buildApp();
   await prisma.$connect();
+  // новые карточки из конфига появляются в БД автоматически после деплоя
+  const added = await seedCards();
+  if (added > 0) logger.info({ added }, 'cards added from config');
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {

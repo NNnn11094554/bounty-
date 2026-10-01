@@ -31,4 +31,24 @@ test('capture main screens', async ({ page }) => {
   await page.getByTestId('boost-multitap').click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${dir}/03-boost-sheet.png` });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('nav-mine').click();
+  await expect(page.getByTestId('card-mk_spot')).toBeVisible();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${dir}/04-mine.png` });
+  await page.getByTestId('card-mk_spot').click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${dir}/05-card-sheet.png` });
+  await page.getByTestId('card-buy').click();
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: `${dir}/06-card-bought.png` });
+  await page.getByTestId('mine-cat-SPECIALS').click();
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `${dir}/07-specials.png` });
+  await page.getByTestId('mine-cat-LEGAL').click();
+  await page.getByTestId('mine-list').evaluate((el) => el.scrollTo(0, 1200));
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${dir}/08-legal-locked.png` });
 });
