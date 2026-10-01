@@ -1,5 +1,7 @@
 # 🐶 Woof Kombat — Telegram Mini App
 
+> 📈 В этом репозитории также лежит торговый бот для OKX (бессрочные фьючерсы USDT-M): папка [`okx-trading-bot/`](okx-trading-bot/README.md).
+
 Тапалка в стиле Hamster Kombat, только вместо хомяка — собачка, а вместо монет — косточки.
 
 ## Что есть
