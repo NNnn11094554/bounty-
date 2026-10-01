@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Woof Kombat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <!-- Иконки -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-coin" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffe08a"/>
+        <stop offset="1" stop-color="#f59e0b"/>
+      </linearGradient>
+      <radialGradient id="g-fur" cx="50%" cy="35%" r="70%">
+        <stop offset="0" stop-color="#ffb866"/>
+        <stop offset="1" stop-color="#e5762a"/>
+      </radialGradient>
+    </defs>
+    <symbol id="coin" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="15" fill="url(#g-coin)" stroke="#c2740a" stroke-width="2"/>
+      <g fill="#8a4b06">
+        <ellipse cx="16" cy="19.5" rx="5" ry="4.2"/>
+        <circle cx="10.5" cy="13.5" r="2.2"/>
+        <circle cx="14" cy="10" r="2.2"/>
+        <circle cx="18" cy="10" r="2.2"/>
+        <circle cx="21.5" cy="13.5" r="2.2"/>
+      </g>
+    </symbol>
+    <symbol id="bolt" viewBox="0 0 24 24">
+      <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#ffd166"/>
+    </symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z" fill="currentColor"/></symbol>
+    <symbol id="i-mine" viewBox="0 0 24 24"><path d="M3 20V9l9-6 9 6v11h-6v-6H9v6z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="10" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-friends" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="currentColor"/><circle cx="17" cy="9" r="2.8" fill="currentColor" opacity=".7"/><path d="M2 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5z" fill="currentColor"/><path d="M15.5 13.6c3.4-.4 6.5 1.6 6.5 5.4h-4.5" fill="currentColor" opacity=".7"/></symbol>
+    <symbol id="i-earn" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M3 12h18M12 8v13" stroke="currentColor" stroke-width="2.2"/><path d="M12 8C9 8 7 6.5 8 4.5S12 5 12 8c0-3 3-5.5 4-3.5S15 8 12 8z" fill="currentColor"/></symbol>
+    <symbol id="i-boost" viewBox="0 0 24 24"><path d="M12 2c3 3 5 6.5 5 11h-3l-2 6-2-6H7c0-4.5 2-8 5-11z" fill="currentColor"/><path d="M8 18l-3 3M16 18l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="dog" viewBox="0 0 200 200">
+      <path d="M44 92 50 28q6-10 15-2l28 38z" fill="#e5762a"/>
+      <path d="M156 92 150 28q-6-10-15-2l-28 38z" fill="#e5762a"/>
+      <path d="M55 76 58 40l22 25z" fill="#ffd2ae"/>
+      <path d="M145 76 142 40l-22 25z" fill="#ffd2ae"/>
+      <ellipse cx="100" cy="114" rx="66" ry="58" fill="url(#g-fur)"/>
+      <path d="M48 126q10-26 34-14 18-12 36 0 24-12 34 14-8 44-52 46-44-2-52-46z" fill="#fff4e6"/>
+      <ellipse cx="76" cy="86" rx="7" ry="4" fill="#fff4e6"/>
+      <ellipse cx="124" cy="86" rx="7" ry="4" fill="#fff4e6"/>
+      <g class="dog-eyes">
+        <ellipse cx="78" cy="106" rx="8" ry="10" fill="#2b1a12"/>
+        <ellipse cx="122" cy="106" rx="8" ry="10" fill="#2b1a12"/>
+        <circle cx="81" cy="102" r="3" fill="#fff"/>
+        <circle cx="125" cy="102" r="3" fill="#fff"/>
+      </g>
+      <ellipse cx="60" cy="130" rx="9" ry="5" fill="#ff8fa3" opacity=".55"/>
+      <ellipse cx="140" cy="130" rx="9" ry="5" fill="#ff8fa3" opacity=".55"/>
+      <path d="M93 149q7 18 14 0z" fill="#ff6f91"/>
+      <path d="M100 136q0 11-10 12M100 136q0 11 10 12" stroke="#2b1a12" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+      <ellipse cx="100" cy="129" rx="11" ry="8" fill="#2b1a12"/>
+      <ellipse cx="97" cy="126" rx="3.5" ry="2" fill="#fff" opacity=".5"/>
+    </symbol>
+  </svg>
+
+  <div id="app">
+    <!-- Шапка -->
+    <header class="top">
+      <div class="user">
+        <div class="avatar" id="avatar"><svg><use href="#dog"/></svg></div>
+        <div>
+          <div class="user-name" id="userName">Игрок</div>
+          <div class="user-level" id="levelName">Щенок</div>
+        </div>
+      </div>
+      <div class="pph">
+        <div class="pph-label">Доход в час</div>
+        <div class="pph-value"><svg class="ic"><use href="#coin"/></svg><span id="pphValue">+0</span></div>
+      </div>
+    </header>
+
+    <main class="screens">
+      <!-- Главная -->
+      <section class="screen active" data-screen="home">
+        <div class="stats">
+          <button class="stat-card" data-goto="earn">
+            <span class="stat-emoji">📅</span><span>Награда дня</span><span class="dot" id="dailyDot"></span>
+          </button>
+          <button class="stat-card" data-goto="boost">
+            <span class="stat-emoji">🚀</span><span>Бусты</span>
+          </button>
+          <button class="stat-card" data-goto="friends">
+            <span class="stat-emoji">🐾</span><span>Позвать друга</span>
+          </button>
+        </div>
+
+        <div class="balance">
+          <svg class="ic-lg"><use href="#coin"/></svg>
+          <span id="balance">0</span>
+        </div>
+
+        <div class="level-row">
+          <span id="levelLabel">Щенок</span>
+          <span class="muted" id="levelNum">Уровень 1/10</span>
+        </div>
+        <div class="progress"><div class="progress-fill" id="levelBar"></div></div>
+
+        <div class="tap-zone">
+          <div class="tap-glow"></div>
+          <div class="tap-ring"></div>
+          <button class="coin" id="tapCoin" aria-label="Тапнуть собачку">
+            <svg class="coin-dog"><use href="#dog"/></svg>
+          </button>
+          <div id="floaters"></div>
+        </div>
+
+        <div class="energy-row">
+          <div class="energy">
+            <svg class="ic"><use href="#bolt"/></svg>
+            <span id="energyText">1000 / 1000</span>
+          </div>
+          <button class="chip" data-goto="boost">🚀 Буст</button>
+        </div>
+        <div class="progress energy-bar"><div class="progress-fill" id="energyBar"></div></div>
+      </section>
+
+      <!-- Прокачка -->
+      <section class="screen" data-screen="mine">
+        <h1 class="title">Прокачка будки</h1>
+        <p class="subtitle">Покупай карточки — собачка будет приносить косточки даже когда ты не в игре (до 3 часов).</p>
+        <div class="balance small">
+          <svg class="ic-lg"><use href="#coin"/></svg><span class="bal-mirror">0</span>
+        </div>
+        <div class="tabs" id="mineTabs"></div>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <!-- Друзья -->
+      <section class="screen" data-screen="friends">
+        <h1 class="title">Друзья</h1>
+        <p class="subtitle">Ты и друг получите бонус за приглашение.</p>
+        <div class="list">
+          <div class="row">
+            <div class="row-ic">🎁</div>
+            <div class="row-body">
+              <div class="row-title">Пригласить друга</div>
+              <div class="row-sub"><svg class="ic"><use href="#coin"/></svg> +5 000 тебе и другу</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-ic">⭐</div>
+            <div class="row-body">
+              <div class="row-title">Друг с Telegram Premium</div>
+              <div class="row-sub"><svg class="ic"><use href="#coin"/></svg> +25 000 тебе и другу</div>
+            </div>
+          </div>
+        </div>
+        <h2 class="h2">Твоя стая <span class="muted" id="friendsCount">(0)</span></h2>
+        <div class="list" id="friendsList"></div>
+        <div class="invite-bar">
+          <button class="btn primary" id="inviteBtn">Позвать друга 🐶</button>
+          <button class="btn square" id="copyBtn" aria-label="Скопировать ссылку">📋</button>
+        </div>
+      </section>
+
+      <!-- Задания -->
+      <section class="screen" data-screen="earn">
+        <div class="hero-coin"><svg><use href="#coin"/></svg></div>
+        <h1 class="title center">Заработать ещё</h1>
+        <h2 class="h2">Ежедневные</h2>
+        <div class="list">
+          <button class="row clickable" id="dailyRow">
+            <div class="row-ic">📅</div>
+            <div class="row-body">
+              <div class="row-title">Награда дня</div>
+              <div class="row-sub" id="dailySub"></div>
+            </div>
+            <div class="row-end" id="dailyEnd">›</div>
+          </button>
+        </div>
+        <h2 class="h2">Задания</h2>
+        <div class="list" id="tasksList"></div>
+      </section>
+
+      <!-- Бусты -->
+      <section class="screen" data-screen="boost">
+        <h1 class="title">Бусты</h1>
+        <div class="balance small">
+          <svg class="ic-lg"><use href="#coin"/></svg><span class="bal-mirror">0</span>
+        </div>
+        <h2 class="h2">Бесплатные</h2>
+        <div class="list">
+          <button class="row clickable" id="fullEnergyRow">
+            <div class="row-ic">⚡</div>
+            <div class="row-body">
+              <div class="row-title">Полная энергия</div>
+              <div class="row-sub" id="fullEnergySub"></div>
+            </div>
+            <div class="row-end">›</div>
+          </button>
+        </div>
+        <h2 class="h2">Улучшения</h2>
+        <div class="list">
+          <button class="row clickable" id="multitapRow">
+            <div class="row-ic">👆</div>
+            <div class="row-body">
+              <div class="row-title">Мультитап</div>
+              <div class="row-sub" id="multitapSub"></div>
+            </div>
+            <div class="row-end">›</div>
+          </button>
+          <button class="row clickable" id="energyLimitRow">
+            <div class="row-ic">🔋</div>
+            <div class="row-body">
+              <div class="row-title">Запас энергии</div>
+              <div class="row-sub" id="energyLimitSub"></div>
+            </div>
+            <div class="row-end">›</div>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <nav class="nav">
+      <button class="nav-btn active" data-tab="home"><svg><use href="#i-home"/></svg><span>Гав</span></button>
+      <button class="nav-btn" data-tab="mine"><svg><use href="#i-mine"/></svg><span>Будка</span></button>
+      <button class="nav-btn" data-tab="friends"><svg><use href="#i-friends"/></svg><span>Друзья</span></button>
+      <button class="nav-btn" data-tab="earn"><svg><use href="#i-earn"/></svg><span>Задания</span><i class="dot" id="earnDot"></i></button>
+      <button class="nav-btn" data-tab="boost"><svg><use href="#i-boost"/></svg><span>Бусты</span></button>
+    </nav>
+  </div>
+
+  <!-- Нижняя шторка -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true">
+    <button class="sheet-close" id="sheetClose" aria-label="Закрыть">✕</button>
+    <div id="sheetBody"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
