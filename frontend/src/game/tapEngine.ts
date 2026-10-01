@@ -120,6 +120,24 @@ export class TapEngine {
     return s.tapValue * (this.turboActive() ? turboMultiplier : 1);
   }
 
+  /**
+   * Текущее состояние «как будто с сервера» (без неподтверждённых тапов) — основа для
+   * оптимистичных предсказаний: applyServerState(predict(snapshotNow())) не теряет ни тапов, ни дохода.
+   */
+  snapshotNow(now = performance.now()): PlayerState | null {
+    const s = this.snapshot;
+    if (!s) return null;
+    const unacked = this.pending + (this.inflight?.taps ?? 0);
+    const passive = (s.profitPerHour * Math.max(0, now - this.snapshotAt)) / 3_600_000;
+    return {
+      ...s,
+      balance: s.balance + passive,
+      totalEarned: s.totalEarned + passive,
+      energy: Math.min(s.maxEnergy, this.energyNow(now) + (this.turboActive() ? 0 : unacked * s.tapValue)),
+      serverTime: s.serverTime + (now - this.snapshotAt),
+    };
+  }
+
   /** Тап: true — засчитан локально; false — не хватает энергии. */
   tap(now = performance.now()): boolean {
     const s = this.snapshot;

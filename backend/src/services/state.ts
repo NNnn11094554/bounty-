@@ -1,6 +1,8 @@
 import type { User } from '@prisma/client';
 import { DEFAULT_SETTINGS, type PlayerSettings, type PlayerState } from '@meowgul/shared';
 import { env } from '../env.js';
+import { dailyBoostUsage, fullEnergyCooldownUntil } from '../game/boosts.js';
+import { BOOSTS, boostLevelPrice, type PaidBoost } from '../game/config/boosts.js';
 import { GAME, tapValue } from '../game/config/game.js';
 import { nextResetAt } from '../game/dayKey.js';
 import { currentEnergy } from '../game/energy.js';
@@ -19,6 +21,17 @@ export function parseSettings(raw: unknown): PlayerSettings {
 
 export function isAdmin(user: Pick<User, 'telegramId'>): boolean {
   return env.adminIds.has(user.telegramId);
+}
+
+function paidBoost(boost: PaidBoost, level: number) {
+  const next = level + 1;
+  const max = BOOSTS[boost].maxLevel;
+  return {
+    level,
+    nextLevel: next <= max ? next : null,
+    price: next <= max ? boostLevelPrice(boost, next) : null,
+    maxLevel: max,
+  };
 }
 
 /** Полное состояние игрока для клиента. Все числа рассчитаны сервером на момент now. */
@@ -54,7 +67,31 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     tapSeq: user.lastTapSeq,
     turboUntil: user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null,
     totalTaps: Number(user.totalTaps),
+    boosts: boostsState(user, now),
     serverTime: now.getTime(),
     nextResetAt: nextResetAt(now).getTime(),
+  };
+}
+
+function boostsState(user: User, now: Date) {
+  const usage = dailyBoostUsage(user, now);
+  const cooldown = fullEnergyCooldownUntil(user.fullEnergyLastAt);
+  const turboActive = user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null;
+  return {
+    fullEnergy: {
+      left: Math.max(0, BOOSTS.fullEnergy.perDay - usage.fullEnergyUsed),
+      perDay: BOOSTS.fullEnergy.perDay,
+      cooldownUntil: cooldown && cooldown > now ? cooldown.getTime() : null,
+      cooldownSec: BOOSTS.fullEnergy.cooldownSec,
+    },
+    turbo: {
+      left: Math.max(0, BOOSTS.turbo.perDay - usage.turboUsed),
+      perDay: BOOSTS.turbo.perDay,
+      activeUntil: turboActive,
+      durationSec: GAME.turbo.durationSec,
+      multiplier: GAME.turbo.multiplier,
+    },
+    multitap: paidBoost('multitap', user.multitapLevel),
+    energyLimit: { ...paidBoost('energyLimit', user.energyLimitLevel), perLevel: GAME.energy.perLevel },
   };
 }

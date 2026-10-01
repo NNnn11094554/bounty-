@@ -1,9 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const E2E_DB =
-  process.env.E2E_DATABASE_URL ??
-  process.env.DATABASE_URL ??
-  'postgresql://meowgul:meowgul@localhost:5432/meowgul_e2e';
+const E2E_DB = process.env.E2E_DATABASE_URL ?? 'postgresql://meowgul:meowgul@localhost:5432/meowgul_e2e';
 
 /**
  * E2E: production-сборка фронтенда в режиме e2e (моковый initData разрешён) + API на тестовой БД.

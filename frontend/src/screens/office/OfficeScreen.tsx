@@ -190,7 +190,7 @@ export function OfficeScreen({
       </div>
 
       <section className="office-arc relative mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-5">
-        <div className="flex items-center justify-center gap-2.5" data-testid="balance">
+        <div className="flex items-center justify-center gap-2.5" data-testid="balance" data-coin-target>
           <CoinIcon size={44} />
           <RollingNumber
             getValue={() => tapEngine.balanceNow()}

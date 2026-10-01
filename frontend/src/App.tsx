@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { boot } from './boot';
+import { EffectsLayer } from './components/EffectsLayer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PawBackground } from './components/PawBackground';
 import { Toaster } from './components/Toaster';
@@ -109,6 +110,7 @@ export function App() {
     <ErrorBoundary>
       <PawBackground />
       <Root />
+      <EffectsLayer />
       <Toaster />
     </ErrorBoundary>
   );

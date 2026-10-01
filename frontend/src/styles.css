@@ -99,15 +99,16 @@ textarea {
 /* Табло баланса */
 .roll {
   display: inline-flex;
-  align-items: baseline;
+  align-items: flex-end;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .roll-cell {
   display: inline-block;
-  height: 1em;
+  height: 1.2em;
   overflow: hidden;
   position: relative;
+  vertical-align: bottom;
 }
 .roll-col {
   display: flex;
@@ -115,13 +116,14 @@ textarea {
   will-change: transform;
 }
 .roll-col > span {
-  height: 1em;
-  line-height: 1em;
+  height: 1.2em;
+  line-height: 1.2em;
   text-align: center;
 }
 .roll-sep {
   display: inline-block;
   width: 0.28em;
+  line-height: 1.2em;
 }
 
 /* Кнопка с котом */
@@ -248,4 +250,18 @@ textarea {
   box-shadow:
     0 -2px 0 0 rgba(255, 170, 90, 0.85),
     0 -14px 40px -6px rgba(255, 138, 61, 0.45);
+}
+
+.fly-coin {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, #fff3b8, #ffc93c 45%, #d98f0b);
+  box-shadow:
+    inset 0 0 0 2px #e8a317,
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  will-change: transform, opacity;
 }

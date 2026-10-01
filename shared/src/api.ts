@@ -87,6 +87,7 @@ export interface PlayerState {
   /** до какого момента действует Turbo (мс), null — не активен */
   turboUntil: number | null;
   totalTaps: number;
+  boosts: BoostsState;
   /** время сервера, на которое рассчитано состояние (мс) */
   serverTime: number;
   /** следующий сброс ежедневных активностей (мс) */
@@ -136,4 +137,27 @@ export interface GameConfig {
   passive: { maxOfflineHours: number };
   turbo: { durationSec: number; multiplier: number };
   dailyResetUtcHour: number;
+}
+
+export type BoostType = 'full-energy' | 'turbo' | 'multitap' | 'energy-limit';
+
+export interface PaidBoostState {
+  level: number;
+  /** уровень, который будет куплен; null — максимум */
+  nextLevel: number | null;
+  price: number | null;
+  maxLevel: number;
+}
+
+export interface BoostsState {
+  fullEnergy: { left: number; perDay: number; cooldownUntil: number | null; cooldownSec: number };
+  turbo: {
+    left: number;
+    perDay: number;
+    activeUntil: number | null;
+    durationSec: number;
+    multiplier: number;
+  };
+  multitap: PaidBoostState;
+  energyLimit: PaidBoostState & { perLevel: number };
 }
