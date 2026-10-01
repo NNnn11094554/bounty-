@@ -31,9 +31,9 @@ export function StatTile({
     };
   }, [open]);
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl border border-line bg-night-700/80 px-1.5 py-2 shadow-card">
+    <div className="relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl border border-line bg-night-700/80 px-1.5 py-2 shadow-card short:gap-0.5 short:py-1.5">
       <span
-        className="flex items-center gap-1 text-center text-[11px] font-bold leading-tight"
+        className="flex items-center gap-1 text-center text-[11px] font-bold leading-tight short:text-[10px]"
         style={{ color }}
       >
         {label}

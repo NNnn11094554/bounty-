@@ -12,6 +12,7 @@ import { useCards, type SpecialsTab } from '../../store/cards';
 import { useGame } from '../../store/game';
 import { haptic } from '../../telegram/webapp';
 import { CardSheet } from './CardSheet';
+import { ComboPanel } from './ComboPanel';
 import { CardTile, CardTileSkeleton } from './CardTile';
 
 const SPECIALS_TABS: readonly SpecialsTab[] = ['mine', 'new', 'upgraded'];
@@ -124,6 +125,8 @@ export function MineScreen() {
           className="text-[36px] font-black tracking-tight"
         />
       </div>
+
+      <ComboPanel />
 
       <div className="mt-3 px-4">
         <Segmented<CardCategory>

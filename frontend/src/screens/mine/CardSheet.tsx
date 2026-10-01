@@ -70,6 +70,7 @@ function CardSheetBody({ card, onClose }: { card: CardView; onClose: () => void 
     confetti(centerOf(origin));
     const level = res.cards.find((c) => c.id === card.id)?.level ?? card.level + 1;
     toast.success(t('card.bought', { name: card.name[locale], n: level }));
+    if (res.combo && res.combo.reward === 0) toast.success(t('combo.found'));
     onClose();
   };
 

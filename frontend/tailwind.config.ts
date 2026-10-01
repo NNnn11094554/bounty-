@@ -4,6 +4,10 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      screens: {
+        /** низкие экраны (iPhone SE и т.п.) — компактная раскладка */
+        short: { raw: '(max-height: 640px)' },
+      },
       colors: {
         night: { 900: '#14101f', 800: '#1d1530', 700: '#2a2140', 600: '#352a52', 500: '#45386a' },
         gold: { DEFAULT: '#ffc93c', soft: '#ffe08a', deep: '#e8a317' },

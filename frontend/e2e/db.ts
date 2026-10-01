@@ -27,3 +27,8 @@ export async function markLeagueSeen(page: Page, telegramId: number, level: numb
     [user.id, level],
   );
 }
+
+/** Ключ игрового дня (сброс в 16:00 UTC), offsetDays — сдвиг в днях. */
+export function gameDay(offsetDays = 0): string {
+  return new Date(Date.now() - 16 * 3600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
+}

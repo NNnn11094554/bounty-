@@ -25,6 +25,18 @@ test('capture main screens', async ({ page }) => {
     await page.mouse.click(cat.x + cat.width * (0.35 + i * 0.06), cat.y + cat.height * 0.4);
   await page.waitForTimeout(250);
   await page.screenshot({ path: `${dir}/01-office.png` });
+  await page.getByTestId('cipher-enter').click();
+  const catBox = (await page.getByTestId('cat-button').boundingBox())!;
+  await page.mouse.move(catBox.x + catBox.width / 2, catBox.y + catBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  await page.mouse.up();
+  await page.mouse.down();
+  await page.waitForTimeout(60);
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${dir}/01b-cipher.png` });
+  await page.getByTestId('cipher-exit').click();
   await page.getByTestId('open-boosts').click();
   await expect(page.getByTestId('boosts')).toBeVisible();
   await page.waitForTimeout(400);

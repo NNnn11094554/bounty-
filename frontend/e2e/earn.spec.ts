@@ -1,11 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { db, setPlayer } from './db';
-
-function gameDay(offsetDays: number): string {
-  // игровой день сбрасывается в 16:00 UTC
-  const now = Date.now() - 16 * 3600_000 + offsetDays * 86_400_000;
-  return new Date(now).toISOString().slice(0, 10);
-}
+import { db, gameDay, setPlayer } from './db';
 
 test.describe('Earn', () => {
   test('daily reward: claim day 1, then come back tomorrow', async ({ page }) => {

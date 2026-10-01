@@ -178,6 +178,25 @@ export const ru = {
   'task.error.unavailable': 'Проверка сейчас недоступна, попробуйте позже',
   'task.error.early': 'Ещё рано — проверка станет доступна чуть позже',
   'card.toTasks': 'К заданиям',
+  'combo.title': 'Комбо дня',
+  'combo.hint': 'Улучши 3 загаданные карточки за день',
+  'combo.resetIn': 'Новое через {time}',
+  'combo.done': 'Собрано!',
+  'combo.found': 'Карточка из комбо дня!',
+  'combo.celebrate': 'Комбо собрано!',
+  'cipher.title': 'Ежедневный шифр',
+  'cipher.enter': 'Ввести',
+  'cipher.solved': 'Решено',
+  'cipher.exit': 'Выйти из режима шифра',
+  'cipher.erase': 'Стереть букву',
+  'cipher.help': 'Как вводить',
+  'cipher.helpTitle': 'Азбука Морзе',
+  'cipher.helpText':
+    'Короткое касание кота — точка, долгое (дольше 0,3 секунды) — тире. Пауза — следующая буква. Слово — по подсказке, латиницей.',
+  'cipher.wrong': 'Неверное слово — попробуйте ещё раз',
+  'cipher.badLetter': 'Такой буквы нет',
+  'cipher.success': 'Шифр разгадан: +{reward}!',
+  'cipher.letters': '{n} букв',
 } as const;
 
 export type MessageKey = keyof typeof ru;

@@ -14,6 +14,7 @@ import {
   runCardUpgradeHooks,
   visibleCards,
 } from '../services/cards.js';
+import { registerComboCard } from '../services/dailyGames.js';
 import { applyBalanceChanges } from '../services/ledger.js';
 import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
@@ -82,6 +83,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         update: { level: next, lastUpgradeAt: now, cooldownUntil },
       });
       await runCardUpgradeHooks(tx, updated, card, next, now);
+      const combo = await registerComboCard(tx, updated, card.id, now);
 
       progress.levels.set(card.id, next);
       progress.cooldowns.set(card.id, cooldownUntil);
@@ -93,7 +95,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         (c) => c.id === card.id || (c.condition?.type === 'card' && c.condition.cardId === card.id),
       );
       const cards = await buildCardViews(affected, progress, now);
-      return { state: buildPlayerState(updated, now), cards, profitDelta: profit };
+      return { state: buildPlayerState(combo.user, now), cards, profitDelta: profit, combo: combo.update };
     });
   });
 }

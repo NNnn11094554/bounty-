@@ -3,7 +3,9 @@ import type {
   BoostType,
   CardUpgradeResponse,
   CardsResponse,
+  CipherClaimResponse,
   DailyClaimResponse,
+  DailyGamesResponse,
   LeaderboardResponse,
   StateResponse,
   TaskCheckResponse,
@@ -26,6 +28,9 @@ export const endpoints = {
     api<TaskStartResponse>(`/api/tasks/${encodeURIComponent(id)}/start`, { method: 'POST' }),
   checkTask: (id: string) =>
     api<TaskCheckResponse>(`/api/tasks/${encodeURIComponent(id)}/check`, { method: 'POST' }),
+  dailyGames: () => api<DailyGamesResponse>('/api/combo'),
+  claimCipher: (word: string) =>
+    api<CipherClaimResponse>('/api/cipher/claim', { method: 'POST', body: { word } }),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,

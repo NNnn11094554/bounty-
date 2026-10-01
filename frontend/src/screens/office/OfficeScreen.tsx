@@ -88,12 +88,14 @@ export function OfficeScreen({
   );
 
   if (!player || !league || !config) return null;
-  const catDiameter = Math.max(140, Math.floor(Math.min(catSize.width * 0.74, catSize.height * 0.94)));
+  // минимальный размер кота; в режиме шифра на низких экранах — чуть меньше, чтобы поместилась строка Морзе
+  const minCat = catOverlay ? 100 : 120;
+  const catDiameter = Math.max(minCat, Math.floor(Math.min(catSize.width * 0.74, catSize.height * 0.94)));
   const leagueColor = league.color === 'rainbow' ? '#ffc93c' : league.color;
 
   return (
     <div className="flex h-full flex-col" data-testid="office">
-      <header className="flex items-center gap-2.5 px-4 pb-2 pt-3">
+      <header className="flex items-center gap-2.5 px-4 pb-2 pt-3 short:pb-1.5 short:pt-2">
         <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-[15px] font-extrabold" data-testid="player-name">
@@ -106,52 +108,63 @@ export function OfficeScreen({
 
       <PlayerStats />
 
-      <section className="office-arc relative mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-5">
+      <section className="office-arc relative mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-5 short:mt-2.5 short:pt-3">
         <div className="flex items-center justify-center gap-2.5" data-testid="balance" data-coin-target>
-          <CoinIcon size={44} />
+          <CoinIcon size={44} className="short:h-9 short:w-9" />
           <RollingNumber
             getValue={() => tapEngine.balanceNow()}
-            className="text-[42px] font-black tracking-tight"
+            className="text-[42px] font-black tracking-tight short:text-[34px]"
             testId="balance-value"
           />
         </div>
 
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-sm font-extrabold">
-            <button
-              type="button"
-              onClick={onOpenLeagues}
-              disabled={!onOpenLeagues}
-              className="flex items-center gap-1"
-              data-testid="league-name"
-              style={{ color: leagueColor }}
-            >
-              {league.name}
-              {onOpenLeagues && <span className="text-white/60">›</span>}
-            </button>
-            <span className="text-white/60" data-testid="league-level">
-              {t('office.level', { n: player.leagueLevel + 1, total: LEAGUE_COUNT })}
-            </span>
-          </div>
-          <div className="relative mt-2 h-3 rounded-full bg-white/10">
-            <div
-              ref={progressRef}
-              className="h-full origin-left rounded-full bg-progress"
-              style={{ transform: 'scaleX(0)' }}
-            />
-            <div
-              ref={pawRef}
-              className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-gold drop-shadow"
-              style={{ left: '0%' }}
-            >
-              <PawIcon size={18} />
+        {/* в режиме шифра лига сворачивается — место для строки Морзе над котом */}
+        <motion.div
+          className="overflow-hidden"
+          initial={false}
+          animate={catOverlay ? { height: 0, opacity: 0 } : { height: 'auto', opacity: 1 }}
+          transition={{ duration: 0.25 }}
+        >
+          <div className="mt-3 short:mt-1.5">
+            <div className="flex items-center justify-between text-sm font-extrabold">
+              <button
+                type="button"
+                onClick={onOpenLeagues}
+                disabled={!onOpenLeagues}
+                className="flex items-center gap-1"
+                data-testid="league-name"
+                style={{ color: leagueColor }}
+              >
+                {league.name}
+                {onOpenLeagues && <span className="text-white/60">›</span>}
+              </button>
+              <span className="text-white/60" data-testid="league-level">
+                {t('office.level', { n: player.leagueLevel + 1, total: LEAGUE_COUNT })}
+              </span>
+            </div>
+            <div className="relative mt-2 h-3 rounded-full bg-white/10">
+              <div
+                ref={progressRef}
+                className="h-full origin-left rounded-full bg-progress"
+                style={{ transform: 'scaleX(0)' }}
+              />
+              <div
+                ref={pawRef}
+                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-gold drop-shadow"
+                style={{ left: '0%' }}
+              >
+                <PawIcon size={18} />
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {dailyBanner}
 
-        <div ref={catBox} className="relative flex min-h-0 flex-1 items-center justify-center py-4">
+        <div
+          ref={catBox}
+          className={`relative flex min-h-0 flex-1 items-center justify-center pb-4 ${catOverlay ? 'pt-12 short:pt-11' : 'pt-4 short:pt-2'}`}
+        >
           {catOverlay}
           {catSize.width > 0 && (
             <CatButton

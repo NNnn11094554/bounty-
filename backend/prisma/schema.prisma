@@ -246,6 +246,8 @@ model UserComboProgress {
 model DailyCipher {
   dayKey    String   @id
   word      String
+  hintRu    String   @default("")
+  hintEn    String   @default("")
   source    String   @default("auto")
   createdAt DateTime @default(now())
 }

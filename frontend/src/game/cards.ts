@@ -1,5 +1,6 @@
 import type { CardUpgradeResponse, CardView, PlayerState } from '@meowgul/shared';
 import { useCards } from '../store/cards';
+import { useDailyGames } from '../store/dailyGames';
 import { runAction } from './actions';
 import { endpoints } from '../api/endpoints';
 
@@ -46,5 +47,10 @@ export async function upgradeCard(card: CardView): Promise<CardUpgradeResponse |
   }
   store.merge(res.cards);
   store.markUpgraded(card.id);
+  if (res.combo) {
+    const games = useDailyGames.getState();
+    games.setCombo(res.combo.combo, card.id);
+    if (res.combo.reward > 0) games.celebrateCombo(res.combo.reward);
+  }
   return res;
 }

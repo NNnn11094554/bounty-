@@ -4,6 +4,7 @@
  * Бэкенд хранит строку, фронтенд рисует её (frontend/src/components/cardIcons.tsx).
  */
 import type { PlayerState } from './api.js';
+import type { ComboUpdate } from './daily.js';
 
 export const CARD_CATEGORIES = ['MARKETS', 'PR_TEAM', 'LEGAL', 'SPECIALS'] as const;
 export type CardCategory = (typeof CARD_CATEGORIES)[number];
@@ -269,6 +270,8 @@ export interface CardsResponse {
 
 export interface CardUpgradeResponse {
   state: PlayerState;
+  /** карточка оказалась в комбо дня */
+  combo: ComboUpdate | null;
   /** улучшенная карточка и карточки, условие которых зависело от неё */
   cards: CardView[];
   /** прирост прибыли в час от покупки */

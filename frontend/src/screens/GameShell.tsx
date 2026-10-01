@@ -2,11 +2,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { DURATION, isReducedMotion } from '../animations';
 import { BottomNav } from '../components/BottomNav';
+import { ComboCelebration } from '../components/ComboCelebration';
 import { LeagueUpScene } from '../components/LeagueUpScene';
 import { OfflineIncomeSheet } from '../components/OfflineIncomeSheet';
 import { useBackHandler } from '../hooks/useBackHandler';
+import { useDayRollover } from '../hooks/useDayRollover';
 import { useNav, type SubScreen, type Tab } from '../store/nav';
-import { OfficeScreen } from './office/OfficeScreen';
+import { OfficeTab } from './office/OfficeTab';
 
 const loadMine = () => import('./mine/MineScreen').then((m) => ({ default: m.MineScreen }));
 const MineScreen = lazy(loadMine);
@@ -37,7 +39,7 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
     case 'earn':
       return <EarnScreen />;
     default:
-      return <OfficeScreen onOpenBoosts={() => open('boosts')} onOpenLeagues={() => open('leagues')} />;
+      return <OfficeTab onOpenBoosts={() => open('boosts')} onOpenLeagues={() => open('leagues')} />;
   }
 }
 
@@ -49,6 +51,7 @@ export function GameShell() {
   const pop = useNav((s) => s.pop);
   const top = stack[stack.length - 1];
   useBackHandler(stack.length > 0, pop);
+  useDayRollover();
   const reduced = isReducedMotion();
   const slide = reduced ? 0 : 48;
 
@@ -111,6 +114,7 @@ export function GameShell() {
       {!top && <BottomNav />}
       <OfflineIncomeSheet />
       <LeagueUpScene />
+      <ComboCelebration />
     </div>
   );
 }

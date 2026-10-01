@@ -40,3 +40,17 @@ for (const width of [320, 390]) {
       await page.screenshot({ path: `${process.env.SCREENSHOTS}/mine-${width}.png` });
   });
 }
+
+test('cipher mode fits 320×568: the Morse line stays above the cat', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/?uid=700000130&name=Кот');
+  await page.getByTestId('cipher-enter').click();
+  await expect(page.getByTestId('morse-overlay')).toBeAttached();
+  await page.waitForTimeout(500); // лига сворачивается, кот подстраивает размер
+  const overlay = (await page.getByTestId('morse-overlay').boundingBox())!;
+  const cat = (await page.getByTestId('cat-button').boundingBox())!;
+  const energy = (await page.getByTestId('energy').boundingBox())!;
+  expect(overlay.y + overlay.height).toBeLessThanOrEqual(cat.y + 2);
+  expect(cat.y + cat.height).toBeLessThanOrEqual(energy.y + 4);
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: `${process.env.SCREENSHOTS}/cipher-320.png` });
+});
