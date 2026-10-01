@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+package-lock.json
+legacy
+okx-trading-bot
+backend/prisma/migrations
+frontend/public/assets
+playwright-report
+test-results
+*.md

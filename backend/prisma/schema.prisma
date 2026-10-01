@@ -1,0 +1,369 @@
+// Meowgul — схема базы данных.
+// Деньги (баланс, заработок, суммы транзакций) — Decimal(38,4), никаких float.
+// Цены и награды из конфигов — целые числа (BigInt).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int     @id @default(autoincrement())
+  telegramId      BigInt  @unique
+  username        String?
+  firstName       String  @default("")
+  lastName        String?
+  photoUrl        String?
+  languageCode    String  @default("en")
+  isPremium       Boolean @default(false)
+  allowsWriteToPm Boolean @default(false)
+
+  balance     Decimal @default(0) @db.Decimal(38, 4)
+  totalEarned Decimal @default(0) @db.Decimal(38, 4)
+  totalTaps   BigInt  @default(0)
+
+  energy           Int      @default(1000)
+  energyUpdatedAt  DateTime @default(now())
+  multitapLevel    Int      @default(1)
+  energyLimitLevel Int      @default(1)
+  profitPerHour    BigInt   @default(0)
+  /// последнее начисление пассивного дохода
+  lastSyncAt       DateTime @default(now())
+  lastSeenAt       DateTime @default(now())
+  /// время и номер последней принятой пачки тапов (защита от повторов)
+  lastTapAt        DateTime @default(now())
+  lastTapSeq       Int      @default(0)
+  leagueLevel      Int      @default(0)
+  hqId             String?
+
+  referrerId Int?
+  referrer   User?  @relation("Referrals", fields: [referrerId], references: [id], onDelete: SetNull)
+  invitees   User[] @relation("Referrals")
+
+  walletAddress     String?   @unique
+  walletConnectedAt DateTime?
+
+  /// ежедневная награда: последний полученный день серии (1..10) и игровой день получения
+  dailyRewardDay       Int       @default(0)
+  dailyRewardClaimedAt DateTime?
+  dailyRewardDayKey    String?
+  bestDailyStreak      Int       @default(0)
+
+  /// бусты: счётчики за игровой день boostsDayKey
+  boostsDayKey        String?
+  fullEnergyUsedToday Int       @default(0)
+  fullEnergyLastAt    DateTime?
+  turboUsedToday      Int       @default(0)
+  turboUntil          DateTime?
+
+  suspiciousScore Int     @default(0)
+  isBanned        Boolean @default(false)
+  banReason       String?
+
+  onboardingDone Boolean  @default(false)
+  /// настройки клиента: язык, звук, вибрация, анимации, уведомления
+  settings       Json     @default("{}")
+  tutorialsSeen  String[] @default([])
+
+  /// уведомления бота: не больше N в игровой день
+  notifyDayKey     String?
+  notifySentToday  Int     @default(0)
+  energyFullNotify Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards         UserCard[]
+  tasks         UserTask[]
+  transactions  Transaction[]
+  achievements  UserAchievement[]
+  comboProgress UserComboProgress[]
+  ciphers       UserCipher[]
+  activity      UserActivity[]
+  events        UserEvent[]
+  notifications Notification[]
+  invitedAs     Referral?         @relation("Invitee")
+  referrals     Referral[]        @relation("Inviter")
+
+  @@index([leagueLevel, totalEarned(sort: Desc)])
+  @@index([referrerId])
+  @@index([suspiciousScore])
+  @@index([createdAt])
+}
+
+enum CardCategory {
+  MARKETS
+  PR_TEAM
+  LEGAL
+  SPECIALS
+}
+
+/// Карточки: заполняются из backend/src/game/config/cards.ts (npm run db:seed), правятся в админке.
+model Card {
+  id               String       @id
+  category         CardCategory
+  nameRu           String
+  nameEn           String
+  descRu           String
+  descEn           String
+  icon             String
+  baseCost         BigInt
+  baseProfit       BigInt
+  costMultiplier   Decimal      @db.Decimal(8, 4)
+  profitMultiplier Decimal      @db.Decimal(8, 4)
+  maxLevel         Int          @default(25)
+  cooldownSec      Int          @default(0)
+  /// условие открытия: card | friends | task | league; значение: "cardId:level" | число | taskId
+  conditionType    String?
+  conditionValue   String?
+  isLimited        Boolean      @default(false)
+  availableFrom    DateTime?
+  availableUntil   DateTime?
+  isActive         Boolean      @default(true)
+  sortOrder        Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  users UserCard[]
+
+  @@index([category, sortOrder])
+}
+
+model UserCard {
+  userId        Int
+  cardId        String
+  level         Int       @default(0)
+  lastUpgradeAt DateTime  @default(now())
+  cooldownUntil DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cardId])
+  @@index([cardId])
+}
+
+enum TaskType {
+  TELEGRAM_CHANNEL
+  LINK
+  VIDEO
+  INVITE_FRIENDS
+  CHOOSE_HQ
+  CONNECT_WALLET
+}
+
+enum TaskSection {
+  SPECIAL
+  LIST
+  AIRDROP
+}
+
+model Task {
+  id            String      @id
+  type          TaskType
+  section       TaskSection @default(LIST)
+  titleRu       String
+  titleEn       String
+  descRu        String      @default("")
+  descEn        String      @default("")
+  icon          String      @default("star")
+  imageUrl      String?
+  url           String?
+  /// для TELEGRAM_CHANNEL: @username или -100... канала, где бот — администратор
+  channelId     String?
+  requiredCount Int?
+  reward        BigInt
+  checkDelaySec Int         @default(30)
+  sortOrder     Int         @default(0)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  users UserTask[]
+}
+
+enum UserTaskStatus {
+  PENDING
+  CHECKING
+  DONE
+}
+
+model UserTask {
+  userId      Int
+  taskId      String
+  status      UserTaskStatus @default(PENDING)
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([userId, taskId])
+}
+
+model Referral {
+  id                 Int      @id @default(autoincrement())
+  inviterId          Int
+  inviteeId          Int      @unique
+  isPremium          Boolean  @default(false)
+  bonusGiven         BigInt   @default(0)
+  /// уровни лиг, за которые пригласивший уже получил бонус
+  leagueBonusesGiven Int[]    @default([])
+  /// сколько всего получил пригласивший за этого друга
+  inviterEarned      BigInt   @default(0)
+  createdAt          DateTime @default(now())
+
+  inviter User @relation("Inviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User @relation("Invitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@index([inviterId, createdAt])
+}
+
+model DailyCombo {
+  dayKey    String   @id
+  cardIds   String[]
+  source    String   @default("auto")
+  createdAt DateTime @default(now())
+}
+
+model UserComboProgress {
+  userId       Int
+  dayKey       String
+  foundCardIds String[] @default([])
+  rewarded     Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dayKey])
+}
+
+model DailyCipher {
+  dayKey    String   @id
+  word      String
+  source    String   @default("auto")
+  createdAt DateTime @default(now())
+}
+
+model UserCipher {
+  userId   Int
+  dayKey   String
+  solved   Boolean @default(false)
+  attempts Int     @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dayKey])
+}
+
+/// Журнал всех изменений баланса — для аудита и будущего аирдропа.
+model Transaction {
+  id           BigInt   @id @default(autoincrement())
+  userId       Int
+  type         String
+  amount       Decimal  @db.Decimal(38, 4)
+  balanceAfter Decimal  @db.Decimal(38, 4)
+  meta         Json?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
+
+model UserAchievement {
+  userId        Int
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+}
+
+/// Дни, в которые игрок заходил в игру (DAU/WAU/MAU и удержание).
+model UserActivity {
+  userId Int
+  dayKey String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dayKey])
+  @@index([dayKey])
+}
+
+/// Случайные события (золотая монета): выдаются сервером, ловятся игроком в окне времени.
+model UserEvent {
+  id        String    @id @default(uuid())
+  userId    Int
+  kind      String
+  reward    BigInt
+  appearsAt DateTime
+  expiresAt DateTime
+  claimedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, appearsAt])
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// Очередь уведомлений бота.
+model Notification {
+  id        Int                @id @default(autoincrement())
+  userId    Int
+  kind      String
+  payload   Json               @default("{}")
+  status    NotificationStatus @default(PENDING)
+  error     String?
+  createdAt DateTime           @default(now())
+  sentAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+enum BroadcastStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  DONE
+  CANCELLED
+}
+
+model Broadcast {
+  id          Int             @id @default(autoincrement())
+  text        String
+  imageUrl    String?
+  buttonText  String?
+  buttonUrl   String?
+  status      BroadcastStatus @default(DRAFT)
+  total       Int             @default(0)
+  sent        Int             @default(0)
+  failed      Int             @default(0)
+  /// id последнего обработанного пользователя — рассылку можно продолжить после рестарта
+  cursor      Int             @default(0)
+  createdBy   BigInt
+  createdAt   DateTime        @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+}
+
+/// Глобальные настройки: техработы, минимальная версия клиента, «счастливый час».
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

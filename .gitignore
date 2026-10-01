@@ -1,4 +1,13 @@
+node_modules/
+dist/
+coverage/
 .env
-*.db
-__pycache__/
-.venv/
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vite/
+playwright-report/
+test-results/
+frontend/public/assets/generated/
+backend/.cache/
