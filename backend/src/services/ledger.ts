@@ -1,4 +1,5 @@
 import type { Prisma, User } from '@prisma/client';
+import { leagueForTotal } from '../game/config/leagues.js';
 import { hourBucket } from '../game/dayKey.js';
 import { ApiError } from '../lib/errors.js';
 import { D, ZERO, type Decimal } from '../lib/money.js';
@@ -22,6 +23,13 @@ export type TxType =
   | 'admin_adjustment';
 
 const AGGREGATED: ReadonlySet<TxType> = new Set<TxType>(['tap', 'passive']);
+
+/** Обработчики повышения лиги (бонусы пригласившему и т.п.) — вызываются в той же транзакции. */
+export type LeagueUpHook = (tx: Tx, user: User, from: number, to: number) => Promise<void>;
+const leagueUpHooks: LeagueUpHook[] = [];
+export function onLeagueUp(hook: LeagueUpHook): void {
+  leagueUpHooks.push(hook);
+}
 
 export interface BalanceChange {
   type: TxType;
@@ -57,11 +65,14 @@ export async function applyBalanceChanges(
     });
   }
 
+  // лига — по всего заработанному, никогда не понижается
+  const newLeague = Math.max(user.leagueLevel, leagueForTotal(user.totalEarned.plus(earned).toNumber()));
   const updated = await tx.user.update({
     where: { id: user.id },
     data: {
       ...extra,
       ...(items.length ? { balance: { increment: delta }, totalEarned: { increment: earned } } : {}),
+      ...(newLeague !== user.leagueLevel ? { leagueLevel: newLeague } : {}),
     },
   });
 
@@ -87,6 +98,9 @@ export async function applyBalanceChanges(
         data: { userId: user.id, type: c.type, amount: c.amount, balanceAfter: running, meta: c.meta },
       });
     }
+  }
+  if (updated.leagueLevel > user.leagueLevel) {
+    for (const hook of leagueUpHooks) await hook(tx, updated, user.leagueLevel, updated.leagueLevel);
   }
   return updated;
 }

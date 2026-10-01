@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
 import { boot } from './boot';
-import { CharacterImage } from './components/CharacterImage';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { CoinIcon } from './components/icons';
 import { PawBackground } from './components/PawBackground';
+import { Toaster } from './components/Toaster';
 import { useT } from './i18n';
-import { formatInt } from '@meowgul/shared';
+import { GameShell } from './screens/GameShell';
 import { SplashScreen } from './screens/SplashScreen';
 import { StatusScreen } from './screens/StatusScreen';
 import { useGame } from './store/game';
@@ -101,20 +100,7 @@ function Root() {
         />
       );
     case 'ready':
-      return player ? (
-        <main className="flex h-full flex-col items-center justify-center gap-5 px-4" data-testid="home">
-          <div className="h-40 w-40 overflow-hidden rounded-full ring-4 ring-gold">
-            <CharacterImage size={160} className="h-full w-full" />
-          </div>
-          <p className="text-lg font-bold">{player.profile.firstName}</p>
-          <div className="flex items-center gap-2 text-4xl font-black tabular">
-            <CoinIcon size={36} />
-            {formatInt(player.balance)}
-          </div>
-        </main>
-      ) : (
-        <SplashScreen />
-      );
+      return player ? <GameShell /> : <SplashScreen />;
   }
 }
 
@@ -123,6 +109,7 @@ export function App() {
     <ErrorBoundary>
       <PawBackground />
       <Root />
+      <Toaster />
     </ErrorBoundary>
   );
 }

@@ -95,3 +95,157 @@ textarea {
 .pb-safe {
   padding-bottom: max(var(--tg-safe-bottom, 0px), var(--safe-bottom));
 }
+
+/* Табло баланса */
+.roll {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.roll-cell {
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+  position: relative;
+}
+.roll-col {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+.roll-col > span {
+  height: 1em;
+  line-height: 1em;
+  text-align: center;
+}
+.roll-sep {
+  display: inline-block;
+  width: 0.28em;
+}
+
+/* Кнопка с котом */
+.cat-ring {
+  box-shadow:
+    0 0 0 4px var(--ring),
+    0 0 26px 4px color-mix(in srgb, var(--ring) 70%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--ring) 45%, transparent);
+  transition: box-shadow 0.4s ease;
+}
+.cat-ring-rainbow {
+  background: conic-gradient(
+    #cd7f32,
+    #c0c7d1,
+    #ffc93c,
+    #7fe3ff,
+    #4f9dff,
+    #a66bff,
+    #ff4fa3,
+    #ff5f3d,
+    #2ed39a,
+    #cd7f32
+  );
+  animation: ring-spin 6s linear infinite;
+  box-shadow: 0 0 32px 6px rgba(255, 201, 60, 0.45);
+}
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cat-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--ring) 38%, transparent) 0%, transparent 62%);
+}
+.cat-img {
+  transition: filter 0.5s ease;
+}
+.cat-zzz,
+.cat-tired {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.cat-button[data-sleepy='true'] .cat-img {
+  filter: brightness(0.6) grayscale(0.5);
+}
+.cat-button[data-sleepy='true'] .cat-zzz {
+  opacity: 1;
+  animation: zzz 2.4s ease-in-out infinite;
+}
+.cat-button[data-sleepy='true'] .cat-tired {
+  opacity: 1;
+}
+.cat-button[data-turbo='true'] .cat-ring {
+  box-shadow:
+    0 0 0 4px #ff8a3d,
+    0 0 40px 10px rgba(255, 95, 109, 0.75),
+    inset 0 0 24px rgba(255, 138, 61, 0.6);
+}
+@keyframes zzz {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+@keyframes cat-dance {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+.cat-dance {
+  animation: cat-dance 0.32s ease-in-out infinite;
+}
+.tap-float {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+  font-size: 34px;
+  color: #fff;
+  -webkit-text-stroke: 1.5px rgba(20, 16, 31, 0.85);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  will-change: transform, opacity;
+  white-space: nowrap;
+}
+.tap-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+  border: 3px solid rgba(255, 201, 60, 0.85);
+  will-change: transform, opacity;
+}
+.tap-coin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, #fff3b8, #ffc93c 45%, #d98f0b);
+  box-shadow: inset 0 0 0 2px #e8a317;
+  will-change: transform, opacity;
+}
+
+/* Плавная дуга с тёплым оранжевым свечением сверху главного экрана */
+.office-arc {
+  background: linear-gradient(
+    180deg,
+    rgba(42, 33, 64, 0.95) 0%,
+    rgba(29, 21, 48, 0.4) 55%,
+    rgba(20, 16, 31, 0) 100%
+  );
+  box-shadow:
+    0 -2px 0 0 rgba(255, 170, 90, 0.85),
+    0 -14px 40px -6px rgba(255, 138, 61, 0.45);
+}

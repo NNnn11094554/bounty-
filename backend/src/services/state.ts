@@ -52,6 +52,8 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     energyLimitLevel: user.energyLimitLevel,
     leagueLevel: user.leagueLevel,
     tapSeq: user.lastTapSeq,
+    turboUntil: user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null,
+    totalTaps: Number(user.totalTaps),
     serverTime: now.getTime(),
     nextResetAt: nextResetAt(now).getTime(),
   };

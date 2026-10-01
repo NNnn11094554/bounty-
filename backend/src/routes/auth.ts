@@ -1,8 +1,13 @@
 import type { AuthResponse, StateResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
+import { clientConfig } from '../game/config/index.js';
+import { GAME } from '../game/config/game.js';
 import { ApiError } from '../lib/errors.js';
+import { toCoins } from '../lib/money.js';
 import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
+import { syncPassive } from '../services/sync.js';
+import { withUserLock } from '../services/userLock.js';
 import { recordActivity, upsertTelegramUser } from '../services/users.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
@@ -14,11 +19,22 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const { user, isNew } = await upsertTelegramUser(tg, now);
     if (user.isBanned) throw new ApiError('BANNED', 'Account is banned', { reason: user.banReason });
     await recordActivity(user.id, now);
-    return { state: buildPlayerState(user, now), offline: null, isNew };
+    // доход карточек за время отсутствия (не больше 3 часов)
+    const { user: synced, passive } = await withUserLock(user.id, (tx, locked) =>
+      syncPassive(tx, locked, now),
+    );
+    const earned = toCoins(passive.amount);
+    const offline =
+      passive.elapsedSeconds >= GAME.passive.offlineModalMinSec && earned > 0
+        ? { earned, seconds: passive.creditedSeconds }
+        : null;
+    return { state: buildPlayerState(synced, now), config: clientConfig(), offline, isNew };
   });
 
   app.get('/api/state', async (request): Promise<StateResponse> => {
-    const user = await requirePlayer(request);
-    return { state: buildPlayerState(user) };
+    const player = await requirePlayer(request);
+    const now = new Date();
+    const { user } = await withUserLock(player.id, (tx, locked) => syncPassive(tx, locked, now));
+    return { state: buildPlayerState(user, now) };
   });
 }

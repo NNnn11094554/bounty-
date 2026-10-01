@@ -35,6 +35,17 @@ const state = {
   nextResetAt: Date.now() + 1000,
 };
 
+const config = {
+  leagues: [
+    { level: 0, id: 'bronze', name: 'Bronze', threshold: 0, color: '#cd7f32' },
+    { level: 1, id: 'silver', name: 'Silver', threshold: 5000, color: '#c0c7d1' },
+  ],
+  tap: { syncIntervalMs: 2500, maxPerSecond: 20 },
+  passive: { maxOfflineHours: 3 },
+  turbo: { durationSec: 20, multiplier: 5 },
+  dailyResetUtcHour: 16,
+};
+
 function mockFetch(handler: (url: string) => Response) {
   vi.stubGlobal(
     'fetch',
@@ -52,13 +63,17 @@ describe('App boot', () => {
     mockFetch((url) =>
       url.includes('/api/dev/init-data')
         ? Response.json({ initData: 'x' })
-        : Response.json({ state, offline: null, isNew: true }),
+        : Response.json({ state, config, offline: null, isNew: true }),
     );
     render(<App />);
     expect(screen.getByTestId('splash')).toBeTruthy();
-    await waitFor(() => expect(screen.getByTestId('home')).toBeTruthy());
-    expect(screen.getByText('Мурка')).toBeTruthy();
-    expect(screen.getByTestId('home').textContent?.replace(/\s/g, ' ')).toContain('44 739 415');
+    await waitFor(() => expect(screen.getByTestId('office')).toBeTruthy());
+    expect(screen.getByTestId('player-name').textContent).toBe('Мурка');
+    await waitFor(() =>
+      expect(screen.getByTestId('balance-value').getAttribute('aria-label')?.replace(/\s/g, ' ')).toBe(
+        '44 739 415',
+      ),
+    );
   });
 
   it('shows the ban screen', async () => {

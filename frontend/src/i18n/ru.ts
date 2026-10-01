@@ -24,6 +24,19 @@ export const ru = {
   'error.outdated.text': 'Перезапустите игру, чтобы получить обновление.',
   'error.unauthorized.title': 'Сессия устарела',
   'error.unauthorized.text': 'Закройте и снова откройте игру из бота.',
+  'office.ceo': '(CEO)',
+  'office.perTap': 'Прибыль за тап',
+  'office.toLevelUp': 'Монет для апа',
+  'office.perHour': 'Прибыль в час',
+  'office.perHourHint':
+    'Карточки приносят доход, даже когда вы не в игре. Доход копится максимум {hours} часа.',
+  'office.level': 'Level {n}/{total}',
+  'office.maxLeague': 'MAX',
+  'office.tired': 'Нужно отдохнуть',
+  'office.boost': 'Boost',
+  'office.turbo': 'Turbo ×{x}',
+  'net.offline': 'Нет соединения, пытаемся снова…',
+  'net.back': 'Соединение восстановлено',
 } as const;
 
 export type MessageKey = keyof typeof ru;

@@ -20,6 +20,11 @@ export const GAME = {
     /** клиент отправляет пачку раз в столько миллисекунд */
     syncIntervalMs: 2500,
   },
+  turbo: {
+    /** на столько секунд тап ×multiplier без траты энергии */
+    durationSec: 20,
+    multiplier: 5,
+  },
   passive: {
     /** доход карточек копится максимум столько часов без входа */
     maxOfflineHours: 3,

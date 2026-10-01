@@ -84,6 +84,9 @@ export interface PlayerState {
   leagueLevel: number;
   /** номер последней принятой пачки тапов */
   tapSeq: number;
+  /** до какого момента действует Turbo (мс), null — не активен */
+  turboUntil: number | null;
+  totalTaps: number;
   /** время сервера, на которое рассчитано состояние (мс) */
   serverTime: number;
   /** следующий сброс ежедневных активностей (мс) */
@@ -97,8 +100,40 @@ export interface OfflineIncome {
 
 export interface AuthResponse {
   state: PlayerState;
+  config: GameConfig;
   offline: OfflineIncome | null;
   isNew: boolean;
 }
 
 export type StateResponse = { state: PlayerState };
+
+export interface TapRequest {
+  seq: number;
+  taps: number;
+  clientTime?: number;
+}
+
+export interface TapResponse {
+  state: PlayerState;
+  /** сколько тапов из пачки засчитано */
+  accepted: number;
+  /** пачка с таким номером уже обработана — ничего не начислено */
+  duplicate: boolean;
+}
+
+export interface LeagueInfo {
+  level: number;
+  id: string;
+  name: string;
+  threshold: number;
+  /** HEX-цвет или 'rainbow' для Lord */
+  color: string;
+}
+
+export interface GameConfig {
+  leagues: LeagueInfo[];
+  tap: { syncIntervalMs: number; maxPerSecond: number };
+  passive: { maxOfflineHours: number };
+  turbo: { durationSec: number; multiplier: number };
+  dailyResetUtcHour: number;
+}
