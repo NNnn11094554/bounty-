@@ -1,11 +1,15 @@
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import type { ApiErrorBody, HealthResponse } from '@meowgul/shared';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
+import { registerAuthHooks } from './auth/hooks.js';
 import { env } from './env.js';
 import { ApiError } from './lib/errors.js';
 import { loggerOptions } from './lib/logger.js';
+import { authRoutes } from './routes/auth.js';
+import { devRoutes } from './routes/dev.js';
 import { APP_VERSION } from './version.js';
 
 export interface BuildAppOptions {
@@ -17,8 +21,14 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     logger: opts.logger === false ? false : loggerOptions,
     trustProxy: true,
     bodyLimit: 64 * 1024,
-    disableRequestLogging: env.isProd,
   });
+
+  // В production не пишем лог на каждый запрос (тапы идут каждые 2–3 секунды) — только предупреждения и ошибки
+  if (env.isProd) {
+    app.addHook('onRoute', (route) => {
+      route.logLevel ??= 'warn';
+    });
+  }
 
   await app.register(helmet, { contentSecurityPolicy: false, crossOriginResourcePolicy: false });
   await app.register(cors, {
@@ -70,11 +80,30 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
 
-  app.get('/health', async (): Promise<HealthResponse> => ({
+  registerAuthHooks(app);
+
+  // Лимиты запросов — после проверки initData, ключ — Telegram ID игрока (иначе IP).
+  await app.register(rateLimit, {
+    global: true,
+    max: 60,
+    timeWindow: '1 minute',
+    hook: 'preHandler',
+    keyGenerator: (request) => (request.tg ? `u:${request.tg.user.id}` : `ip:${request.ip}`),
+    allowList: (request) => request.url === '/health',
+    errorResponseBuilder: (_request, context) => ({
+      statusCode: 429,
+      error: { code: 'RATE_LIMITED', message: 'Too many requests', details: { retryAfterMs: context.ttl } },
+    }),
+  });
+
+  app.get('/health', { config: { public: true } }, async (): Promise<HealthResponse> => ({
     status: 'ok',
     version: APP_VERSION,
     time: new Date().toISOString(),
   }));
+
+  await app.register(authRoutes);
+  await app.register(devRoutes);
 
   return app;
 }

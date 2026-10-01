@@ -47,3 +47,51 @@ textarea {
     animation-iteration-count: 1 !important;
   }
 }
+
+@keyframes paw-float {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translate3d(12px, -26px, 0) rotate(calc(var(--r, 0deg) + 12deg));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--r, 0deg));
+  }
+}
+.paw-float {
+  animation: paw-float 30s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes loader-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.loader-bar {
+  animation: loader-slide 1.2s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+.breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.pt-safe {
+  padding-top: max(var(--tg-safe-top, 0px), var(--safe-top));
+}
+.pb-safe {
+  padding-bottom: max(var(--tg-safe-bottom, 0px), var(--safe-bottom));
+}

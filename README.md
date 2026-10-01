@@ -32,7 +32,15 @@ npm run db:migrate             # миграции
 npm run dev                    # API на :3000 и фронтенд на :5173
 ```
 
-Откройте http://localhost:5173. В development-режиме вне Telegram используется моковый вход (фаза 2).
+Откройте http://localhost:5173. Вне Telegram в development-режиме вход моковый: сервер выдаёт initData,
+подписанный тестовым токеном (`GET /api/dev/init-data`, в production этого маршрута нет). Параметры игрока
+задаются в адресе: `?uid=123&name=Мурка&premium=1&lang=en&ref=ref_456`.
+
+## Авторизация
+
+Клиент отправляет `Telegram.WebApp.initData` в заголовке `Authorization: tma <initData>`. Сервер проверяет
+подпись HMAC-SHA256 токеном бота и свежесть `auth_date` (не старше 24 ч); без этого любой `/api/*` отвечает 401.
+Дополнительно проверяются версия клиента (`X-Client-Version`, ответ 426) и режим техработ (503, админы проходят).
 
 ## Команды
 
@@ -44,3 +52,6 @@ npm run dev                    # API на :3000 и фронтенд на :5173
 | `npm run test:e2e` | e2e-тесты Playwright |
 | `npm run lint` / `npm run typecheck` / `npm run format` | ESLint, `tsc --noEmit`, Prettier |
 | `npm run check` | всё вместе — как в CI |
+
+E2E-тесты поднимают API на отдельной базе `meowgul_e2e` (скрипт подготовки работает только с базами,
+имя которых оканчивается на `_e2e`/`_test`) и production-сборку фронтенда в режиме `e2e`.

@@ -1,0 +1,28 @@
+import type { MessageKey } from './ru';
+
+export const en: Record<MessageKey, string> = {
+  'app.name': 'Meowgul',
+  'common.retry': 'Retry',
+  'common.reload': 'Reload',
+  'common.close': 'Close',
+  'common.ok': 'Got it',
+  'common.thanks': 'Thanks',
+  'common.loading': 'Loading…',
+  'boot.loading': 'The cat is waking up…',
+  'boot.connecting': 'Connecting to the office…',
+  'error.network.title': 'No connection',
+  'error.network.text': 'Trying again… Please check your internet.',
+  'error.generic.title': 'Something went wrong',
+  'error.generic.text': 'The cat is already fixing the wires. Try reloading the game.',
+  'error.notTelegram.title': 'Open the game in Telegram',
+  'error.notTelegram.text': 'Meowgul runs as a Mini App inside Telegram.',
+  'error.notTelegram.button': 'Open in Telegram',
+  'error.banned.title': 'Account blocked',
+  'error.banned.text': 'We noticed unfair play. If this is a mistake, contact support.',
+  'error.maintenance.title': 'Maintenance',
+  'error.maintenance.text': 'The cat is tidying up the office. Come back a bit later.',
+  'error.outdated.title': 'New version available',
+  'error.outdated.text': 'Restart the game to get the update.',
+  'error.unauthorized.title': 'Session expired',
+  'error.unauthorized.text': 'Close the game and open it again from the bot.',
+};

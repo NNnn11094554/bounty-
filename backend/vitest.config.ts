@@ -5,6 +5,7 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
+    globalSetup: ['test/global-setup.ts'],
     // интеграционные тесты делят одну тестовую БД — выполняем файлы последовательно
     fileParallelism: false,
     testTimeout: 20_000,

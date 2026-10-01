@@ -203,8 +203,11 @@ CREATE TABLE "Transaction" (
     "type" TEXT NOT NULL,
     "amount" DECIMAL(38,4) NOT NULL,
     "balanceAfter" DECIMAL(38,4) NOT NULL,
+    "bucket" TEXT,
+    "count" INTEGER NOT NULL DEFAULT 1,
     "meta" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Transaction_pkey" PRIMARY KEY ("id")
 );
@@ -318,6 +321,9 @@ CREATE INDEX "Transaction_userId_createdAt_idx" ON "Transaction"("userId", "crea
 
 -- CreateIndex
 CREATE INDEX "Transaction_type_createdAt_idx" ON "Transaction"("type", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Transaction_userId_type_bucket_key" ON "Transaction"("userId", "type", "bucket");
 
 -- CreateIndex
 CREATE INDEX "UserActivity_dayKey_idx" ON "UserActivity"("dayKey");

@@ -16,9 +16,6 @@
     "balance-check": "tsx src/scripts/balance-check.ts",
     "postinstall": "prisma generate"
   },
-  "prisma": {
-    "schema": "prisma/schema.prisma"
-  },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@fastify/helmet": "^13.0.1",
