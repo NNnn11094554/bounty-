@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { DURATION, isReducedMotion } from '../animations';
 import { BottomNav } from '../components/BottomNav';
+import { LeagueUpScene } from '../components/LeagueUpScene';
 import { OfflineIncomeSheet } from '../components/OfflineIncomeSheet';
 import { useBackHandler } from '../hooks/useBackHandler';
 import { useNav, type SubScreen, type Tab } from '../store/nav';
@@ -10,6 +11,9 @@ import { OfficeScreen } from './office/OfficeScreen';
 const loadMine = () => import('./mine/MineScreen').then((m) => ({ default: m.MineScreen }));
 const MineScreen = lazy(loadMine);
 const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ default: m.BoostsScreen })));
+const LeaguesScreen = lazy(() =>
+  import('./leagues/LeaguesScreen').then((m) => ({ default: m.LeaguesScreen })),
+);
 
 const TAB_ORDER: readonly Tab[] = ['office', 'mine', 'friends', 'earn', 'airdrop'];
 
@@ -17,17 +21,19 @@ function SubScreenView({ screen }: { screen: SubScreen }) {
   switch (screen) {
     case 'boosts':
       return <BoostsScreen />;
+    case 'leagues':
+      return <LeaguesScreen />;
     default:
       return null;
   }
 }
 
-function TabView({ tab, onOpenBoosts }: { tab: Tab; onOpenBoosts: () => void }) {
+function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void }) {
   switch (tab) {
     case 'mine':
       return <MineScreen />;
     default:
-      return <OfficeScreen onOpenBoosts={onOpenBoosts} />;
+      return <OfficeScreen onOpenBoosts={() => open('boosts')} onOpenLeagues={() => open('leagues')} />;
   }
 }
 
@@ -74,7 +80,7 @@ export function GameShell() {
             transition={{ duration: DURATION.tabSwitch / 1000, ease: [0.22, 1, 0.36, 1] }}
           >
             <Suspense fallback={null}>
-              <TabView tab={tab} onOpenBoosts={() => push('boosts')} />
+              <TabView tab={tab} open={push} />
             </Suspense>
           </motion.div>
         </AnimatePresence>
@@ -97,6 +103,7 @@ export function GameShell() {
       </main>
       {!top && <BottomNav />}
       <OfflineIncomeSheet />
+      <LeagueUpScene />
     </div>
   );
 }

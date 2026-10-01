@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { setPlayer } from './db';
+import { markLeagueSeen, setPlayer } from './db';
 
 /** Снимки экранов для визуальной проверки дизайна: SCREENSHOTS=<папка> npx playwright test screens */
 const dir = process.env.SCREENSHOTS;
@@ -17,6 +17,7 @@ test('capture main screens', async ({ page }) => {
     energyLimitLevel: 16,
     profitPerHour: 767_200n,
   });
+  await markLeagueSeen(page, uid, 7);
   await page.reload();
   await expect(page.getByTestId('office')).toBeVisible();
   const cat = (await page.getByTestId('cat-button').boundingBox())!;

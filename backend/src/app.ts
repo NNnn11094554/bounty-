@@ -12,6 +12,7 @@ import { authRoutes } from './routes/auth.js';
 import { boostRoutes } from './routes/boosts.js';
 import { cardRoutes } from './routes/cards.js';
 import { devRoutes } from './routes/dev.js';
+import { leagueRoutes } from './routes/leagues.js';
 import { tapRoutes } from './routes/tap.js';
 import { APP_VERSION } from './version.js';
 
@@ -109,6 +110,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(tapRoutes);
   await app.register(boostRoutes);
   await app.register(cardRoutes);
+  await app.register(leagueRoutes);
   await app.register(devRoutes);
 
   return app;

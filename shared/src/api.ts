@@ -134,6 +134,27 @@ export interface LeagueInfo {
   color: string;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  photoUrl: string | null;
+  totalEarned: number;
+  isPremium: boolean;
+  isMe: boolean;
+}
+
+export interface LeaderboardResponse {
+  level: number;
+  /** топ-100 лиги по всего заработанному */
+  players: LeaderboardEntry[];
+  /** сколько всего игроков в лиге */
+  total: number;
+  /** моё место (null — я не в этой лиге) */
+  me: { rank: number | null; totalEarned: number; leagueLevel: number };
+  /** когда собран рейтинг (обновляется раз в минуту) */
+  updatedAt: number;
+}
+
 export interface GameConfig {
   leagues: LeagueInfo[];
   tap: { syncIntervalMs: number; maxPerSecond: number };

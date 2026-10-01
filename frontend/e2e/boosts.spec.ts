@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { setPlayer } from './db';
+import { markLeagueSeen, setPlayer } from './db';
 
 test.describe('Boosts', () => {
   test('full energy refills energy and returns to the office', async ({ page }) => {
@@ -33,6 +33,7 @@ test.describe('Boosts', () => {
     await page.getByTestId('sheet-close').click();
 
     await setPlayer(uid, { balance: 5000, totalEarned: 5000 });
+    await markLeagueSeen(page, uid, 1);
     await page.reload();
     await page.getByTestId('open-boosts').click();
     await page.getByTestId('boost-multitap').click();

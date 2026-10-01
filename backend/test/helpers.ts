@@ -4,6 +4,7 @@ import { signInitData, type TelegramUser } from '../src/auth/initData.js';
 import { env } from '../src/env.js';
 import { prisma } from '../src/lib/db.js';
 import { seedCards } from '../src/services/cards.js';
+import { clearLeaderboardCache } from '../src/services/leaderboard.js';
 
 export const TEST_TOKEN = env.BOT_TOKEN;
 
@@ -16,6 +17,7 @@ export async function resetDb(): Promise<void> {
   await prisma.$executeRawUnsafe(`TRUNCATE ${list} RESTART IDENTITY CASCADE`);
   // справочник карточек — как после старта сервера
   await seedCards();
+  clearLeaderboardCache();
 }
 
 export function tgUser(id: number, extra: Partial<TelegramUser> = {}): TelegramUser {

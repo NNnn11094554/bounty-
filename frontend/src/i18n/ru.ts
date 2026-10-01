@@ -129,6 +129,23 @@ export const ru = {
   'offline.text': 'ваша компания заработала',
   'offline.away': 'Вас не было {time}',
   'offline.cap': 'Доход копится максимум {hours} часа — заходите почаще!',
+  'leagues.from': 'от {value}',
+  'leagues.prev': 'Предыдущая лига',
+  'leagues.next': 'Следующая лига',
+  'leagues.top': 'Топ-100 лиги',
+  'leagues.players': '{n} {players}',
+  'leagues.player.one': 'игрок',
+  'leagues.player.few': 'игрока',
+  'leagues.player.many': 'игроков',
+  'leagues.empty': 'В этой лиге пока никого нет — станьте первым!',
+  'leagues.error': 'Не удалось загрузить рейтинг',
+  'leagues.you': 'Вы',
+  'leagues.passed': 'Вы уже прошли эту лигу',
+  'leagues.toReach': 'До этой лиги осталось',
+  'leagues.updated': 'Рейтинг обновляется раз в минуту',
+  'leagueUp.title': 'Новая лига!',
+  'leagueUp.text': 'Ваша компания выросла. Новые карточки уже ждут в Mine.',
+  'leagueUp.cool': 'Круто!',
 } as const;
 
 export type MessageKey = keyof typeof ru;

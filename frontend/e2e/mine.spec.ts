@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { db, setPlayer } from './db';
+import { db, markLeagueSeen, setPlayer } from './db';
 
 async function userId(telegramId: number): Promise<number> {
   return (await db.user.findUniqueOrThrow({ where: { telegramId: BigInt(telegramId) } })).id;
@@ -10,7 +10,8 @@ test.describe('Mine', () => {
     const uid = 700000501;
     await page.goto(`/?uid=${uid}&name=Инвестор`);
     await expect(page.getByTestId('office')).toBeVisible();
-    await setPlayer(uid, { balance: 10_000, totalEarned: 10_000 });
+    await setPlayer(uid, { balance: 10_000, totalEarned: 10_000, leagueLevel: 1 });
+    await markLeagueSeen(page, uid, 1);
     await page.reload();
 
     await page.getByTestId('nav-mine').click();
@@ -81,6 +82,7 @@ test.describe('Mine', () => {
       update: { level: 1, cooldownUntil: null },
     });
     await setPlayer(uid, { balance: 50_000_000, totalEarned: 50_000_000, leagueLevel: 7 });
+    await markLeagueSeen(page, uid, 7);
     await page.reload();
     await page.getByTestId('nav-mine').click();
     const tile = page.getByTestId('card-mk_insurance_fund');
@@ -97,6 +99,8 @@ test.describe('Mine', () => {
     await page.goto(`/?uid=${uid}&name=Отпускник`);
     await expect(page.getByTestId('office')).toBeVisible();
     await setPlayer(uid, { profitPerHour: 3600n, lastSyncAt: new Date(Date.now() - 5 * 3600_000) });
+    // офлайн-доход 10 800 поднимет игрока в Silver — эту сцену проверяет leagues.spec
+    await markLeagueSeen(page, uid, 1);
     await page.reload();
     const sheet = page.getByTestId('offline-sheet');
     await expect(sheet).toContainText('Пока вас не было');

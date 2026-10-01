@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { PrismaClient } from '@prisma/client';
 
 /** Прямой доступ к e2e-базе: подготовить игрока (баланс, уровни) для сценариев. */
@@ -13,4 +14,16 @@ export async function setPlayer(
   data: Parameters<typeof db.user.update>[0]['data'],
 ): Promise<void> {
   await db.user.update({ where: { telegramId: BigInt(telegramId) }, data });
+}
+
+/**
+ * Отметить лигу как уже показанную игроку: сцена «Новая лига» не перекроет сценарий,
+ * если тест сам поднимает игроку заработанное.
+ */
+export async function markLeagueSeen(page: Page, telegramId: number, level: number): Promise<void> {
+  const user = await db.user.findUniqueOrThrow({ where: { telegramId: BigInt(telegramId) } });
+  await page.evaluate(
+    ([id, lvl]) => localStorage.setItem(`meowgul.league.${id}`, String(lvl)),
+    [user.id, level],
+  );
 }
