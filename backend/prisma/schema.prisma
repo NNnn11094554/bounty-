@@ -47,8 +47,10 @@ model User {
   walletAddress     String?   @unique
   walletConnectedAt DateTime?
 
-  /// ежедневная награда: последний полученный день серии (1..10) и игровой день получения
+  /// ежедневная награда: последний полученный день цикла (1..10), игровой день получения,
+  /// текущая серия дней подряд и лучшая серия
   dailyRewardDay       Int       @default(0)
+  dailyStreak          Int       @default(0)
   dailyRewardClaimedAt DateTime?
   dailyRewardDayKey    String?
   bestDailyStreak      Int       @default(0)

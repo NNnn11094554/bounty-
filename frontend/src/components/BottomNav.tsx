@@ -5,7 +5,8 @@ import { useT, type MessageKey } from '../i18n';
 import { playSound } from '../lib/sound';
 import { useNav, type Tab } from '../store/nav';
 import { haptic } from '../telegram/webapp';
-import { MineNavIcon, OfficeNavIcon } from './navIcons';
+import { useGame } from '../store/game';
+import { EarnNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
 
 interface TabDef {
   id: Tab;
@@ -16,6 +17,7 @@ interface TabDef {
 const NAV_TABS: readonly TabDef[] = [
   { id: 'office', label: 'nav.office', icon: (active) => <OfficeNavIcon active={active} /> },
   { id: 'mine', label: 'nav.mine', icon: (active) => <MineNavIcon active={active} /> },
+  { id: 'earn', label: 'nav.earn', icon: (active) => <EarnNavIcon active={active} /> },
 ];
 
 /** Нижнее меню: подсветка переезжает между вкладками, активная иконка подпрыгивает. */
@@ -23,6 +25,9 @@ export function BottomNav() {
   const t = useT();
   const tab = useNav((s) => s.tab);
   const setTab = useNav((s) => s.setTab);
+  // точка на вкладке — есть что забрать
+  const dailyReady = useGame((s) => s.player?.daily.claimedToday === false);
+  const badges: Partial<Record<Tab, boolean>> = { earn: dailyReady };
   return (
     <nav
       className="relative z-30 mx-3 mb-2 mt-1 grid auto-cols-fr grid-flow-col gap-1 rounded-[24px] border border-line bg-night-700/95 p-1.5 shadow-card backdrop-blur"
@@ -57,6 +62,12 @@ export function BottomNav() {
               transition={{ duration: 0.42, ease: 'easeOut' }}
             >
               {item.icon(active)}
+              {badges[item.id] && (
+                <span
+                  className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-night-700 bg-coral-to"
+                  data-testid={`nav-badge-${item.id}`}
+                />
+              )}
             </motion.span>
             <span
               className={`relative text-[11px] font-extrabold ${active ? 'text-white' : 'text-white/55'}`}

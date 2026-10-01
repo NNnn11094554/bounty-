@@ -6,7 +6,7 @@ import { CharacterImage } from '../components/CharacterImage';
 interface Props {
   title: string;
   text: string;
-  /** кот «спит» (тусклый, Zzz) — для техработ и ошибок */
+  /** кот «спит» (покачивается, Zzz) — для техработ и ошибок */
   sleepy?: boolean;
   action?: { label: string; onClick: () => void };
   children?: ReactNode;
@@ -21,12 +21,14 @@ export function StatusScreen({ title, text, sleepy = true, action, children, tes
       data-testid={testId}
     >
       <div className="relative">
-        <div
+        {/* картинка персонажа не перекрашивается: «сонный» кот только покачивается целиком */}
+        <motion.div
           className="h-36 w-36 overflow-hidden rounded-full ring-4 ring-white/10"
-          style={sleepy ? { filter: 'brightness(0.6) grayscale(0.5)' } : undefined}
+          animate={sleepy ? { rotate: [-3, 3, -3], y: [2, -2, 2] } : undefined}
+          transition={sleepy ? { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } : undefined}
         >
           <CharacterImage size={144} className="h-full w-full" />
-        </div>
+        </motion.div>
         {sleepy && (
           <motion.span
             className="absolute -right-3 -top-4 text-2xl font-black text-white/70"

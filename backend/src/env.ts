@@ -37,7 +37,11 @@ const schema = z
   });
 
 function load() {
-  const parsed = schema.safeParse(process.env);
+  // пустая переменная (KEY= в .env) — то же, что не заданная
+  const raw = Object.fromEntries(
+    Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== ''),
+  );
+  const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Неверные переменные окружения:\n${lines}`);

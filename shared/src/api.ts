@@ -27,6 +27,9 @@ export type ApiErrorCode =
   | 'LIMIT_REACHED'
   | 'ALREADY_DONE'
   | 'CONFLICT'
+  | 'FORBIDDEN'
+  | 'NOT_COMPLETED'
+  | 'UNAVAILABLE'
   | 'INTERNAL';
 
 export interface HealthResponse {
@@ -69,6 +72,16 @@ export interface PlayerProfile {
   createdAt: string;
 }
 
+export interface DailyRewardState {
+  /** день цикла: полученный сегодня или тот, что можно забрать (1..10) */
+  day: number;
+  claimedToday: boolean;
+  /** игрок пропустил день — награда снова начнётся с Дня 1 */
+  streakBroken: boolean;
+  /** дней подряд */
+  streak: number;
+}
+
 export interface PlayerState {
   profile: PlayerProfile;
   /** целые монеты на момент serverTime */
@@ -88,6 +101,7 @@ export interface PlayerState {
   turboUntil: number | null;
   totalTaps: number;
   boosts: BoostsState;
+  daily: DailyRewardState;
   /** время сервера, на которое рассчитано состояние (мс) */
   serverTime: number;
   /** следующий сброс ежедневных активностей (мс) */
@@ -161,6 +175,14 @@ export interface GameConfig {
   passive: { maxOfflineHours: number };
   turbo: { durationSec: number; multiplier: number };
   dailyResetUtcHour: number;
+  /** награды ежедневки по дням цикла */
+  dailyRewards: number[];
+}
+
+export interface DailyClaimResponse {
+  state: PlayerState;
+  reward: number;
+  day: number;
 }
 
 export type BoostType = 'full-energy' | 'turbo' | 'multitap' | 'energy-limit';

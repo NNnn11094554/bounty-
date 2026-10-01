@@ -10,6 +10,11 @@ import { BADGE_ICONS, GLYPHS } from './glyphs';
 
 const CHARACTER_SRC = '/assets/generated/character-256.webp';
 
+/** Серый вид закрытой карточки. Картинку персонажа не перекрашиваем никогда. */
+function mutedStyle(muted: boolean | undefined, spec: CardIconSpec) {
+  return muted && spec.glyph !== 'character' ? { filter: 'grayscale(0.85) brightness(0.8)' } : undefined;
+}
+
 function useSvgId(): string {
   return `ci${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
 }
@@ -99,7 +104,7 @@ export const CardIcon = memo(function CardIcon({ icon, size, className, muted }:
       height={size}
       viewBox="0 0 64 64"
       className={className}
-      style={muted ? { filter: 'grayscale(0.85) brightness(0.8)' } : undefined}
+      style={mutedStyle(muted, spec)}
       aria-hidden
       data-icon={icon}
     >
@@ -171,7 +176,7 @@ export const CardArt = memo(function CardArt({
       viewBox="0 0 160 100"
       className={className}
       preserveAspectRatio="xMidYMid slice"
-      style={muted ? { filter: 'grayscale(0.85) brightness(0.8)' } : undefined}
+      style={mutedStyle(muted, spec)}
       aria-hidden
       data-icon={icon}
     >

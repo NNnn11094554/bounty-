@@ -102,3 +102,26 @@ Platinum 100K, Diamond 1M, Epic 2M, Legendary 10M, Master 50M, Grandmaster 100M,
 SQL-запросом по индексу `(leagueLevel, totalEarned)` и кэшируется на минуту в памяти процесса; место игрока
 вне топ-100 считается отдельным запросом и тоже кэшируется на минуту. Заблокированные игроки в рейтинг
 не попадают.
+
+## Earn: ежедневная награда и задания
+
+**Ежедневная награда** — 10 дней подряд: 500, 1K, 2,5K, 5K, 15K, 25K, 100K, 500K, 1M, 5M
+(`backend/src/game/config/rewards.ts`). Пропустил игровой день — серия начинается с Дня 1, после Дня 10
+цикл начинается заново. Игровой день сбрасывается в `DAILY_RESET_UTC_HOUR` по UTC (16 = 19:00 по Киеву).
+`POST /api/daily-reward/claim`; состояние приходит в `state.daily`.
+
+**Задания** хранятся в таблице `Task`. При старте сервер создаёт встроенные (`backend/src/game/config/tasks.ts`):
+«Подпишись на канал» (включается, когда заданы `CHANNEL_ID` и `CHANNEL_URL`; бот должен быть администратором
+канала — подписка проверяется через Bot API `getChatMember`) и «Пригласи 3 друзей» (проверка по БД).
+Ссылки на соцсети, видео и спецпредложения добавляются через API админки:
+
+| Метод | Что делает |
+|---|---|
+| `GET /api/admin/tasks` | все задания и сколько игроков их выполнили |
+| `POST /api/admin/tasks` | создать: `id`, `type` (`TELEGRAM_CHANNEL`, `LINK`, `VIDEO`, `INVITE_FRIENDS`, `CHOOSE_HQ`, `CONNECT_WALLET`), `section` (`SPECIAL`, `LIST`, `AIRDROP`), названия и описания RU/EN, `icon`, `url` (только https), `channelId`, `requiredCount`, `reward`, `checkDelaySec` (по умолчанию 30), `sortOrder`, `isActive` |
+| `PUT /api/admin/tasks/:id` | изменить |
+| `DELETE /api/admin/tasks/:id` | удалить; если задание уже кто-то выполнил — только выключить |
+
+Задания-ссылки (`LINK`, `VIDEO`) можно проверить через `checkDelaySec` секунд после перехода
+(`POST /api/tasks/:id/start` → `POST /api/tasks/:id/check`). Награда начисляется один раз — параллельные
+проверки и повторные запросы ничего не добавляют.

@@ -249,7 +249,7 @@ export function CatButton({ size, ringColor, handler, locale, sleepyLabel, onPre
       <div className="cat-zzz pointer-events-none absolute -top-2 right-[8%] text-3xl font-black text-white/80">
         Zzz
       </div>
-      <div className="cat-tired pointer-events-none absolute inset-x-0 bottom-[12%] text-center text-sm font-extrabold text-white/90">
+      <div className="cat-tired pointer-events-none absolute inset-x-0 -bottom-4 text-center text-sm font-extrabold text-white/90">
         <span className="rounded-full bg-black/55 px-3 py-1">{sleepyLabel}</span>
       </div>
       <div ref={fxRef} className="pointer-events-none absolute inset-0 overflow-visible" />

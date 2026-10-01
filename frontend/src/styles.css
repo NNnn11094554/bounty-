@@ -158,16 +158,33 @@ textarea {
 .cat-glow {
   background: radial-gradient(circle, color-mix(in srgb, var(--ring) 38%, transparent) 0%, transparent 62%);
 }
-.cat-img {
-  transition: filter 0.5s ease;
+.cat-glow,
+.cat-ring {
+  transition:
+    opacity 0.5s ease,
+    box-shadow 0.4s ease;
 }
 .cat-zzz,
 .cat-tired {
   opacity: 0;
   transition: opacity 0.4s ease;
 }
+/* усталый кот: картинка не перекрашивается — только покачивание целиком и приглушённое кольцо */
 .cat-button[data-sleepy='true'] .cat-img {
-  filter: brightness(0.6) grayscale(0.5);
+  animation: cat-doze 3.2s ease-in-out infinite;
+}
+.cat-button[data-sleepy='true'] .cat-ring,
+.cat-button[data-sleepy='true'] .cat-glow {
+  opacity: 0.45;
+}
+@keyframes cat-doze {
+  0%,
+  100% {
+    transform: rotate(-2.5deg) translateY(1%);
+  }
+  50% {
+    transform: rotate(2.5deg) translateY(-1%);
+  }
 }
 .cat-button[data-sleepy='true'] .cat-zzz {
   opacity: 1;

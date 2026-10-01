@@ -119,6 +119,7 @@ export const CARD_GLYPHS = [
   'bag',
   'trophy',
   'eye',
+  'megaphone',
 ] as const;
 export type CardGlyph = (typeof CARD_GLYPHS)[number];
 

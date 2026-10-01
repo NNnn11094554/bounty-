@@ -10,6 +10,8 @@ import { OfficeScreen } from './office/OfficeScreen';
 
 const loadMine = () => import('./mine/MineScreen').then((m) => ({ default: m.MineScreen }));
 const MineScreen = lazy(loadMine);
+const loadEarn = () => import('./earn/EarnScreen').then((m) => ({ default: m.EarnScreen }));
+const EarnScreen = lazy(loadEarn);
 const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ default: m.BoostsScreen })));
 const LeaguesScreen = lazy(() =>
   import('./leagues/LeaguesScreen').then((m) => ({ default: m.LeaguesScreen })),
@@ -32,6 +34,8 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
   switch (tab) {
     case 'mine':
       return <MineScreen />;
+    case 'earn':
+      return <EarnScreen />;
     default:
       return <OfficeScreen onOpenBoosts={() => open('boosts')} onOpenLeagues={() => open('leagues')} />;
   }
@@ -55,9 +59,12 @@ export function GameShell() {
     prevTab.current = tab;
   }, [tab]);
 
-  // экран Mine подгружается заранее, пока игрок тапает
+  // экраны вкладок подгружаются заранее, пока игрок тапает
   useEffect(() => {
-    const id = window.setTimeout(() => void loadMine(), 1500);
+    const id = window.setTimeout(() => {
+      void loadMine();
+      void loadEarn();
+    }, 1500);
     return () => window.clearTimeout(id);
   }, []);
 

@@ -50,6 +50,8 @@ export function client(app: FastifyInstance, user: TelegramUser) {
     get: (url: string): Promise<LightMyRequestResponse> => app.inject({ method: 'GET', url, headers }),
     post: (url: string, payload?: unknown): Promise<LightMyRequestResponse> =>
       app.inject({ method: 'POST', url, headers, payload: payload as Record<string, unknown> }),
+    put: (url: string, payload?: unknown): Promise<LightMyRequestResponse> =>
+      app.inject({ method: 'PUT', url, headers, payload: payload as Record<string, unknown> }),
     del: (url: string): Promise<LightMyRequestResponse> => app.inject({ method: 'DELETE', url, headers }),
   };
 }

@@ -5,11 +5,13 @@
  */
 import { prisma } from '../lib/db.js';
 import { seedCards } from '../services/cards.js';
+import { seedTasks } from '../services/tasks.js';
 
 async function main(): Promise<void> {
   const force = process.argv.includes('--force');
   const cards = await seedCards({ force });
   console.log(force ? `Cards overwritten from config: ${cards}` : `Cards added: ${cards}`);
+  console.log(`Built-in tasks added: ${await seedTasks()}`);
 }
 
 main()

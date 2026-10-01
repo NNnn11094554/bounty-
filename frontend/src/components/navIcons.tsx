@@ -57,3 +57,27 @@ export function MineNavIcon({ active, size }: NavIconProps) {
     </Svg>
   );
 }
+
+/** Earn: мешок монет. */
+export function EarnNavIcon({ active, size }: NavIconProps) {
+  const s = stroke(active);
+  return (
+    <Svg size={size}>
+      <path d="M10.5 7.5 9 4h10l-1.5 3.5" stroke={s} strokeWidth="2" strokeLinejoin="round" />
+      <path
+        d="M10.5 8h7c4 2.5 6.5 7 6.5 10.5 0 4-3 6-10 6s-10-2-10-6C4 15 6.5 10.5 10.5 8z"
+        fill={active ? '#ffc93c' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <g fill={active ? '#14101f' : s}>
+        <ellipse cx="14" cy="18.6" rx="2.4" ry="2" />
+        <circle cx="11" cy="16" r="1" />
+        <circle cx="12.9" cy="14.4" r="1" />
+        <circle cx="15.1" cy="14.4" r="1" />
+        <circle cx="17" cy="16" r="1" />
+      </g>
+    </Svg>
+  );
+}

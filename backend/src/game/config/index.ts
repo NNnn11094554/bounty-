@@ -2,6 +2,7 @@ import type { GameConfig } from '@meowgul/shared';
 import { env } from '../../env.js';
 import { GAME } from './game.js';
 import { LEAGUES } from './leagues.js';
+import { REWARDS } from './rewards.js';
 
 /** Конфиг, который клиент получает при входе (только отображение — расчёты на сервере). */
 export function clientConfig(): GameConfig {
@@ -11,5 +12,6 @@ export function clientConfig(): GameConfig {
     passive: { maxOfflineHours: GAME.passive.maxOfflineHours },
     turbo: { durationSec: GAME.turbo.durationSec, multiplier: GAME.turbo.multiplier },
     dailyResetUtcHour: env.DAILY_RESET_UTC_HOUR,
+    dailyRewards: [...REWARDS.daily],
   };
 }

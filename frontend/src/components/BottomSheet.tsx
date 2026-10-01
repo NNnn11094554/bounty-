@@ -1,5 +1,5 @@
-import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
-import type { ReactNode } from 'react';
+import { AnimatePresence, motion, useDragControls, type PanInfo } from 'framer-motion';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { SPRING } from '../animations';
 import { useBackHandler } from '../hooks/useBackHandler';
@@ -14,6 +14,20 @@ interface Props {
 /** Модалка снизу: выезд со spring и лёгким перелётом, затемнение с blur, закрытие свайпом вниз. */
 export function BottomSheet({ open, onClose, children, testId }: Props) {
   useBackHandler(open, onClose);
+  // если содержимое не помещается (маленький экран), оно прокручивается, а закрыть свайпом можно за шапку
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [scrollable, setScrollable] = useState(false);
+  const dragControls = useDragControls();
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!open || !el) return;
+    const measure = () => setScrollable(el.scrollHeight > el.clientHeight + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [open, children]);
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 110 || info.velocity.y > 650) onClose();
   };
@@ -31,12 +45,17 @@ export function BottomSheet({ open, onClose, children, testId }: Props) {
           <motion.div
             role="dialog"
             aria-modal="true"
-            className="pb-safe relative mx-auto w-full max-w-[520px] rounded-t-[32px] border-t border-line bg-night-700 px-5 pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
+            className="pb-safe relative mx-auto flex max-h-[calc(100%-16px)] w-full max-w-[520px] flex-col rounded-t-[32px] border-t border-line bg-night-700 px-5 pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={SPRING.sheet}
             drag="y"
+            dragListener={false}
+            dragControls={dragControls}
+            onPointerDown={(e) => {
+              if (!scrollable || !contentRef.current?.contains(e.target as Node)) dragControls.start(e);
+            }}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0.05, bottom: 0.7 }}
             onDragEnd={onDragEnd}
@@ -58,7 +77,9 @@ export function BottomSheet({ open, onClose, children, testId }: Props) {
                 />
               </svg>
             </button>
-            <div className="pb-5">{children}</div>
+            <div ref={contentRef} className="-mx-5 min-h-0 overflow-y-auto overscroll-contain px-5">
+              <div className="pb-5">{children}</div>
+            </div>
           </motion.div>
         </div>
       )}

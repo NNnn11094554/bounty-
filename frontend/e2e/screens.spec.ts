@@ -52,4 +52,15 @@ test('capture main screens', async ({ page }) => {
   await page.getByTestId('mine-list').evaluate((el) => el.scrollTo(0, 1200));
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${dir}/08-legal-locked.png` });
+
+  await page.getByTestId('nav-earn').click();
+  await expect(page.getByTestId('daily-row')).toBeVisible();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${dir}/11-earn.png` });
+  await page.getByTestId('daily-row').click();
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: `${dir}/12-daily.png` });
+  await page.getByTestId('daily-claim').click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${dir}/13-daily-claimed.png` });
 });

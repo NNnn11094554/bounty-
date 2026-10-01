@@ -12,6 +12,7 @@ import { useAffordable } from '../../hooks/useAffordable';
 import { useNow } from '../../hooks/useNow';
 import { useLocale, useT } from '../../i18n';
 import { playSound } from '../../lib/sound';
+import { useNav } from '../../store/nav';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
 import { limitedText, lockText } from './cardText';
@@ -132,6 +133,20 @@ function CardSheetBody({ card, onClose }: { card: CardView; onClose: () => void 
       >
         {blockText() ?? t('card.get')}
       </Button>
+      {card.lock?.type === 'task' && (
+        <Button
+          block
+          variant="secondary"
+          className="h-12"
+          onClick={() => {
+            onClose();
+            useNav.getState().setTab('earn');
+          }}
+          data-testid="card-to-tasks"
+        >
+          {t('card.toTasks')}
+        </Button>
+      )}
     </div>
   );
 }

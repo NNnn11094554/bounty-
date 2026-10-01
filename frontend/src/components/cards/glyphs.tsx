@@ -967,6 +967,15 @@ export const GLYPHS: Record<Exclude<CardGlyph, 'character'>, ReactNode> = {
       <path d="M19 38.5h10" {...line(2.2, D)} />
     </>
   ),
+  megaphone: (
+    <>
+      <path d="M33 13c4 2 6.5 6 6.5 11s-2.5 9-6.5 11" {...line(2.6, A)} />
+      <path d="M38 8c6 3.5 9 9.5 9 16s-3 12.5-9 16" {...line(2.2, A)} />
+      <path d="M5 19h7l15-10v30L12 29H5z" fill={W} strokeLinejoin="round" />
+      <path d="M9 29l3 12h6l-2.5-12" fill={W} />
+      <rect x="5" y="19" width="7" height="10" fill={D} />
+    </>
+  ),
   eye: (
     <>
       <path d="M2 24c5-9 13-14 22-14s17 5 22 14c-5 9-13 14-22 14S7 33 2 24z" fill={W} />

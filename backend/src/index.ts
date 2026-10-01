@@ -3,6 +3,7 @@ import { env } from './env.js';
 import { prisma } from './lib/db.js';
 import { logger } from './lib/logger.js';
 import { seedCards } from './services/cards.js';
+import { seedTasks } from './services/tasks.js';
 
 async function main(): Promise<void> {
   const app = await buildApp();
@@ -10,6 +11,8 @@ async function main(): Promise<void> {
   // новые карточки из конфига появляются в БД автоматически после деплоя
   const added = await seedCards();
   if (added > 0) logger.info({ added }, 'cards added from config');
+  const tasks = await seedTasks();
+  if (tasks > 0) logger.info({ tasks }, 'built-in tasks added');
 
   let shuttingDown = false;
   const shutdown = async (signal: string) => {

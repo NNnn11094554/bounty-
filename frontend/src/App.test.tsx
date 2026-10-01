@@ -1,3 +1,4 @@
+import type { GameConfig, PlayerState } from '@meowgul/shared';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -31,9 +32,18 @@ const state = {
   energyLimitLevel: 1,
   leagueLevel: 0,
   tapSeq: 0,
+  turboUntil: null,
+  totalTaps: 0,
+  boosts: {
+    fullEnergy: { left: 6, perDay: 6, cooldownUntil: null, cooldownSec: 3600 },
+    turbo: { left: 3, perDay: 3, activeUntil: null, durationSec: 20, multiplier: 5 },
+    multitap: { level: 1, nextLevel: 2, price: 2000, maxLevel: 20 },
+    energyLimit: { level: 1, nextLevel: 2, price: 2000, maxLevel: 20, perLevel: 500 },
+  },
+  daily: { day: 1, claimedToday: false, streakBroken: false, streak: 0 },
   serverTime: Date.now(),
   nextResetAt: Date.now() + 1000,
-};
+} satisfies PlayerState;
 
 const config = {
   leagues: [
@@ -44,7 +54,8 @@ const config = {
   passive: { maxOfflineHours: 3 },
   turbo: { durationSec: 20, multiplier: 5 },
   dailyResetUtcHour: 16,
-};
+  dailyRewards: [500, 1000, 2500, 5000, 15000, 25000, 100000, 500000, 1000000, 5000000],
+} satisfies GameConfig;
 
 function mockFetch(handler: (url: string) => Response) {
   vi.stubGlobal(

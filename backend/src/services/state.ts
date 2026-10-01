@@ -5,6 +5,7 @@ import { dailyBoostUsage, fullEnergyCooldownUntil } from '../game/boosts.js';
 import { BOOSTS, boostLevelPrice, type PaidBoost } from '../game/config/boosts.js';
 import { GAME, tapValue } from '../game/config/game.js';
 import { nextResetAt } from '../game/dayKey.js';
+import { dailyRewardStatus } from '../game/daily.js';
 import { currentEnergy } from '../game/energy.js';
 import { toCoins } from '../lib/money.js';
 
@@ -68,9 +69,15 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     turboUntil: user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null,
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
+    daily: dailyState(user, now),
     serverTime: now.getTime(),
     nextResetAt: nextResetAt(now).getTime(),
   };
+}
+
+function dailyState(user: User, now: Date) {
+  const s = dailyRewardStatus(user, now);
+  return { day: s.day, claimedToday: s.claimedToday, streakBroken: s.streakBroken, streak: s.streak };
 }
 
 function boostsState(user: User, now: Date) {

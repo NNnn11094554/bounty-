@@ -3,8 +3,12 @@ import type {
   BoostType,
   CardUpgradeResponse,
   CardsResponse,
+  DailyClaimResponse,
   LeaderboardResponse,
   StateResponse,
+  TaskCheckResponse,
+  TaskStartResponse,
+  TasksResponse,
 } from '@meowgul/shared';
 import { api } from './client';
 
@@ -16,6 +20,12 @@ export const endpoints = {
   upgradeCard: (id: string) =>
     api<CardUpgradeResponse>(`/api/cards/${encodeURIComponent(id)}/upgrade`, { method: 'POST' }),
   leagueTop: (level: number) => api<LeaderboardResponse>(`/api/leagues/${level}/top`),
+  claimDaily: () => api<DailyClaimResponse>('/api/daily-reward/claim', { method: 'POST' }),
+  tasks: () => api<TasksResponse>('/api/tasks'),
+  startTask: (id: string) =>
+    api<TaskStartResponse>(`/api/tasks/${encodeURIComponent(id)}/start`, { method: 'POST' }),
+  checkTask: (id: string) =>
+    api<TaskCheckResponse>(`/api/tasks/${encodeURIComponent(id)}/check`, { method: 'POST' }),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,

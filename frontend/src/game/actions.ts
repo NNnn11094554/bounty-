@@ -11,8 +11,8 @@ export interface ActionOptions<T extends { state: PlayerState }> {
   request: () => Promise<T>;
   /** оптимистичное предсказание результата — показывается сразу, откатывается при ошибке */
   predict?: (state: PlayerState) => PlayerState;
-  /** текст ошибки по коду; по умолчанию — общий */
-  errorKey?: (err: ApiError) => MessageKey;
+  /** текст ошибки по коду (undefined — стандартный для кода) */
+  errorKey?: (err: ApiError) => MessageKey | undefined;
 }
 
 const ERROR_KEYS: Partial<Record<string, MessageKey>> = {
