@@ -22,3 +22,13 @@ export async function withUserLock<T>(userId: number, fn: (tx: Tx, user: User) =
     { maxWait: 5_000, timeout: 15_000, isolationLevel: 'ReadCommitted' },
   );
 }
+
+/**
+ * Заблокировать строку другого игрока внутри уже открытой транзакции (бонус пригласившему).
+ * Порядок блокировок всегда от нового игрока к старому (пригласивший зарегистрирован раньше), поэтому
+ * взаимных блокировок не бывает.
+ */
+export async function lockUser(tx: Tx, userId: number): Promise<User | null> {
+  await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+  return tx.user.findUnique({ where: { id: userId } });
+}

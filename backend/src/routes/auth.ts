@@ -8,6 +8,7 @@ import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
+import { applyReferral, type ReferralResult } from '../services/referrals.js';
 import { recordActivity, upsertTelegramUser } from '../services/users.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
@@ -19,6 +20,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const { user, isNew } = await upsertTelegramUser(tg, now);
     if (user.isBanned) throw new ApiError('BANNED', 'Account is banned', { reason: user.banReason });
     await recordActivity(user.id, now);
+    // приглашение засчитывается только новому игроку
+    let referral: ReferralResult | null = null;
+    if (isNew && tg.startParam) {
+      try {
+        referral = await applyReferral(user, tg.startParam);
+      } catch (err) {
+        request.log.error({ err, startParam: tg.startParam }, 'referral failed');
+      }
+    }
     // доход карточек за время отсутствия (не больше 3 часов)
     const { user: synced, passive } = await withUserLock(user.id, (tx, locked) =>
       syncPassive(tx, locked, now),
@@ -28,7 +38,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       passive.elapsedSeconds >= GAME.passive.offlineModalMinSec && earned > 0
         ? { earned, seconds: passive.elapsedSeconds, creditedSeconds: passive.creditedSeconds }
         : null;
-    return { state: buildPlayerState(synced, now), config: clientConfig(), offline, isNew };
+    return { state: buildPlayerState(synced, now), config: clientConfig(), offline, isNew, referral };
   });
 
   app.get('/api/state', async (request): Promise<StateResponse> => {

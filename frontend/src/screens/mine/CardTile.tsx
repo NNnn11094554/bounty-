@@ -53,7 +53,11 @@ function Footer({ card, affordable }: { card: CardView; affordable: boolean }) {
   }
   return (
     <div className="flex items-center gap-2 text-xs font-extrabold">
-      <span className="relative h-4 w-11 shrink-0 overflow-hidden text-white/80 [perspective:200px]">
+      <span
+        className="relative h-4 w-11 shrink-0 overflow-hidden text-white/80 [perspective:200px]"
+        aria-label={t('card.lvl', { n: card.level })}
+        data-testid="card-level"
+      >
         <AnimatePresence initial={false} mode="popLayout">
           <motion.span
             key={card.level}
@@ -62,7 +66,7 @@ function Footer({ card, affordable }: { card: CardView; affordable: boolean }) {
             animate={{ rotateX: 0, y: 0, opacity: 1 }}
             exit={{ rotateX: 90, y: -8, opacity: 0 }}
             transition={{ duration: 0.35 }}
-            data-testid="card-level"
+            aria-hidden
           >
             {t('card.lvl', { n: card.level })}
           </motion.span>

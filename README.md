@@ -142,3 +142,15 @@ SQL-запросом по индексу `(leagueLevel, totalEarned)` и кэш�
 игрок видит подсказку и число букв, проверку делает сервер (`POST /api/cipher/claim { word }`). Слова с
 подсказками — `backend/src/game/config/ciphers.ts`; админ может задать своё (`PUT /api/admin/cipher/:dayKey`).
 `GET /api/admin/daily` — комбо и шифры на 7 дней вперёд. `GET /api/combo` — комбо и шифр текущего дня для игрока.
+
+## Друзья и рефералы
+
+Реферальная ссылка игрока: `https://t.me/<BOT_USERNAME>/<MINIAPP_SHORT_NAME>?startapp=ref_<telegramId>`.
+При **первом** входе с `start_param=ref_…` оба получают бонус: +5 000, а если у нового игрока Telegram
+Premium — +25 000. Пригласить себя нельзя, уже зарегистрированный игрок по ссылке не засчитывается,
+заблокированный пригласивший бонусов не получает. Когда друг достигает новой лиги, пригласивший получает
+бонус за каждую пройденную лигу один раз (Silver +20K, Gold +30K, Platinum +40K, Diamond +60K, Epic +95K,
+Legendary +195K, Master +400K, Grandmaster +800K, Lord +2M; за Premium-друга — вдвое больше).
+Все суммы — `REFERRAL` в `backend/src/game/config/rewards.ts`.
+
+`GET /api/friends?after=<id>` — ссылка, таблица бонусов, сколько всего получено и список друзей по 50.

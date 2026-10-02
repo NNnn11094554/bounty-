@@ -6,6 +6,7 @@ import type {
   CipherClaimResponse,
   DailyClaimResponse,
   DailyGamesResponse,
+  FriendsResponse,
   LeaderboardResponse,
   StateResponse,
   TaskCheckResponse,
@@ -31,6 +32,7 @@ export const endpoints = {
   dailyGames: () => api<DailyGamesResponse>('/api/combo'),
   claimCipher: (word: string) =>
     api<CipherClaimResponse>('/api/cipher/claim', { method: 'POST', body: { word } }),
+  friends: (after?: number) => api<FriendsResponse>(`/api/friends${after ? `?after=${after}` : ''}`),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,

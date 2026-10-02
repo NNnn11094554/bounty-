@@ -10,5 +10,27 @@ export const REWARDS = {
   cipher: 1_000_000,
 } as const;
 
+/**
+ * Рефералы: бонус обоим за нового друга (за друга с Telegram Premium — больше)
+ * и бонус пригласившему, когда друг достигает лиги (за Premium-друга — ×premiumMultiplier).
+ */
+export const REFERRAL = {
+  regular: 5_000,
+  premium: 25_000,
+  premiumMultiplier: 2,
+  /** уровень лиги → бонус пригласившему */
+  leagues: {
+    1: 20_000,
+    2: 30_000,
+    3: 40_000,
+    4: 60_000,
+    5: 95_000,
+    6: 195_000,
+    7: 400_000,
+    8: 800_000,
+    9: 2_000_000,
+  } as Readonly<Record<number, number>>,
+} as const;
+
 /** Комбо дня выбирается из карточек не дороже этого (первый уровень), чтобы его можно было собрать. */
 export const COMBO_MAX_BASE_COST = 300_000;

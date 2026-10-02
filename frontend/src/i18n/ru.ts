@@ -197,6 +197,32 @@ export const ru = {
   'cipher.badLetter': 'Такой буквы нет',
   'cipher.success': 'Шифр разгадан: +{reward}!',
   'cipher.letters': '{n} букв',
+  'friends.title': 'Пригласите друзей!',
+  'friends.subtitle': 'Вы и ваш друг получите бонусы',
+  'friends.invite': 'Пригласить друга',
+  'friends.inviteBoth': 'для вас и друга',
+  'friends.invitePremium': 'Друг с Telegram Premium',
+  'friends.more': 'Больше бонусов',
+  'friends.list': 'Список ваших друзей ({n})',
+  'friends.refresh': 'Обновить',
+  'friends.empty': 'Вы ещё никого не пригласили. Отправьте ссылку — бонус получите вы оба!',
+  'friends.error': 'Не удалось загрузить друзей',
+  'friends.loadMore': 'Показать ещё',
+  'friends.earned': 'Получено за друзей: {value}',
+  'friends.copy': 'Копировать ссылку',
+  'friends.copied': 'Ссылка скопирована',
+  'friends.copyFailed': 'Не удалось скопировать — ссылка: {link}',
+  'friends.shareText':
+    'Заходи в Meowgul — тапай кота и строй крипто-империю! Держи {bonus} монет на старт 🐾',
+  'friends.welcome': 'Вас пригласил(а) {name}: +{bonus} монет!',
+  'friends.bonusesTitle': 'Бонусы за друзей',
+  'friends.bonusesText':
+    'Когда друг достигает новой лиги, вы получаете бонус. За друга с Telegram Premium — вдвое больше.',
+  'friends.league': 'Лига',
+  'friends.regular': 'Обычный',
+  'friends.premium': 'Premium',
+  'friends.forFriend': 'За друга',
+  'task.inviteFriends': 'Пригласить друзей',
 } as const;
 
 export type MessageKey = keyof typeof ru;

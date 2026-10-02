@@ -6,7 +6,7 @@ import { playSound } from '../lib/sound';
 import { useNav, type Tab } from '../store/nav';
 import { haptic } from '../telegram/webapp';
 import { useGame } from '../store/game';
-import { EarnNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
+import { EarnNavIcon, FriendsNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
 
 interface TabDef {
   id: Tab;
@@ -17,6 +17,7 @@ interface TabDef {
 const NAV_TABS: readonly TabDef[] = [
   { id: 'office', label: 'nav.office', icon: (active) => <OfficeNavIcon active={active} /> },
   { id: 'mine', label: 'nav.mine', icon: (active) => <MineNavIcon active={active} /> },
+  { id: 'friends', label: 'nav.friends', icon: (active) => <FriendsNavIcon active={active} /> },
   { id: 'earn', label: 'nav.earn', icon: (active) => <EarnNavIcon active={active} /> },
 ];
 

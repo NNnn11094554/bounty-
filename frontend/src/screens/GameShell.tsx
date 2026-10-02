@@ -12,6 +12,8 @@ import { OfficeTab } from './office/OfficeTab';
 
 const loadMine = () => import('./mine/MineScreen').then((m) => ({ default: m.MineScreen }));
 const MineScreen = lazy(loadMine);
+const loadFriends = () => import('./friends/FriendsScreen').then((m) => ({ default: m.FriendsScreen }));
+const FriendsScreen = lazy(loadFriends);
 const loadEarn = () => import('./earn/EarnScreen').then((m) => ({ default: m.EarnScreen }));
 const EarnScreen = lazy(loadEarn);
 const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ default: m.BoostsScreen })));
@@ -36,6 +38,8 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
   switch (tab) {
     case 'mine':
       return <MineScreen />;
+    case 'friends':
+      return <FriendsScreen />;
     case 'earn':
       return <EarnScreen />;
     default:
@@ -67,6 +71,7 @@ export function GameShell() {
     const id = window.setTimeout(() => {
       void loadMine();
       void loadEarn();
+      void loadFriends();
     }, 1500);
     return () => window.clearTimeout(id);
   }, []);

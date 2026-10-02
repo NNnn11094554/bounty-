@@ -75,4 +75,13 @@ test('capture main screens', async ({ page }) => {
   await page.getByTestId('daily-claim').click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/13-daily-claimed.png` });
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('nav-friends').click();
+  await expect(page.getByTestId('friends-count')).toBeVisible();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${dir}/14-friends.png` });
+  await page.getByTestId('friends-more').click();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${dir}/15-friend-bonuses.png` });
 });

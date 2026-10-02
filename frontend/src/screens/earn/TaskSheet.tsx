@@ -11,6 +11,7 @@ import { tapEngine } from '../../game/tapEngine';
 import { useNow } from '../../hooks/useNow';
 import { useLocale, useT } from '../../i18n';
 import { playSound } from '../../lib/sound';
+import { useNav } from '../../store/nav';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
 
@@ -94,9 +95,23 @@ function TaskBody({ task, onClose }: { task: TaskView; onClose: () => void }) {
               {t('task.go')}
             </Button>
           )}
+          {task.type === 'INVITE_FRIENDS' &&
+            (task.progress?.current ?? 0) < (task.progress?.required ?? 0) && (
+              <Button
+                block
+                className="h-14 text-base"
+                onClick={() => {
+                  onClose();
+                  useNav.getState().setTab('friends');
+                }}
+                data-testid="task-invite"
+              >
+                {t('task.inviteFriends')}
+              </Button>
+            )}
           <Button
             block
-            variant={needsVisit ? 'secondary' : 'primary'}
+            variant={needsVisit || task.type === 'INVITE_FRIENDS' ? 'secondary' : 'primary'}
             className="h-14 text-base"
             disabled={needsVisit || waitMs > 0}
             loading={busy}

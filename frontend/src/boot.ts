@@ -1,3 +1,4 @@
+import { formatInt } from '@meowgul/shared';
 import { setReducedMotion } from './animations';
 import { ApiError, onGlobalApiError, setInitData } from './api/client';
 import { endpoints } from './api/endpoints';
@@ -5,7 +6,7 @@ import { setTurboMultiplier, tapEngine } from './game/tapEngine';
 import { resolveLocale, translate } from './i18n';
 import { setSoundEnabled } from './lib/sound';
 import { useGame } from './store/game';
-import { useToasts } from './store/toasts';
+import { toast, useToasts } from './store/toasts';
 import { getWebApp, setHapticsEnabled, setupWebApp } from './telegram/webapp';
 
 /** Параметры моковой авторизации для разработки: ?uid=…&name=…&premium=1&ref=ref_…&lang=en */
@@ -115,6 +116,14 @@ export async function boot(): Promise<void> {
     tapEngine.applyServerState(res.state);
     tapEngine.start(res.config.tap.syncIntervalMs);
     store.applyAuth(res);
+    if (res.referral) {
+      toast.reward(
+        translate(store.locale, 'friends.welcome', {
+          name: res.referral.inviterName,
+          bonus: formatInt(res.referral.bonus),
+        }),
+      );
+    }
   } catch (err) {
     if (err instanceof ApiError) {
       if (['BANNED', 'MAINTENANCE', 'OUTDATED_CLIENT', 'UNAUTHORIZED'].includes(err.code)) return; // экран уже выставлен

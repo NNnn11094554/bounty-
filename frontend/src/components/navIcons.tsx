@@ -81,3 +81,23 @@ export function EarnNavIcon({ active, size }: NavIconProps) {
     </Svg>
   );
 }
+
+/** Friends: две кошачьи лапы. */
+export function FriendsNavIcon({ active, size }: NavIconProps) {
+  const s = stroke(active);
+  const paw = (x: number, y: number, fill: string) => (
+    <g transform={`translate(${x} ${y})`} fill={fill} stroke={s} strokeWidth="1.4">
+      <ellipse cx="6" cy="8" rx="3.4" ry="2.9" />
+      <circle cx="2" cy="4.4" r="1.4" />
+      <circle cx="4.6" cy="2.2" r="1.4" />
+      <circle cx="7.4" cy="2.2" r="1.4" />
+      <circle cx="10" cy="4.4" r="1.4" />
+    </g>
+  );
+  return (
+    <Svg size={size}>
+      {paw(2, 11, active ? '#2ed3c6' : 'none')}
+      {paw(14, 4, active ? '#a66bff' : 'none')}
+    </Svg>
+  );
+}

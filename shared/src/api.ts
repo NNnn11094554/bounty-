@@ -121,6 +121,8 @@ export interface AuthResponse {
   config: GameConfig;
   offline: OfflineIncome | null;
   isNew: boolean;
+  /** игрок пришёл по приглашению — бонус уже начислен */
+  referral: { inviterName: string; bonus: number } | null;
 }
 
 export type StateResponse = { state: PlayerState };
@@ -167,6 +169,33 @@ export interface LeaderboardResponse {
   me: { rank: number | null; totalEarned: number; leagueLevel: number };
   /** когда собран рейтинг (обновляется раз в минуту) */
   updatedAt: number;
+}
+
+export interface FriendEntry {
+  /** id приглашения (курсор для подгрузки) */
+  id: number;
+  name: string;
+  photoUrl: string | null;
+  isPremium: boolean;
+  leagueLevel: number;
+  balance: number;
+  /** сколько получил я за этого друга */
+  bonus: number;
+  joinedAt: number;
+}
+
+export interface FriendsResponse {
+  link: string;
+  total: number;
+  /** сколько всего получено за друзей */
+  earned: number;
+  friends: FriendEntry[];
+  nextCursor: number | null;
+  bonuses: {
+    regular: number;
+    premium: number;
+    leagues: Array<{ level: number; regular: number; premium: number }>;
+  };
 }
 
 export interface GameConfig {
