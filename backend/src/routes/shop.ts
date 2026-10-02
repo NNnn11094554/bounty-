@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/db.js';
 import { ApiError } from '../lib/errors.js';
 import { requirePlayer } from '../services/player.js';
+import { ownedCosmetics } from '../services/cosmetics.js';
 import { createInvoice, shopProducts } from '../services/shop.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
@@ -21,7 +22,7 @@ const PurchaseParams = z.object({ id: z.coerce.number().int().positive() });
 export async function shopRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/shop', async (request): Promise<ShopResponse> => {
     const player = await requirePlayer(request);
-    return { products: shopProducts(player) };
+    return { products: shopProducts(player, await ownedCosmetics(prisma, player.id)) };
   });
 
   app.post('/api/shop/invoice', async (request): Promise<InvoiceResponse> => {

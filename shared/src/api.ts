@@ -101,6 +101,8 @@ export interface PlayerState {
   turboUntil: number | null;
   /** до какого момента пассивный доход ×INCOME_BOOST_MULTIPLIER (покупка в магазине), null — нет */
   incomeBoostUntil: number | null;
+  /** надетые предметы коллекции: скин кота и эффект тапа */
+  cosmetics: { skin: string; effect: string };
   totalTaps: number;
   boosts: BoostsState;
   daily: DailyRewardState;

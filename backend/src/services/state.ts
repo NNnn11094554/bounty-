@@ -78,6 +78,7 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     turboUntil: user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null,
     incomeBoostUntil:
       user.incomeBoostUntil && user.incomeBoostUntil > now ? user.incomeBoostUntil.getTime() : null,
+    cosmetics: { skin: user.equippedSkinId, effect: user.equippedEffectId },
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
     daily: dailyState(user, now),

@@ -22,6 +22,7 @@ export type TxType =
   | 'hq_reward'
   | 'shop_purchase'
   | 'shop_refund'
+  | 'cosmetic_purchase'
   | 'admin_adjustment';
 
 const AGGREGATED: ReadonlySet<TxType> = new Set<TxType>(['tap', 'passive']);

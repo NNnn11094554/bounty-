@@ -1,4 +1,4 @@
-import type { ShopProductId, ShopProductKind } from '@meowgul/shared';
+import { cosmeticById, type ShopProductId, type ShopProductKind } from '@meowgul/shared';
 
 interface ProductConfig {
   kind: ShopProductKind;
@@ -9,6 +9,14 @@ interface ProductConfig {
   /** пакет монет: минимум монет (новичкам без дохода) */
   min?: number;
   popular?: boolean;
+  /** премиальный предмет коллекции; цена в Stars берётся из каталога (@meowgul/shared COSMETICS) */
+  cosmeticId?: string;
+}
+
+function cosmetic(id: string): ProductConfig {
+  const item = cosmeticById(id);
+  if (item?.price?.currency !== 'stars') throw new Error(`Cosmetic ${id} is not sold for Stars`);
+  return { kind: 'cosmetic', stars: item.price.amount, cosmeticId: id };
 }
 
 /**
@@ -22,6 +30,10 @@ export const SHOP: Record<ShopProductId, ProductConfig> = {
   coins_large: { kind: 'coins', stars: 250, hours: 45, min: 500_000 },
   energy_refill: { kind: 'energy', stars: 10 },
   income_x2: { kind: 'income_boost', stars: 150, hours: 24 },
+  skin_diamond: cosmetic('diamond'),
+  skin_queen: cosmetic('queen'),
+  skin_legendary_crown: cosmetic('legendary_crown'),
+  effect_matrix: cosmetic('matrix'),
 };
 
 /** Монет в пакете для игрока с таким доходом в час. */
