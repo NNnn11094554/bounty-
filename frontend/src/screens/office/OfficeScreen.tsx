@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { CardIcon } from '../../components/cards/CardIcon';
-import { CatButton, type TapHandler } from '../../components/CatButton';
+import { HeroStage, type TapHandler } from '../../components/hero/HeroStage';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
 import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
@@ -12,7 +12,6 @@ import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
 import { onFrame } from '../../game/frameLoop';
-import { accessoryOverhang } from '../../game/skins';
 import { leagueAt, leagueProgress, LEAGUE_COUNT } from '../../game/leagues';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT } from '../../i18n';
@@ -71,7 +70,7 @@ function QuickAction({
       type="button"
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      className="relative flex h-[50px] w-[58px] flex-col items-center justify-center gap-0.5 rounded-2xl border border-line bg-night-700/80 shadow-card"
+      className="relative flex h-[50px] w-[58px] flex-col max-[350px]:w-[48px] items-center justify-center gap-0.5 rounded-2xl border border-line bg-night-700/80 shadow-card"
       data-testid={testId}
       data-tour={tour}
     >
@@ -143,13 +142,8 @@ export function OfficeScreen({
 
   if (!player || !league || !config) return null;
   // минимальный размер кота; в режиме шифра на низких экранах — чуть меньше, чтобы поместилась строка Морзе
-  const minCat = catOverlay ? 100 : 120;
-  // аксессуар скина (корона, нимб…) выступает над кругом: оставляем ему место, чтобы не налезал на блок выше
-  const overhang = accessoryOverhang(player.cosmetics.skin);
-  const catDiameter = Math.max(
-    minCat,
-    Math.floor(Math.min(catSize.width * 0.74, (catSize.height * 0.94) / (1 + overhang))),
-  );
+  // сцена с котом и кнопкой TAP занимает всё место между плашками и энергией и масштабируется под него
+  const stageH = Math.max(80, Math.floor(catSize.height));
   const leagueColor = league.color === 'rainbow' ? '#ffc93c' : league.color;
 
   return (
@@ -265,35 +259,33 @@ export function OfficeScreen({
         >
           {catOverlay ?? <HappyHourChip />}
           {catSize.width > 0 && (
-            <div style={{ paddingTop: Math.round(catDiameter * overhang) }}>
-              <CatButton
-                size={catDiameter}
-                ringColor={league.color}
-                handler={handler}
-                locale={locale}
-                sleepyLabel={t('office.tired')}
-                skinId={player.cosmetics.skin}
-                effectId={player.cosmetics.effect}
-                onPress={onCatPress}
-              />
-            </div>
+            <HeroStage
+              width={Math.floor(catSize.width)}
+              height={stageH}
+              handler={handler}
+              locale={locale}
+              sleepyLabel={t('office.tired')}
+              skinId={player.cosmetics.skin}
+              effectId={player.cosmetics.effect}
+              onPress={onCatPress}
+            />
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2 pb-3">
           <div
-            className="flex min-w-0 items-center gap-1.5 text-[15px] font-extrabold"
+            className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px] font-extrabold max-[350px]:gap-1 max-[350px]:text-[13px]"
             data-testid="energy"
             data-tour="energy"
           >
-            <BoltIcon size={22} />
+            <BoltIcon size={22} className="shrink-0" />
             <LiveText
               getText={() => `${tapEngine.energyNow()} / ${tapEngine.state?.maxEnergy ?? 0}`}
               className="tabular"
               testId="energy-value"
             />
           </div>
-          <div className="flex shrink-0 gap-1.5" data-tour="quick">
+          <div className="flex shrink-0 gap-1.5 max-[350px]:gap-1" data-tour="quick">
             {onOpenMine && (
               <QuickAction label={t('nav.mine')} onClick={onOpenMine} testId="open-mine">
                 <MineNavIcon active size={24} />

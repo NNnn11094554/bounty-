@@ -1,13 +1,14 @@
 import { formatShort, type Locale } from '@meowgul/shared';
 import { useEffect, useRef } from 'react';
-import { DURATION, EASING, isReducedMotion } from '../animations';
-import { catMood, type CatEvent } from '../game/catMood';
-import { centerOf, confetti } from '../game/effects';
-import { onFrame } from '../game/frameLoop';
-import { EFFECT_PARTICLE, skinVars, type ParticleKind } from '../game/skins';
-import { playSound } from '../lib/sound';
-import { haptic } from '../telegram/webapp';
-import { CatVisual } from './cat/CatVisual';
+import { DURATION, EASING, isReducedMotion } from '../../animations';
+import { catMood, type CatEvent } from '../../game/catMood';
+import { centerOf, confetti } from '../../game/effects';
+import { onFrame } from '../../game/frameLoop';
+import { EFFECT_PARTICLE, HERO, heroAsset, skinVars, type ParticleKind } from '../../game/skins';
+import { playSound } from '../../lib/sound';
+import { haptic } from '../../telegram/webapp';
+import { HeroFigure } from './HeroFigure';
+import { heroLayout } from './layout';
 
 export interface TapHandler {
   /** засчитать тап; false — не хватает энергии */
@@ -20,15 +21,16 @@ export interface TapHandler {
 }
 
 interface Props {
-  size: number;
-  ringColor: string;
+  /** место под сцену: кот и кнопка TAP вписываются в него */
+  width: number;
+  height: number;
   handler: TapHandler;
   locale: Locale;
   sleepyLabel: string;
   /** надетый скин и эффект тапа */
   skinId: string;
   effectId: string;
-  /** режим ввода шифра: тапы не тратят энергию, передаются наружу как нажатия */
+  /** режим ввода шифра: нажатия не тратят энергию, передаются наружу с длительностью */
   onPress?: (durationMs: number) => void;
 }
 
@@ -81,27 +83,18 @@ const TEXT: Partial<Record<Reaction, Record<Locale, string>>> = {
 };
 
 /**
- * Живой кот на главном экране. Слои: визуал (CatVisual, без событий) → слой тапа (прозрачный круг)
- * → эффекты. Кот дышит и парит, следит взглядом за пальцем (2.5D-наклон), подпрыгивает от тапа,
- * радуется сериям тапов, засыпает в простое и показывает эмоции облачком рядом с головой.
- * Анимации — transform/opacity (WAAPI и CSS), без перерисовок React.
+ * Главный экран: живой кот и кнопка TAP. Слои: визуал (без событий) → зоны нажатия (круг кнопки и
+ * силуэт кота) → эффекты. Кот дышит, качает хвостом, моргает, тянется к пальцу, подпрыгивает от тапа,
+ * радуется сериям, засыпает в простое и показывает эмоции облачком у головы. Кнопка вжимается и
+ * вспыхивает. Анимации — transform/opacity (WAAPI и CSS), без перерисовок React.
  */
-export function CatButton({
-  size,
-  ringColor,
-  handler,
-  locale,
-  sleepyLabel,
-  skinId,
-  effectId,
-  onPress,
-}: Props) {
+export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId, effectId, onPress }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const gazeRef = useRef<HTMLDivElement>(null);
-  const tiltRef = useRef<HTMLDivElement>(null);
-  const danceRef = useRef<HTMLDivElement>(null);
-  const auraRef = useRef<HTMLDivElement>(null);
-  const accRef = useRef<SVGSVGElement>(null);
+  const leanRef = useRef<HTMLDivElement>(null);
+  const bounceRef = useRef<HTMLDivElement>(null);
+  const tailRef = useRef<HTMLDivElement>(null);
+  const lidsRef = useRef<SVGSVGElement>(null);
+  const tapRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const handlerRef = useRef(handler);
@@ -114,20 +107,23 @@ export function CatButton({
   effectRef.current = EFFECT_PARTICLE[effectId] ?? 'coin';
   const skinRef = useRef(skinId);
   skinRef.current = skinId;
-  // размер — через ref: при смене размера (свернулась лига, Telegram развернул окно) обработчики, пулы
-  // и начатое нажатие остаются, иначе нажатие, пришедшееся на перестройку, терялось
-  const sizeRef = useRef(size);
-  sizeRef.current = size;
+  const L = heroLayout(width, height);
+  // раскладка — через ref: при смене размера (свернулась лига, Telegram развернул окно) обработчики,
+  // пулы и начатое нажатие остаются
+  const layoutRef = useRef(L);
+  layoutRef.current = L;
 
   useEffect(() => {
     const fx = fxRef.current;
     const root = rootRef.current;
-    const tilt = tiltRef.current;
-    const dance = danceRef.current;
-    const gaze = gazeRef.current;
+    const lean = leanRef.current;
+    const bounce = bounceRef.current;
+    const tail = tailRef.current;
+    const tapEl = tapRef.current;
     const bubble = bubbleRef.current;
-    if (!fx || !root || !tilt || !dance || !gaze || !bubble) return;
+    if (!fx || !root || !lean || !bounce || !tail || !tapEl || !bubble) return;
     const reduced = () => isReducedMotion();
+    const idle = bounce.parentElement;
 
     // пулы переиспользуемых элементов — никаких тысяч DOM-нод при яростном тапании
     const make = (cls: string, n: number) =>
@@ -171,8 +167,8 @@ export function CatButton({
       const el = rings[ri++ % RING_POOL]!;
       el.animate(
         [
-          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.3)`, opacity: 0.7 },
-          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.6)`, opacity: 0 },
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.3)`, opacity: 0.8 },
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.7)`, opacity: 0 },
         ],
         { duration: DURATION.tapRing, easing: 'ease-out', delay },
       );
@@ -204,19 +200,28 @@ export function CatButton({
         );
       }
     };
+    const tapCenter = () => {
+      const t = layoutRef.current.tap;
+      return { x: t.left + t.width * HERO.paw.x, y: t.top + t.height * HERO.paw.y };
+    };
+    const headPoint = () => {
+      const c = layoutRef.current.cat;
+      return { x: c.left + c.width * HERO.head.x, y: c.top + c.height * HERO.head.y };
+    };
     const coinSalute = () => {
-      const c = sizeRef.current / 2;
+      const c = tapCenter();
+      const r = layoutRef.current.tap.width / 2;
       coins.forEach((el, i) => {
         const angle = (i / COIN_POOL) * Math.PI * 2 + Math.random() * 0.4;
-        const dist = c * (0.9 + Math.random() * 0.5);
+        const dist = r * (1.1 + Math.random() * 0.6);
         el.animate(
           [
             {
-              transform: `translate(${c}px, ${c}px) translate(-50%, -50%) scale(0.4) rotate(0deg)`,
+              transform: `translate(${c.x}px, ${c.y}px) translate(-50%, -50%) scale(0.4) rotate(0deg)`,
               opacity: 1,
             },
             {
-              transform: `translate(${c + Math.cos(angle) * dist}px, ${c + Math.sin(angle) * dist}px) translate(-50%, -50%) scale(1) rotate(${
+              transform: `translate(${c.x + Math.cos(angle) * dist}px, ${c.y + Math.sin(angle) * dist}px) translate(-50%, -50%) scale(1) rotate(${
                 180 + Math.random() * 180
               }deg)`,
               opacity: 0,
@@ -228,63 +233,90 @@ export function CatButton({
       playSound('coin');
     };
 
-    /** тап: наклон к точке касания, сжатие и маленький прыжок */
-    const tapBounce = (x: number, y: number, squeeze: number) => {
+    // ── движения кота ──
+    const hop = (strength: number) => {
       if (reduced()) return;
-      const r = sizeRef.current / 2;
-      const ry = ((x - r) / r) * 10;
-      const rx = -((y - r) / r) * 10;
-      tilt.animate(
+      const s = strength;
+      bounce.animate(
         [
-          { transform: `perspective(700px) rotateX(${rx}deg) rotateY(${ry}deg) scale(${squeeze})` },
-          {
-            transform: `perspective(700px) rotateX(${rx * 0.3}deg) rotateY(${ry * 0.3}deg) translateY(-3%) scale(1.02)`,
-            offset: 0.45,
-          },
-          { transform: 'perspective(700px) rotateX(0deg) rotateY(0deg) translateY(0) scale(1)' },
+          { transform: `scale(${1 + 0.02 * s}, ${1 - 0.045 * s})` },
+          { transform: `translateY(${-3.2 * s}%) scale(${1 - 0.012 * s}, ${1 + 0.03 * s})`, offset: 0.42 },
+          { transform: 'translateY(0) scale(1, 1)' },
         ],
-        { duration: DURATION.tapTilt + 180, easing: EASING.springOut },
+        { duration: 300 + 120 * s, easing: EASING.springOut },
       );
     };
-    /** «уши»: аксессуар над головой вздрагивает */
-    let accBusy = false;
-    const twitch = (strength = 1) => {
-      const acc = accRef.current;
-      if (!acc || accBusy || reduced()) return;
-      accBusy = true;
+    let tailBusy = false;
+    const flick = (strength = 1) => {
+      if (tailBusy || reduced()) return;
+      tailBusy = true;
       const a = 7 * strength;
-      acc
+      tail
         .animate(
           [
             { transform: 'rotate(0deg)' },
-            { transform: `rotate(${-a}deg) translateY(-2px)` },
-            { transform: `rotate(${a * 0.6}deg)` },
+            { transform: `rotate(${a}deg)` },
+            { transform: `rotate(${-a * 0.5}deg)` },
             { transform: 'rotate(0deg)' },
           ],
-          { duration: 360, easing: 'ease-out' },
+          { duration: 460, easing: 'ease-out' },
         )
         .finished.catch(() => undefined)
-        .finally(() => (accBusy = false));
+        .finally(() => (tailBusy = false));
     };
-    let auraBusy = 0;
-    const auraFlash = () => {
-      const aura = auraRef.current;
-      const now = performance.now();
-      if (!aura || reduced() || now - auraBusy < 140) return;
-      auraBusy = now;
-      aura.animate(
+    const pressButton = (strength: number) => {
+      if (reduced()) return;
+      tapEl.animate(
         [
-          { opacity: 1, transform: 'scale(1.08)' },
-          { opacity: 0.8, transform: 'scale(1)' },
+          { transform: `scale(${1 - 0.1 * strength})` },
+          { transform: `scale(${1 + 0.04 * strength})`, offset: 0.55 },
+          { transform: 'scale(1)' },
         ],
-        {
-          duration: 280,
-          easing: 'ease-out',
-        },
+        { duration: 300, easing: EASING.springOut },
       );
     };
+    let ledBusy = 0;
+    const ledFlash = () => {
+      const now = performance.now();
+      if (reduced() || now - ledBusy < 120) return;
+      ledBusy = now;
+      root
+        .querySelectorAll<HTMLElement>('.hero-led, .tap-halo')
+        .forEach((el) =>
+          el.animate([{ opacity: 1 }, { opacity: 0.55 }], { duration: 260, easing: 'ease-out' }),
+        );
+    };
+    const lids = () => Array.from(lidsRef.current?.querySelectorAll<SVGElement>('.hero-lid') ?? []);
+    const lashes = () => Array.from(lidsRef.current?.querySelectorAll<SVGElement>('.hero-lash') ?? []);
+    /** моргание: веки закрываются за 70 мс, держатся hold мс и открываются за 90 мс */
+    const blink = (eyes: number[] = [0, 1], hold = 0) => {
+      if (reduced() || mood === 'sleepy') return;
+      const duration = 160 + hold;
+      const shut = 70 / duration;
+      const open = (70 + hold) / duration;
+      const pick = (els: SVGElement[]) => els.filter((el) => eyes.includes(Number(el.dataset.eye)));
+      for (const el of pick(lids())) {
+        el.animate(
+          [
+            { transform: 'scaleY(0)' },
+            { transform: 'scaleY(1)', offset: shut },
+            { transform: 'scaleY(1)', offset: open },
+            { transform: 'scaleY(0)' },
+          ],
+          { duration, easing: 'ease-in-out' },
+        );
+      }
+      for (const el of pick(lashes())) {
+        el.animate(
+          [{ opacity: 0 }, { opacity: 1, offset: shut }, { opacity: 1, offset: open }, { opacity: 0 }],
+          {
+            duration,
+          },
+        );
+      }
+    };
 
-    // ── эмоции: облачко рядом с головой и движение всего кота ──
+    // ── эмоции: облачко у головы и движение кота ──
     let bubbleUntil = 0;
     const showBubble = (reaction: Reaction, force = false) => {
       const now = performance.now();
@@ -309,11 +341,10 @@ export function CatButton({
         { duration: 1700, easing: 'ease-out' },
       );
     };
-    const body = (keyframes: Keyframe[], duration: number) => {
+    const move = (keyframes: Keyframe[], duration: number) => {
       if (reduced()) return;
-      dance.animate(keyframes, { duration, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
+      bounce.animate(keyframes, { duration, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
     };
-    const center = () => ({ x: sizeRef.current / 2, y: sizeRef.current / 2 });
     let mood: '' | 'sleepy' | 'excited' = '';
     let moodTimer = 0;
     const setMood = (next: typeof mood, ms = 0) => {
@@ -324,71 +355,56 @@ export function CatButton({
     };
 
     const react = (reaction: Reaction) => {
-      const c = center();
+      const head = headPoint();
       showBubble(reaction, reaction !== 'happy');
       switch (reaction) {
         case 'happy':
         case 'smile':
-          body(
-            [
-              { transform: 'translateY(0)' },
-              { transform: 'translateY(-4%)' },
-              { transform: 'translateY(0)' },
-            ],
-            420,
-          );
-          twitch(0.8);
+          hop(1);
+          flick(0.8);
           break;
         case 'excited':
           setMood('excited', 2600);
-          body(
-            [
-              { transform: 'scale(1)' },
-              { transform: 'scale(1.06) translateY(-5%)' },
-              { transform: 'scale(1)' },
-            ],
-            460,
-          );
-          auraFlash();
-          spawnParticles(c.x, c.y * 0.6, 6, 'star', 2);
-          twitch(1.2);
+          hop(1.6);
+          flick(1.3);
+          ledFlash();
+          spawnParticles(head.x, head.y, 6, 'star', 2);
           break;
         case 'special':
         case 'heart':
           setMood('excited', 3000);
           // 2.5D-разворот: кот делает оборот вокруг вертикальной оси
-          if (!reduced()) {
-            tilt.animate(
-              [
-                { transform: 'perspective(700px) rotateY(0deg)' },
-                { transform: 'perspective(700px) rotateY(360deg)' },
-              ],
-              { duration: 720, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' },
-            );
-          }
-          spawnParticles(c.x, c.y * 0.7, 10, 'heart', 2);
-          auraFlash();
+          move(
+            [
+              { transform: 'perspective(900px) rotateY(0deg)' },
+              { transform: 'perspective(900px) rotateY(360deg)' },
+            ],
+            760,
+          );
+          spawnParticles(head.x, head.y, 10, 'heart', 2);
+          ledFlash();
           haptic.notify('success');
           break;
         case 'celebrate':
           setMood('excited', 3500);
-          body(
-            [
-              { transform: 'scale(1)' },
-              { transform: 'scale(1.1) translateY(-7%)' },
-              { transform: 'scale(1)' },
-            ],
-            600,
-          );
+          hop(2.2);
+          flick(1.5);
           confetti(centerOf(root), 70);
-          spawnParticles(c.x, c.y * 0.6, 10, 'gold', 2);
+          spawnParticles(head.x, head.y, 10, 'gold', 2);
           break;
         case 'surprised':
-          body([{ transform: 'scale(1)' }, { transform: 'scale(1.09)' }, { transform: 'scale(1)' }], 380);
-          twitch(1.4);
+          move(
+            [
+              { transform: 'scale(1)' },
+              { transform: 'scale(1.04, 1.07) translateY(-2%)' },
+              { transform: 'scale(1)' },
+            ],
+            380,
+          );
+          flick(1.4);
           break;
         case 'annoyed':
-          body(
+          move(
             [
               { transform: 'translateX(0)' },
               { transform: 'translateX(-3%)' },
@@ -400,20 +416,24 @@ export function CatButton({
           );
           break;
         case 'wink':
+          blink([0], 220);
+          flick(0.7);
+          break;
         case 'wave':
-          twitch(1.3);
-          body(
+          move(
             [
               { transform: 'rotate(0deg)' },
-              { transform: 'rotate(-4deg)' },
-              { transform: 'rotate(3deg)' },
+              { transform: 'rotate(-2.5deg)' },
+              { transform: 'rotate(2deg)' },
               { transform: 'rotate(0deg)' },
             ],
             700,
           );
+          flick(1.2);
           break;
         case 'look':
           lookAtUser();
+          blink();
           break;
         case 'sleepy':
           setMood('sleepy');
@@ -421,7 +441,7 @@ export function CatButton({
       }
     };
 
-    // ── взгляд: кот слегка поворачивается к пальцу/курсору (плавно, lerp) ──
+    // ── взгляд: кот слегка тянется к пальцу/курсору (плавно, lerp) ──
     let gx = 0;
     let gy = 0;
     let tx = 0;
@@ -438,18 +458,18 @@ export function CatButton({
       }
       gx += (tx - gx) * 0.12;
       gy += (ty - gy) * 0.12;
-      gaze.style.transform = `perspective(900px) rotateY(${(gx * 8).toFixed(2)}deg) rotateX(${(
-        -gy * 6
-      ).toFixed(2)}deg) translate3d(${(gx * 4).toFixed(1)}px, ${(gy * 3).toFixed(1)}px, 0)`;
+      lean.style.transform = `perspective(1100px) rotateY(${(gx * 9).toFixed(2)}deg) rotateX(${(
+        -gy * 4
+      ).toFixed(2)}deg) translate3d(${(gx * 3).toFixed(1)}px, 0, 0)`;
       if (Math.abs(tx - gx) > 0.003 || Math.abs(ty - gy) > 0.003 || now - lastInput < 2700) {
         raf = requestAnimationFrame(step);
       }
     };
     const lookAt = (clientX: number, clientY: number) => {
       if (reduced()) return;
-      const rect = root.getBoundingClientRect();
-      tx = clamp((clientX - (rect.left + rect.width / 2)) / (rect.width * 0.9));
-      ty = clamp((clientY - (rect.top + rect.height / 2)) / (rect.height * 0.9));
+      const rect = lean.getBoundingClientRect();
+      tx = clamp((clientX - (rect.left + rect.width / 2)) / (rect.width * 1.4));
+      ty = clamp((clientY - (rect.top + rect.height * 0.25)) / (rect.height * 0.8));
       lastInput = performance.now();
       if (!raf) raf = requestAnimationFrame(step);
     };
@@ -458,16 +478,14 @@ export function CatButton({
       ty = 0;
       lastInput = -Infinity;
       if (!raf && !reduced()) raf = requestAnimationFrame(step);
-      if (!reduced()) {
-        tilt.animate(
-          [
-            { transform: 'perspective(700px) rotateX(0deg)' },
-            { transform: 'perspective(700px) rotateX(7deg)' },
-            { transform: 'perspective(700px) rotateX(0deg)' },
-          ],
-          { duration: 520, easing: 'ease-in-out' },
-        );
-      }
+      move(
+        [
+          { transform: 'perspective(900px) rotateX(0deg)' },
+          { transform: 'perspective(900px) rotateX(5deg)' },
+          { transform: 'perspective(900px) rotateX(0deg)' },
+        ],
+        520,
+      );
     };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' || e.buttons) lookAt(e.clientX, e.clientY);
@@ -481,10 +499,10 @@ export function CatButton({
     const markDance = (now: number) => {
       recent.push(now);
       while (recent.length && now - recent[0]! > 1000) recent.shift();
-      if (recent.length > DANCE_TAPS_PER_SEC && !reduced()) {
-        dance.classList.add('cat-dance');
+      if (recent.length > DANCE_TAPS_PER_SEC && !reduced() && idle) {
+        idle.classList.add('hero-dance');
         window.clearTimeout(danceTimer);
-        danceTimer = window.setTimeout(() => dance.classList.remove('cat-dance'), 450);
+        danceTimer = window.setTimeout(() => idle.classList.remove('hero-dance'), 450);
       }
     };
     const onStreak = (n: number) => {
@@ -500,38 +518,31 @@ export function CatButton({
       }
     };
 
-    const insideCircle = (e: PointerEvent) => {
-      const rect = tilt.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const r = rect.width / 2;
-      return {
-        x: (x * sizeRef.current) / rect.width,
-        y: (y * sizeRef.current) / rect.height,
-        inside: (x - r) ** 2 + (y - r) ** 2 <= r * r * 1.02,
-      };
-    };
-
     const onDown = (e: PointerEvent) => {
-      // тап по коту — только игровое действие: без выделения, меню, жестов и обработчиков родителей
+      const zone = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-hit]')?.dataset.hit;
+      if (!zone) return;
+      // тап — только игровое действие: без выделения, меню, жестов и обработчиков родителей
       e.preventDefault();
       e.stopPropagation();
-      const { x, y, inside } = insideCircle(e);
-      if (!inside) return;
+      const rect = root.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const onButton = zone === 'tap';
       const now = performance.now();
       lastActivity = now;
       lookAt(e.clientX, e.clientY);
       wakeUp();
       if (onPressRef.current) {
         pressStarts.set(e.pointerId, now);
-        tapBounce(x, y, 0.97);
+        pressButton(onButton ? 0.7 : 0.3);
+        hop(onButton ? 0.4 : 0.8);
         haptic.impact('light');
         return;
       }
       const h = handlerRef.current;
       const ok = h.tap();
       if (!ok) {
-        tapBounce(x, y, 0.98);
+        pressButton(0.3);
         haptic.notify('warning');
         if (now - lastAnnoyed > 2500) {
           lastAnnoyed = now;
@@ -539,14 +550,15 @@ export function CatButton({
         }
         return;
       }
-      tapBounce(x, y, 0.95);
+      pressButton(onButton ? 1 : 0.35);
+      hop(onButton ? 0.55 : 1);
       spawnFloat(x, y, `+${formatShort(h.reward(), localeRef.current)}`);
       spawnRing(x, y);
       // Легендарная Корона: свои реакции — двойная неоновая волна
       if (skinRef.current === 'legendary_crown') spawnRing(x, y, 90);
       spawnParticles(x, y, 2);
-      twitch(0.5);
-      auraFlash();
+      flick(0.45);
+      ledFlash();
       haptic.impact('light');
       playSound('tap');
       markDance(now);
@@ -564,6 +576,7 @@ export function CatButton({
     };
     const cancel = (e: PointerEvent) => pressStarts.delete(e.pointerId);
     const noMenu = (e: Event) => {
+      if (!(e.target as HTMLElement | null)?.closest('[data-hit]')) return;
       e.preventDefault();
       e.stopPropagation();
     };
@@ -575,6 +588,19 @@ export function CatButton({
     // клик (после pointerup) не должен дойти до родителей и вызвать их действия
     root.addEventListener('click', noMenu);
     window.addEventListener('pointermove', onMove, { passive: true });
+
+    // моргание раз в 2,5–6 секунд
+    let blinkTimer = 0;
+    const scheduleBlink = () => {
+      blinkTimer = window.setTimeout(
+        () => {
+          if (!document.hidden) blink();
+          scheduleBlink();
+        },
+        2500 + Math.random() * 3500,
+      );
+    };
+    scheduleBlink();
 
     // случайные «живые» действия в простое и засыпание
     const IDLE_ACTIONS: Reaction[] = ['look', 'wink', 'wave', 'smile', 'look'];
@@ -649,6 +675,7 @@ export function CatButton({
       offMood();
       window.clearTimeout(danceTimer);
       window.clearTimeout(idleTimer);
+      window.clearTimeout(blinkTimer);
       window.clearTimeout(moodTimer);
       if (raf) cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVisibility);
@@ -662,39 +689,89 @@ export function CatButton({
     };
   }, []);
 
+  const head = { x: L.cat.left + L.cat.width * HERO.head.x, y: L.cat.top + L.cat.height * HERO.head.y };
+  const fontSize = Math.max(13, Math.round(L.cat.height * 0.045));
   return (
     <div
       ref={rootRef}
-      className="cat-button relative select-none"
-      style={{ width: size, height: size, ...skinVars(skinId, size, ringColor) }}
-      role="button"
-      aria-label="Tap the cat"
-      data-testid="cat-button"
+      className="hero-stage relative select-none"
+      style={{ width, height, ...skinVars(skinId) }}
+      data-testid="hero"
       data-skin={skinId}
     >
-      {/* визуальный слой: никаких событий, вход принимает только слой тапа ниже по коду */}
-      <CatVisual
-        size={size}
-        skinId={skinId}
-        leagueColor={ringColor}
-        refs={{ gaze: gazeRef, dance: danceRef, tilt: tiltRef, accessory: accRef, aura: auraRef }}
-      />
-      <div className="cat-zzz pointer-events-none absolute -top-2 left-[6%] text-3xl font-black text-white/80">
+      <div className="absolute" style={{ left: L.cat.left, top: L.cat.top }}>
+        <HeroFigure
+          skinId={skinId}
+          height={L.cat.height}
+          refs={{ lean: leanRef, bounce: bounceRef, tail: tailRef, lids: lidsRef }}
+        />
+      </div>
+      <div
+        className="hero-tap absolute"
+        style={{ left: L.tap.left, top: L.tap.top, width: L.tap.width, height: L.tap.height }}
+      >
+        <div className="tap-halo absolute" />
+        <div ref={tapRef} className="tap-press absolute inset-0">
+          <div
+            className="hero-layer tap-img absolute inset-0"
+            style={{ backgroundImage: `url(${heroAsset(skinId, 'tap')})` }}
+          />
+          <div
+            className="tap-paw absolute"
+            style={{ left: `${HERO.paw.x * 100}%`, top: `${HERO.paw.y * 100}%`, width: '44%' }}
+          />
+        </div>
+      </div>
+      <div
+        className="hero-zzz pointer-events-none absolute text-3xl font-black text-white/80"
+        style={{ left: head.x + L.cat.width * 0.12, top: Math.max(0, head.y - L.cat.height * 0.12) }}
+      >
         Zzz
       </div>
-      <div className="cat-tired pointer-events-none absolute inset-x-0 -bottom-4 text-center text-sm font-extrabold text-white/90">
+      <div
+        className="hero-tired pointer-events-none absolute text-center text-sm font-extrabold text-white/90"
+        style={{ left: L.tap.left - 20, width: L.tap.width + 40, top: L.tap.top + L.tap.height + 2 }}
+      >
         <span className="rounded-full bg-black/55 px-3 py-1">{sleepyLabel}</span>
       </div>
       <div
         ref={bubbleRef}
         className="cat-bubble pointer-events-none"
-        style={{ fontSize: Math.max(13, Math.round(size * 0.058)) }}
+        style={{
+          fontSize,
+          left: head.x + L.cat.width * 0.16,
+          top: Math.max(0, head.y - L.cat.height * 0.13),
+        }}
         data-testid="cat-bubble"
         aria-hidden
       />
       <div ref={fxRef} className="pointer-events-none absolute inset-0 overflow-visible" />
-      {/* слой тапа — прозрачный круг поверх визуала */}
-      <div className="cat-hit absolute inset-0 rounded-full" data-testid="cat-hit" />
+      {/* зоны нажатия поверх визуала: круг кнопки TAP и силуэт кота */}
+      <div
+        className="hero-hit absolute rounded-full"
+        style={{
+          left: L.tap.left + L.tap.width * 0.06,
+          top: L.tap.top + L.tap.height * 0.08,
+          width: L.tap.width * 0.88,
+          height: L.tap.width * 0.88,
+        }}
+        data-hit="tap"
+        role="button"
+        aria-label="Tap"
+        data-testid="tap-button"
+      />
+      <div
+        className="hero-hit absolute"
+        style={{
+          left: L.cat.left + L.cat.width * 0.16,
+          top: L.cat.top,
+          width: L.cat.width * 0.74,
+          height: L.cat.height,
+          borderRadius: '42% 42% 18% 18%',
+        }}
+        data-hit="cat"
+        data-testid="cat-hit"
+      />
     </div>
   );
 }

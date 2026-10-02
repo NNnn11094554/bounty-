@@ -10,4 +10,5 @@ coverage/
 playwright-report/
 test-results/
 frontend/public/assets/generated/
+frontend/.cache/
 backend/.cache/

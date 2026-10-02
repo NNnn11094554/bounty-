@@ -113,8 +113,8 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
     return (
       <div className="flex flex-col items-center pb-2 text-center" data-testid="cosmetic-sheet">
         <RarityFrame rarity={shown.rarity} className="w-full">
-          <div ref={previewRef} className="flex justify-center px-4 pb-6 pt-12">
-            <CosmeticPreview item={shown} size={shown.kind === 'skin' ? 168 : 150} />
+          <div ref={previewRef} className="flex justify-center px-4 pb-5 pt-8">
+            <CosmeticPreview item={shown} size={shown.kind === 'skin' ? 220 : 150} />
           </div>
         </RarityFrame>
         <p

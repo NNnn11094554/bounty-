@@ -10,7 +10,7 @@ async function press(page: Page, ms: number, at: { x: number; y: number }): Prom
 
 /** Ввести слово азбукой Морзе: точка — 60 мс, тире — 450 мс, пауза между буквами — 1,1 с. */
 async function typeMorse(page: Page, codes: string[]): Promise<void> {
-  const box = (await page.getByTestId('cat-button').boundingBox())!;
+  const box = (await page.getByTestId('tap-button').boundingBox())!;
   const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   for (const code of codes) {
     for (const symbol of code) {
@@ -56,7 +56,7 @@ test.describe('Daily combo and cipher', () => {
   test('cipher mode: taps do not earn coins, exit returns to tapping', async ({ page }) => {
     await page.goto('/?uid=700000802&name=Тихоня');
     await page.getByTestId('cipher-enter').click();
-    const box = (await page.getByTestId('cat-button').boundingBox())!;
+    const box = (await page.getByTestId('tap-button').boundingBox())!;
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '0');
     await page.getByTestId('cipher-help').click();

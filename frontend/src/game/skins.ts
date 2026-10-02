@@ -1,5 +1,6 @@
 import { cosmeticById, DEFAULT_SKIN_ID, type Rarity } from '@meowgul/shared';
 import type { CSSProperties } from 'react';
+import layout from './heroLayout.json';
 
 /** Частицы вокруг кота и из-под пальца. */
 export type ParticleKind =
@@ -16,164 +17,57 @@ export type ParticleKind =
   | 'neon'
   | 'bolt';
 
-export type AccessoryKind =
-  | 'crown'
-  | 'halo'
-  | 'antenna'
-  | 'coinCrown'
-  | 'katana'
-  | 'headphones'
-  | 'horns'
-  | 'planet'
-  | 'bigCrown'
-  | 'terminal'
-  | 'gem'
-  | 'tiara'
-  | 'neonCrown';
-
 /**
- * Оформление скина. Картинка персонажа не перерисовывается и не перекрашивается: скин — это кольцо,
- * ореол, частицы вокруг и аксессуар над головой. Отдельный арт скина (asset) подставляется вместо
- * базовой картинки, когда будет готов: положите файл в public/assets/skins и укажите путь здесь.
+ * Скин — перекраска персонажа (неон одежды, глаза, кроссовки, кнопка TAP; картинки собирает
+ * scripts/hero при сборке) и оформление вокруг: цвет ауры и огоньков, частицы.
  */
-/** Размещение аксессуара относительно круга с котом: доли от размера. Всё — над головой, не на лице. */
-export const ACCESSORY_LAYOUT: Record<AccessoryKind, { w: number; top: number; x: number; vb: string }> = {
-  crown: { w: 0.5, top: -0.24, x: 0, vb: '0 0 120 72' },
-  halo: { w: 1.12, top: -0.2, x: 0, vb: '0 0 200 72' },
-  antenna: { w: 0.62, top: -0.2, x: 0, vb: '0 0 120 72' },
-  coinCrown: { w: 0.54, top: -0.26, x: 0, vb: '0 0 120 72' },
-  katana: { w: 0.5, top: -0.16, x: 0.36, vb: '0 0 120 72' },
-  headphones: { w: 1.08, top: -0.12, x: 0, vb: '0 0 140 90' },
-  horns: { w: 0.52, top: -0.3, x: 0, vb: '0 0 120 72' },
-  planet: { w: 0.46, top: -0.18, x: 0.34, vb: '0 0 120 72' },
-  bigCrown: { w: 0.7, top: -0.32, x: 0, vb: '0 0 140 80' },
-  terminal: { w: 0.4, top: -0.22, x: 0, vb: '0 0 120 72' },
-  gem: { w: 0.34, top: -0.26, x: 0, vb: '0 0 120 100' },
-  tiara: { w: 0.56, top: -0.2, x: 0, vb: '0 0 120 72' },
-  neonCrown: { w: 0.6, top: -0.28, x: 0, vb: '0 0 120 72' },
-};
-
-/** На какую долю размера кота аксессуар выступает над кругом — столько места оставляем сверху. */
-export function accessoryOverhang(skinId: string | undefined): number {
-  return Math.max(0, -ACCESSORY_LAYOUT[skinStyle(skinId).accessory].top);
-}
-
 export interface SkinStyle {
-  /** кольцо вокруг портрета: два цвета градиента */
-  ring: [string, string];
-  /** основной и второй цвет ореола */
-  glow: string;
-  glow2: string;
-  /** частицы, кружащие вокруг (null — без частиц) */
-  orbit: ParticleKind | null;
-  accessory: AccessoryKind;
-  /** отдельная картинка персонажа для скина (пока у всех — базовая) */
-  asset?: string;
+  /** основной цвет неона: аура, огоньки, кольцо кнопки */
+  accent: string;
+  /** второй цвет: блики и переливы */
+  accent2: string;
+  /** частицы, парящие вокруг кота (null — без частиц) */
+  particle: ParticleKind | null;
 }
 
 export const SKIN_STYLES: Record<string, SkinStyle> = {
-  black_crown: {
-    ring: ['#ffe08a', '#c98510'],
-    glow: '#ffc93c',
-    glow2: '#ff8a3d',
-    orbit: null,
-    accessory: 'crown',
-  },
-  pink_angel: {
-    ring: ['#ffb3df', '#ff3d9a'],
-    glow: '#ff5fb8',
-    glow2: '#ffd1ec',
-    orbit: 'heart',
-    accessory: 'halo',
-  },
-  cyber: {
-    ring: ['#7fe3ff', '#1e6bff'],
-    glow: '#38c8ff',
-    glow2: '#1e6bff',
-    orbit: 'spark',
-    accessory: 'antenna',
-  },
-  crypto_king: {
-    ring: ['#fff1a8', '#d98f0b'],
-    glow: '#ffc93c',
-    glow2: '#ffe27a',
-    orbit: 'coin',
-    accessory: 'coinCrown',
-  },
-  samurai: {
-    ring: ['#ff6b6b', '#5a0010'],
-    glow: '#ff3b3b',
-    glow2: '#ff9a9a',
-    orbit: 'petal',
-    accessory: 'katana',
-  },
-  neon_tokyo: {
-    ring: ['#ff4fd8', '#7a5cff'],
-    glow: '#ff4fd8',
-    glow2: '#7a5cff',
-    orbit: 'note',
-    accessory: 'headphones',
-  },
-  shadow: {
-    ring: ['#5b2a86', '#0b0612'],
-    glow: '#7a2cff',
-    glow2: '#ff2b5e',
-    orbit: 'smoke',
-    accessory: 'horns',
-  },
-  galaxy: {
-    ring: ['#9b7bff', '#2ed3c6'],
-    glow: '#7a5cff',
-    glow2: '#2ed3c6',
-    orbit: 'star',
-    accessory: 'planet',
-  },
-  golden_boss: {
-    ring: ['#fff6c2', '#b8740a'],
-    glow: '#ffc93c',
-    glow2: '#fff1a8',
-    orbit: 'gold',
-    accessory: 'bigCrown',
-  },
-  hacker: {
-    ring: ['#39ff88', '#0b5d2a'],
-    glow: '#39ff88',
-    glow2: '#0bd46a',
-    orbit: 'code',
-    accessory: 'terminal',
-  },
-  diamond: {
-    ring: ['#ffffff', '#8fb0ff'],
-    glow: '#9fc1ff',
-    glow2: '#b48cff',
-    orbit: 'diamond',
-    accessory: 'gem',
-  },
-  queen: {
-    ring: ['#ff8fd0', '#1a0f1f'],
-    glow: '#ff5fb8',
-    glow2: '#ffc1e3',
-    orbit: 'heart',
-    accessory: 'tiara',
-  },
-  legendary_crown: {
-    ring: ['#38c8ff', '#ff4fd8'],
-    glow: '#38c8ff',
-    glow2: '#ff4fd8',
-    orbit: 'neon',
-    accessory: 'neonCrown',
-  },
+  black_crown: { accent: '#2f7bff', accent2: '#7fd8ff', particle: null },
+  pink_angel: { accent: '#ff7ac8', accent2: '#ffd1ec', particle: 'heart' },
+  cyber: { accent: '#19e3ff', accent2: '#7ffff0', particle: 'spark' },
+  crypto_king: { accent: '#ff9d2e', accent2: '#ffd36b', particle: 'coin' },
+  samurai: { accent: '#ff2e3e', accent2: '#ff9a9a', particle: 'petal' },
+  neon_tokyo: { accent: '#e84dff', accent2: '#ff7ad9', particle: 'note' },
+  shadow: { accent: '#7a2cff', accent2: '#b06bff', particle: 'smoke' },
+  galaxy: { accent: '#6f5bff', accent2: '#2ed3c6', particle: 'star' },
+  golden_boss: { accent: '#ffc93c', accent2: '#fff1a8', particle: 'gold' },
+  hacker: { accent: '#39ff88', accent2: '#b6ffd2', particle: 'code' },
+  diamond: { accent: '#9fdcff', accent2: '#ffffff', particle: 'diamond' },
+  queen: { accent: '#ff3f7a', accent2: '#ffd27a', particle: 'heart' },
+  legendary_crown: { accent: '#4d7bff', accent2: '#ff4fd8', particle: 'neon' },
 };
 
+const known = (id: string | undefined) => (id && SKIN_STYLES[id] ? id : DEFAULT_SKIN_ID);
+
 export function skinStyle(id: string | undefined): SkinStyle {
-  return SKIN_STYLES[id ?? DEFAULT_SKIN_ID] ?? SKIN_STYLES[DEFAULT_SKIN_ID]!;
+  return SKIN_STYLES[known(id)]!;
 }
 
 export function skinRarity(id: string | undefined): Rarity {
-  return cosmeticById(id ?? DEFAULT_SKIN_ID)?.rarity ?? 'COMMON';
+  return cosmeticById(id ?? '')?.rarity ?? 'COMMON';
 }
 
-/** Эффект тапа → частица, вылетающая из-под пальца. */
+/** Картинки скина, собранные scripts/hero: тело и хвост (главный экран), превью, кнопка TAP. */
+export function heroAsset(id: string | undefined, part: 'body' | 'tail' | 'thumb' | 'tap'): string {
+  return `/assets/generated/hero/${known(id)}-${part}.webp`;
+}
+
+/** CSS-переменные цветов скина для ауры, огоньков и кнопки. */
+export function skinVars(id: string | undefined): CSSProperties {
+  const s = skinStyle(id);
+  return { ['--accent' as string]: s.accent, ['--accent2' as string]: s.accent2 };
+}
+
+/** Эффект тапа (косметика) → частица из-под пальца. */
 export const EFFECT_PARTICLE: Record<string, ParticleKind> = {
   coins: 'coin',
   hearts: 'heart',
@@ -185,26 +79,34 @@ export const EFFECT_PARTICLE: Record<string, ParticleKind> = {
 
 export const RARITY_COLOR: Record<Rarity, string> = {
   COMMON: '#c0c7d1',
-  RARE: '#4f9dff',
-  EPIC: '#a66bff',
+  RARE: '#38c8ff',
+  EPIC: '#b06bff',
   LEGENDARY: '#ffc93c',
   MYTHIC: '#ff4fa3',
 };
 
-/**
- * CSS-переменные оформления скина (кольцо, ореол, размер частиц). У стартового скина кольцо — цвета лиги.
- */
-export function skinVars(skinId: string, size: number, leagueColor?: string): CSSProperties {
-  const style = skinStyle(skinId);
-  const base = skinId === DEFAULT_SKIN_ID && leagueColor;
-  const league = leagueColor === 'rainbow' ? '#ffc93c' : leagueColor;
-  const ringA = base ? league! : style.ring[0];
-  const ringB = base ? league! : style.ring[1];
-  return {
-    ['--glow' as string]: base ? ringA : style.glow,
-    ['--glow2' as string]: base ? ringB : style.glow2,
-    ['--ring-a' as string]: ringA,
-    ['--ring-b' as string]: ringB,
-    ['--pt' as string]: `${Math.max(10, Math.round(size * 0.075))}px`,
-  };
-}
+const cat = layout.cat;
+const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(2)}%`;
+
+/** Геометрия персонажа (доли рамки кота) — из heroLayout.json, который сверяет сборка картинок. */
+export const HERO = {
+  /** ширина / высота кота */
+  aspect: cat.width / cat.height,
+  /** ширина / высота кнопки TAP */
+  tapAspect: layout.tap.width / layout.tap.height,
+  viewBox: `0 0 ${cat.width} ${cat.height}`,
+  tailOrigin: `${pct(layout.tailPivot[0]! - cat.left, cat.width)} ${pct(layout.tailPivot[1]! - cat.top, cat.height)}`,
+  /** голова: доли ширины и высоты (для облачка эмоций) */
+  head: { x: (layout.head[0]! - cat.left) / cat.width, y: (layout.head[1]! - cat.top) / cat.height },
+  eyes: layout.eyes.map((e) => ({ ...e, cx: e.cx - cat.left, cy: e.cy - cat.top })),
+  leds: layout.leds.map((l) => ({
+    left: pct(l.x - cat.left, cat.width),
+    top: pct(l.y - cat.top, cat.height),
+    size: pct(l.r * 2, cat.width),
+  })),
+  /** центр лапки на кнопке: доли кнопки */
+  paw: {
+    x: (layout.tapPaw[0]! - layout.tap.left) / layout.tap.width,
+    y: (layout.tapPaw[1]! - layout.tap.top) / layout.tap.height,
+  },
+};

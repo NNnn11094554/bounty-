@@ -11,10 +11,10 @@ for (const [i, width] of WIDTHS.entries()) {
   test(`office fits ${width}px without horizontal scroll`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 320 ? 568 : 780 });
     await page.goto(`/?uid=70000011${i}&name=Кот`);
-    await expect(page.getByTestId('cat-button')).toBeVisible();
+    await expect(page.getByTestId('hero')).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const cat = (await page.getByTestId('cat-button').boundingBox())!;
+    const cat = (await page.getByTestId('hero').boundingBox())!;
     const energy = (await page.getByTestId('energy').boundingBox())!;
     expect(cat.y + cat.height).toBeLessThanOrEqual(energy.y + 4);
     expect(energy.y + energy.height).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) + 1);
@@ -60,7 +60,7 @@ test('cipher mode fits 320×568: the Morse line stays above the cat', async ({ p
   await expect(page.getByTestId('morse-overlay')).toBeAttached();
   await page.waitForTimeout(500); // лига сворачивается, кот подстраивает размер
   const overlay = (await page.getByTestId('morse-overlay').boundingBox())!;
-  const cat = (await page.getByTestId('cat-button').boundingBox())!;
+  const cat = (await page.getByTestId('hero').boundingBox())!;
   const energy = (await page.getByTestId('energy').boundingBox())!;
   expect(overlay.y + overlay.height).toBeLessThanOrEqual(cat.y + 2);
   expect(cat.y + cat.height).toBeLessThanOrEqual(energy.y + 4);

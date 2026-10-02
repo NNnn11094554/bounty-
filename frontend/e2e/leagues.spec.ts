@@ -44,7 +44,7 @@ test.describe('Leagues', () => {
     await page.reload();
     await expect(page.getByTestId('league-name')).toContainText('Bronze');
 
-    const box = (await page.getByTestId('cat-button').boundingBox())!;
+    const box = (await page.getByTestId('tap-button').boundingBox())!;
     for (let i = 0; i < 15; i++) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
     const scene = page.getByTestId('league-up');

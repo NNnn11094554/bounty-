@@ -22,13 +22,13 @@ test('capture main screens', async ({ page }) => {
   await markLeagueSeen(page, uid, 7);
   await page.reload();
   await expect(page.getByTestId('office')).toBeVisible();
-  const cat = (await page.getByTestId('cat-button').boundingBox())!;
+  const cat = (await page.getByTestId('tap-button').boundingBox())!;
   for (let i = 0; i < 6; i++)
     await page.mouse.click(cat.x + cat.width * (0.35 + i * 0.06), cat.y + cat.height * 0.4);
   await page.waitForTimeout(250);
   await page.screenshot({ path: `${dir}/01-office.png` });
   await page.getByTestId('cipher-enter').click();
-  const catBox = (await page.getByTestId('cat-button').boundingBox())!;
+  const catBox = (await page.getByTestId('tap-button').boundingBox())!;
   await page.mouse.move(catBox.x + catBox.width / 2, catBox.y + catBox.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(400);

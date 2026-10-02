@@ -32,7 +32,7 @@ test.describe('Mini-events and tutorials', () => {
     await page.goto(`/?uid=${uid}&name=Счастливчик`);
     await expect(page.getByTestId('happy-hour')).toContainText('Счастливый час ×2');
     await expect(page.getByTestId('happy-hour')).toContainText(/2\d:\d\d|30:00/);
-    const cat = (await page.getByTestId('cat-button').boundingBox())!;
+    const cat = (await page.getByTestId('tap-button').boundingBox())!;
     for (let i = 0; i < 5; i++) await page.mouse.click(cat.x + cat.width / 2, cat.y + cat.height / 2);
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '10');
     await page.waitForResponse((r) => r.url().includes('/api/tap') && r.ok(), { timeout: 8000 });
@@ -73,7 +73,7 @@ test.describe('Mini-events and tutorials', () => {
       }
       await route.fulfill({ response: res, json: body });
     });
-    const cat = (await page.getByTestId('cat-button').boundingBox())!;
+    const cat = (await page.getByTestId('tap-button').boundingBox())!;
     await page.mouse.click(cat.x + cat.width / 2, cat.y + cat.height / 2);
     const coin = page.getByTestId('golden-coin');
     await expect(coin).toBeVisible({ timeout: 8_000 });

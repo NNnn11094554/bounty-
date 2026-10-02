@@ -12,7 +12,7 @@ test.describe('Profile, achievements and settings', () => {
     await page.reload();
     await expect(page.getByTestId('office')).toBeVisible();
 
-    const cat = page.getByTestId('cat-button');
+    const cat = page.getByTestId('tap-button');
     for (let i = 0; i < 6; i++) await cat.click();
     // пачка тапов уходит на сервер, в ответе — новое достижение
     const popup = page.getByTestId('achievement-popup').first();
