@@ -155,7 +155,9 @@ export function CatButton({ size, ringColor, handler, locale, sleepyLabel, onPre
     };
 
     const onDown = (e: PointerEvent) => {
+      // тап по коту — только игровое действие: без выделения, меню, жестов и обработчиков родителей
       e.preventDefault();
+      e.stopPropagation();
       const { x, y, inside } = insideCircle(e);
       if (!inside) return;
       if (onPressRef.current) {
@@ -187,12 +189,17 @@ export function CatButton({ size, ringColor, handler, locale, sleepyLabel, onPre
       onPressRef.current?.(performance.now() - started);
     };
     const cancel = (e: PointerEvent) => pressStarts.delete(e.pointerId);
-    const noMenu = (e: Event) => e.preventDefault();
+    const noMenu = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
 
     root.addEventListener('pointerdown', onDown);
     root.addEventListener('pointerup', onUp);
     root.addEventListener('pointercancel', cancel);
     root.addEventListener('contextmenu', noMenu);
+    // клик (после pointerup) не должен дойти до родителей и вызвать их действия
+    root.addEventListener('click', noMenu);
 
     // «усталость» и Turbo — атрибуты для CSS, меняются только при смене состояния
     let lastSleepy: boolean | null = null;
@@ -218,6 +225,7 @@ export function CatButton({ size, ringColor, handler, locale, sleepyLabel, onPre
       root.removeEventListener('pointerup', onUp);
       root.removeEventListener('pointercancel', cancel);
       root.removeEventListener('contextmenu', noMenu);
+      root.removeEventListener('click', noMenu);
       [...floats, ...rings, ...coins].forEach((el) => el.remove());
     };
   }, [size]);
@@ -238,7 +246,8 @@ export function CatButton({ size, ringColor, handler, locale, sleepyLabel, onPre
       data-testid="cat-button"
     >
       <div className="cat-glow pointer-events-none absolute inset-[-14%] rounded-full" />
-      <div ref={danceRef} className="absolute inset-0">
+      {/* визуальный слой: никаких событий, вход принимает только слой тапа ниже по коду */}
+      <div ref={danceRef} className="pointer-events-none absolute inset-0">
         <div ref={tiltRef} className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }}>
           <div className={`cat-ring absolute inset-0 rounded-full ${rainbow ? 'cat-ring-rainbow' : ''}`} />
           <div className="breathe absolute inset-[6px] overflow-hidden rounded-full bg-night-900">
@@ -253,6 +262,8 @@ export function CatButton({ size, ringColor, handler, locale, sleepyLabel, onPre
         <span className="rounded-full bg-black/55 px-3 py-1">{sleepyLabel}</span>
       </div>
       <div ref={fxRef} className="pointer-events-none absolute inset-0 overflow-visible" />
+      {/* слой тапа — прозрачный круг поверх визуала */}
+      <div className="cat-hit absolute inset-0 rounded-full" data-testid="cat-hit" />
     </div>
   );
 }

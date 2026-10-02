@@ -20,6 +20,45 @@ test.describe('Office', () => {
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '15');
   });
 
+  test('the cat is only a tap target: no image menu, no navigation, no popups', async ({ page, context }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __opened: string[] };
+      w.__opened = [];
+      window.open = ((url?: string | URL) => {
+        w.__opened.push(String(url));
+        return null;
+      }) as typeof window.open;
+    });
+    await page.goto('/?uid=700000203&name=Безссылок');
+    const cat = page.getByTestId('cat-button');
+    await expect(cat).toBeVisible();
+    // в зоне тапа нет <img> и ссылок — WebView не покажет меню картинки «Открыть/Сохранить»
+    await expect(cat.locator('img, a')).toHaveCount(0);
+    const pages = context.pages().length;
+    const url = page.url();
+
+    const box = (await page.getByTestId('cat-hit').boundingBox())!;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    for (let i = 0; i < 8; i++) await page.touchscreen.tap(cx + (i % 3) * 8, cy - (i % 2) * 8);
+    // долгое нажатие и контекстное меню — тоже ничего не открывают
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.waitForTimeout(900);
+    await page.mouse.up();
+    const prevented = await page.getByTestId('cat-hit').evaluate((el) => {
+      const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      el.dispatchEvent(ev);
+      return ev.defaultPrevented;
+    });
+    expect(prevented).toBe(true);
+
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '9');
+    expect(page.url()).toBe(url);
+    expect(context.pages().length).toBe(pages);
+    expect(await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual([]);
+  });
+
   test('shows stats, league and the per-hour hint', async ({ page }) => {
     await page.goto('/?uid=700000202&name=Мурка');
     await expect(page.getByTestId('stat-per-tap')).toHaveText('+1');

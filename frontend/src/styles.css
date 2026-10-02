@@ -268,6 +268,19 @@ textarea {
   transition: opacity 0.4s ease;
 }
 /* усталый кот: картинка не перекрашивается — только покачивание целиком и приглушённое кольцо */
+/* кот: только тап — без системного меню, выделения, подсветки и жестов браузера */
+.cat-button,
+.cat-button * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cat-hit {
+  touch-action: none;
+  cursor: pointer;
+}
+
 .cat-button[data-sleepy='true'] .cat-img {
   animation: cat-doze 3.2s ease-in-out infinite;
 }
