@@ -6,12 +6,6 @@
     "width": 689,
     "height": 1242
   },
-  "tap": {
-    "left": 700,
-    "top": 424,
-    "width": 554,
-    "height": 569
-  },
   "tailPivot": [258, 892],
   "head": [470, 150],
   "eyes": [
@@ -52,5 +46,5 @@
       "r": 40
     }
   ],
-  "tapPaw": [977, 668]
+  "headPivot": [480, 335]
 }

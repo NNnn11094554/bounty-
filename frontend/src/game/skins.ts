@@ -18,10 +18,13 @@ export type ParticleKind =
   | 'bolt';
 
 /**
- * Скин — перекраска персонажа (неон одежды, глаза, кроссовки, кнопка TAP; картинки собирает
- * scripts/hero при сборке) и оформление вокруг: цвет ауры и огоньков, частицы.
+ * Скин — внешний вид кота: картинки слоёв (собирает scripts/hero), «скелет» (rig: где голова, хвост,
+ * глаза — по нему двигаются слои) и оформление вокруг: цвет ауры и огоньков, частицы. Тап, анимации,
+ * награды и эффекты одинаковы для всех котов: новый кот = картинки + rig + строка здесь.
  */
 export interface SkinStyle {
+  /** скелет персонажа (CAT_RIGS) */
+  rig: RigId;
   /** основной цвет неона: аура, огоньки, кольцо кнопки */
   accent: string;
   /** второй цвет: блики и переливы */
@@ -31,19 +34,19 @@ export interface SkinStyle {
 }
 
 export const SKIN_STYLES: Record<string, SkinStyle> = {
-  black_crown: { accent: '#2f7bff', accent2: '#7fd8ff', particle: null },
-  pink_angel: { accent: '#ff7ac8', accent2: '#ffd1ec', particle: 'heart' },
-  cyber: { accent: '#19e3ff', accent2: '#7ffff0', particle: 'spark' },
-  crypto_king: { accent: '#ff9d2e', accent2: '#ffd36b', particle: 'coin' },
-  samurai: { accent: '#ff2e3e', accent2: '#ff9a9a', particle: 'petal' },
-  neon_tokyo: { accent: '#e84dff', accent2: '#ff7ad9', particle: 'note' },
-  shadow: { accent: '#7a2cff', accent2: '#b06bff', particle: 'smoke' },
-  galaxy: { accent: '#6f5bff', accent2: '#2ed3c6', particle: 'star' },
-  golden_boss: { accent: '#ffc93c', accent2: '#fff1a8', particle: 'gold' },
-  hacker: { accent: '#39ff88', accent2: '#b6ffd2', particle: 'code' },
-  diamond: { accent: '#9fdcff', accent2: '#ffffff', particle: 'diamond' },
-  queen: { accent: '#ff3f7a', accent2: '#ffd27a', particle: 'heart' },
-  legendary_crown: { accent: '#4d7bff', accent2: '#ff4fd8', particle: 'neon' },
+  black_crown: { rig: 'street', accent: '#2f7bff', accent2: '#7fd8ff', particle: null },
+  pink_angel: { rig: 'street', accent: '#ff7ac8', accent2: '#ffd1ec', particle: 'heart' },
+  cyber: { rig: 'street', accent: '#19e3ff', accent2: '#7ffff0', particle: 'spark' },
+  crypto_king: { rig: 'street', accent: '#ff9d2e', accent2: '#ffd36b', particle: 'coin' },
+  samurai: { rig: 'street', accent: '#ff2e3e', accent2: '#ff9a9a', particle: 'petal' },
+  neon_tokyo: { rig: 'street', accent: '#e84dff', accent2: '#ff7ad9', particle: 'note' },
+  shadow: { rig: 'street', accent: '#7a2cff', accent2: '#b06bff', particle: 'smoke' },
+  galaxy: { rig: 'street', accent: '#6f5bff', accent2: '#2ed3c6', particle: 'star' },
+  golden_boss: { rig: 'street', accent: '#ffc93c', accent2: '#fff1a8', particle: 'gold' },
+  hacker: { rig: 'street', accent: '#39ff88', accent2: '#b6ffd2', particle: 'code' },
+  diamond: { rig: 'street', accent: '#9fdcff', accent2: '#ffffff', particle: 'diamond' },
+  queen: { rig: 'street', accent: '#ff3f7a', accent2: '#ffd27a', particle: 'heart' },
+  legendary_crown: { rig: 'street', accent: '#4d7bff', accent2: '#ff4fd8', particle: 'neon' },
 };
 
 const known = (id: string | undefined) => (id && SKIN_STYLES[id] ? id : DEFAULT_SKIN_ID);
@@ -56,8 +59,10 @@ export function skinRarity(id: string | undefined): Rarity {
   return cosmeticById(id ?? '')?.rarity ?? 'COMMON';
 }
 
-/** Картинки скина, собранные scripts/hero: тело и хвост (главный экран), превью, кнопка TAP. */
-export function heroAsset(id: string | undefined, part: 'body' | 'tail' | 'thumb' | 'tap'): string {
+export type HeroPart = 'body' | 'head' | 'tail' | 'thumb';
+
+/** Картинки скина, собранные scripts/hero: слои тела, головы и хвоста (главный экран) и превью целиком. */
+export function heroAsset(id: string | undefined, part: HeroPart): string {
   return `/assets/generated/hero/${known(id)}-${part}.webp`;
 }
 
@@ -85,28 +90,45 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   MYTHIC: '#ff4fa3',
 };
 
-const cat = layout.cat;
 const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(2)}%`;
 
-/** Геометрия персонажа (доли рамки кота) — из heroLayout.json, который сверяет сборка картинок. */
-export const HERO = {
+/** Скелет персонажа: геометрия слоёв в долях его рамки. По нему двигаются голова, хвост, веки и огоньки. */
+export interface CatRig {
   /** ширина / высота кота */
-  aspect: cat.width / cat.height,
-  /** ширина / высота кнопки TAP */
-  tapAspect: layout.tap.width / layout.tap.height,
-  viewBox: `0 0 ${cat.width} ${cat.height}`,
-  tailOrigin: `${pct(layout.tailPivot[0]! - cat.left, cat.width)} ${pct(layout.tailPivot[1]! - cat.top, cat.height)}`,
-  /** голова: доли ширины и высоты (для облачка эмоций) */
-  head: { x: (layout.head[0]! - cat.left) / cat.width, y: (layout.head[1]! - cat.top) / cat.height },
-  eyes: layout.eyes.map((e) => ({ ...e, cx: e.cx - cat.left, cy: e.cy - cat.top })),
-  leds: layout.leds.map((l) => ({
-    left: pct(l.x - cat.left, cat.width),
-    top: pct(l.y - cat.top, cat.height),
-    size: pct(l.r * 2, cat.width),
-  })),
-  /** центр лапки на кнопке: доли кнопки */
-  paw: {
-    x: (layout.tapPaw[0]! - layout.tap.left) / layout.tap.width,
-    y: (layout.tapPaw[1]! - layout.tap.top) / layout.tap.height,
-  },
-};
+  aspect: number;
+  viewBox: string;
+  tailOrigin: string;
+  headOrigin: string;
+  /** голова: доли ширины и высоты (облачко эмоций, граница «тап по голове») */
+  head: { x: number; y: number };
+  /** нижний край головы (доля высоты): выше — тап по голове */
+  headBottom: number;
+  eyes: Array<{ cx: number; cy: number; rx: number; ry: number; rot: number }>;
+  leds: Array<{ left: string; top: string; size: string }>;
+}
+
+function rigFromLayout(l: typeof layout): CatRig {
+  const c = l.cat;
+  return {
+    aspect: c.width / c.height,
+    viewBox: `0 0 ${c.width} ${c.height}`,
+    tailOrigin: `${pct(l.tailPivot[0]! - c.left, c.width)} ${pct(l.tailPivot[1]! - c.top, c.height)}`,
+    headOrigin: `${pct(l.headPivot[0]! - c.left, c.width)} ${pct(l.headPivot[1]! - c.top, c.height)}`,
+    head: { x: (l.head[0]! - c.left) / c.width, y: (l.head[1]! - c.top) / c.height },
+    headBottom: (l.headPivot[1]! - c.top) / c.height,
+    eyes: l.eyes.map((e) => ({ ...e, cx: e.cx - c.left, cy: e.cy - c.top })),
+    leds: l.leds.map((d) => ({
+      left: pct(d.x - c.left, c.width),
+      top: pct(d.y - c.top, c.height),
+      size: pct(d.r * 2, c.width),
+    })),
+  };
+}
+
+/** Скелеты персонажей. Сейчас один — кот в стритвире; новые коты добавляют свой (свой heroLayout). */
+export const CAT_RIGS = { street: rigFromLayout(layout) } satisfies Record<string, CatRig>;
+export type RigId = keyof typeof CAT_RIGS;
+
+export function skinRig(id: string | undefined): CatRig {
+  return CAT_RIGS[skinStyle(id).rig];
+}

@@ -2,9 +2,10 @@ import { formatShort, type Locale } from '@meowgul/shared';
 import { useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../../animations';
 import { catMood, type CatEvent } from '../../game/catMood';
+import { CatMotion } from '../../game/catMotion';
 import { centerOf, confetti } from '../../game/effects';
 import { onFrame } from '../../game/frameLoop';
-import { EFFECT_PARTICLE, HERO, heroAsset, skinVars, type ParticleKind } from '../../game/skins';
+import { EFFECT_PARTICLE, skinRig, skinVars, type ParticleKind } from '../../game/skins';
 import { playSound } from '../../lib/sound';
 import { haptic } from '../../telegram/webapp';
 import { HeroFigure } from './HeroFigure';
@@ -21,7 +22,7 @@ export interface TapHandler {
 }
 
 interface Props {
-  /** место под сцену: кот и кнопка TAP вписываются в него */
+  /** место под сцену: кот вписывается в него */
   width: number;
   height: number;
   handler: TapHandler;
@@ -34,47 +35,35 @@ interface Props {
   onPress?: (durationMs: number) => void;
 }
 
-const FLOAT_POOL = 28;
-const RING_POOL = 10;
+const FLOAT_POOL = 24;
+const RING_POOL = 8;
+const FLASH_POOL = 6;
 const COIN_POOL = 12;
-const PT_POOL = 28;
-const DANCE_TAPS_PER_SEC = 8;
+const PT_POOL = 32;
 /** серия тапов прерывается паузой дольше */
 const STREAK_GAP_MS = 700;
 /** без тапов столько — кот засыпает */
 const SLEEP_AFTER_MS = 45_000;
-/** случайные действия в простое — раз в 5–15 секунд, если не тапали хотя бы 4 секунды */
-const IDLE_MIN_MS = 5_000;
-const IDLE_SPREAD_MS = 10_000;
+/** случайные спокойные действия — раз в 6–14 секунд, если не тапали хотя бы 4 секунды */
+const IDLE_MIN_MS = 6_000;
+const IDLE_SPREAD_MS = 8_000;
 const IDLE_QUIET_MS = 4_000;
+/** лёгкая вибрация не чаще раза в 70 мс */
+const HAPTIC_GAP_MS = 70;
+/** подсказка «тапни кота» — один раз, до первого тапа */
+const HINT_KEY = 'meowgul.catHint';
 
-type Reaction =
-  | 'happy'
-  | 'excited'
-  | 'special'
-  | 'sleepy'
-  | 'surprised'
-  | 'annoyed'
-  | 'wink'
-  | 'smile'
-  | 'heart'
-  | 'celebrate'
-  | 'wave'
-  | 'look';
+type Reaction = 'happy' | 'excited' | 'special' | 'heart' | 'celebrate' | 'surprised' | 'annoyed' | 'sleepy';
 
 const EMOJI: Record<Reaction, string> = {
   happy: '😸',
   excited: '🤩',
   special: '😻',
-  sleepy: '💤',
-  surprised: '🙀',
-  annoyed: '😾',
-  wink: '😼',
-  smile: '😺',
   heart: '😻',
   celebrate: '🥳',
-  wave: '👋',
-  look: '👀',
+  surprised: '🙀',
+  annoyed: '😾',
+  sleepy: '💤',
 };
 const TEXT: Partial<Record<Reaction, Record<Locale, string>>> = {
   special: { ru: 'Мур!', en: 'Purr!' },
@@ -82,21 +71,33 @@ const TEXT: Partial<Record<Reaction, Record<Locale, string>>> = {
   excited: { ru: 'Ещё!', en: 'More!' },
 };
 
+function hintSeen(): boolean {
+  try {
+    return localStorage.getItem(HINT_KEY) === 'done';
+  } catch {
+    return true;
+  }
+}
+
 /**
- * Главный экран: живой кот и кнопка TAP. Слои: визуал (без событий) → зоны нажатия (круг кнопки и
- * силуэт кота) → эффекты. Кот дышит, качает хвостом, моргает, тянется к пальцу, подпрыгивает от тапа,
- * радуется сериям, засыпает в простое и показывает эмоции облачком у головы. Кнопка вжимается и
- * вспыхивает. Анимации — transform/opacity (WAAPI и CSS), без перерисовок React.
+ * Главная сцена: живой кот — он и есть кнопка игры. Тап по коту → существующая логика награды
+ * (handler.tap → tapEngine: энергия, баланс, множители) → реакция кота и эффекты.
+ *
+ * Движение без рывков: спокойные покачивания (поза, дыхание, голова, хвост) — CSS-анимации на разных
+ * слоях с разной длительностью; реакции на тап — пружины CatMotion на своих слоях (без наложения
+ * анимаций друг на друга: тап только добавляет скорость, отклонение ограничено, кот всегда
+ * возвращается точно в исходную позу). Позиция кота не меняется, всё — transform/opacity.
  */
 export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId, effectId, onPress }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const leanRef = useRef<HTMLDivElement>(null);
-  const bounceRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
   const tailRef = useRef<HTMLDivElement>(null);
   const lidsRef = useRef<SVGSVGElement>(null);
-  const tapRef = useRef<HTMLDivElement>(null);
+  const hitRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLDivElement>(null);
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
   const onPressRef = useRef(onPress);
@@ -107,23 +108,56 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   effectRef.current = EFFECT_PARTICLE[effectId] ?? 'coin';
   const skinRef = useRef(skinId);
   skinRef.current = skinId;
-  const L = heroLayout(width, height);
+  const rig = skinRig(skinId);
+  const rigRef = useRef(rig);
+  rigRef.current = rig;
+  const L = heroLayout(width, height, rig.aspect);
   // раскладка — через ref: при смене размера (свернулась лига, Telegram развернул окно) обработчики,
-  // пулы и начатое нажатие остаются
+  // физика и начатое нажатие остаются
   const layoutRef = useRef(L);
   layoutRef.current = L;
 
   useEffect(() => {
-    const fx = fxRef.current;
     const root = rootRef.current;
-    const lean = leanRef.current;
-    const bounce = bounceRef.current;
-    const tail = tailRef.current;
-    const tapEl = tapRef.current;
+    const bodyEl = bodyRef.current;
+    const headEl = headRef.current;
+    const tailEl = tailRef.current;
+    const hit = hitRef.current;
+    const fx = fxRef.current;
     const bubble = bubbleRef.current;
-    if (!fx || !root || !lean || !bounce || !tail || !tapEl || !bubble) return;
+    if (!root || !bodyEl || !headEl || !tailEl || !hit || !fx || !bubble) return;
     const reduced = () => isReducedMotion();
-    const idle = bounce.parentElement;
+
+    // ── физика реакций: кадры идут, только пока пружины не успокоились ──
+    const motion = new CatMotion();
+    let raf = 0;
+    let last = 0;
+    const apply = () => {
+      const t = motion.transforms();
+      bodyEl.style.transform = t.body;
+      headEl.style.transform = t.head;
+      tailEl.style.transform = t.tail;
+    };
+    const frame = (now: number) => {
+      raf = 0;
+      const dt = last ? (now - last) / 1000 : 1 / 60;
+      last = now;
+      const active = motion.advance(dt);
+      apply();
+      if (active) raf = requestAnimationFrame(frame);
+      else last = 0;
+    };
+    const kick = () => {
+      if (reduced()) {
+        motion.advance(10);
+        apply();
+        return;
+      }
+      if (!raf) {
+        last = 0;
+        raf = requestAnimationFrame(frame);
+      }
+    };
 
     // пулы переиспользуемых элементов — никаких тысяч DOM-нод при яростном тапании
     const make = (cls: string, n: number) =>
@@ -136,41 +170,57 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       });
     const floats = make('tap-float', FLOAT_POOL);
     const rings = make('tap-ring', RING_POOL);
+    const flashes = make('tap-flash', FLASH_POOL);
     const coins = make('tap-coin', COIN_POOL);
     const pts = make('tap-pt pt', PT_POOL);
     let fi = 0;
     let ri = 0;
+    let li = 0;
     let pi = 0;
     let taps = 0;
-    const recent: number[] = [];
-    let danceTimer = 0;
     const pressStarts = new Map<number, number>();
 
-    const spawnFloat = (x: number, y: number, text: string) => {
+    const spawnFloat = (x: number, y: number, text: string, scale: number) => {
       const el = floats[fi++ % FLOAT_POOL]!;
+      el.getAnimations().forEach((a) => a.cancel());
       el.textContent = text;
-      const drift = (Math.random() - 0.5) * 60;
+      const drift = (Math.random() - 0.5) * 40;
       el.animate(
         [
-          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.7)`, opacity: 1 },
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${0.75 * scale})`, opacity: 0 },
           {
-            transform: `translate(${x + drift * 0.6}px, ${y - 70}px) translate(-50%, -50%) scale(1.15)`,
+            transform: `translate(${x + drift * 0.4}px, ${y - 40}px) translate(-50%, -50%) scale(${1.08 * scale})`,
             opacity: 1,
-            offset: 0.35,
+            offset: 0.25,
           },
-          { transform: `translate(${x + drift}px, ${y - 150}px) translate(-50%, -50%) scale(1)`, opacity: 0 },
+          {
+            transform: `translate(${x + drift}px, ${y - 120}px) translate(-50%, -50%) scale(${scale})`,
+            opacity: 0,
+          },
         ],
         { duration: DURATION.tapFloat, easing: EASING.smoothOut },
       );
     };
-    const spawnRing = (x: number, y: number, delay = 0) => {
+    const spawnRing = (x: number, y: number, scale: number) => {
+      if (reduced()) return;
       const el = rings[ri++ % RING_POOL]!;
       el.animate(
         [
-          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.3)`, opacity: 0.8 },
-          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.7)`, opacity: 0 },
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.35)`, opacity: 0.55 },
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${1.25 * scale})`, opacity: 0 },
         ],
-        { duration: DURATION.tapRing, easing: 'ease-out', delay },
+        { duration: DURATION.tapRing, easing: 'ease-out' },
+      );
+    };
+    const spawnFlash = (x: number, y: number, scale: number) => {
+      if (reduced()) return;
+      const el = flashes[li++ % FLASH_POOL]!;
+      el.animate(
+        [
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.4)`, opacity: 0.7 },
+          { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${scale})`, opacity: 0 },
+        ],
+        { duration: 280, easing: 'ease-out' },
       );
     };
     /** частицы эффекта тапа (надетая «косметика») */
@@ -181,39 +231,39 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         el.className = `tap-pt pt pt-${kind}`;
         el.textContent = kind === 'code' ? (Math.random() < 0.5 ? '0' : '1') : '';
         const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * spread;
-        const dist = 60 + Math.random() * 60;
+        const dist = 45 + Math.random() * 45;
         const dx = Math.cos(angle) * dist;
         const dy = Math.sin(angle) * dist;
-        const rot = (Math.random() - 0.5) * 240;
+        const rot = (Math.random() - 0.5) * 200;
         el.animate(
           [
             {
               transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(0.6) rotate(0deg)`,
-              opacity: 1,
+              opacity: 0.95,
             },
             {
-              transform: `translate(${x + dx}px, ${y + dy}px) translate(-50%, -50%) scale(1.1) rotate(${rot}deg)`,
+              transform: `translate(${x + dx}px, ${y + dy}px) translate(-50%, -50%) scale(1) rotate(${rot}deg)`,
               opacity: 0,
             },
           ],
-          { duration: 650 + Math.random() * 250, easing: EASING.smoothOut },
+          { duration: 620 + Math.random() * 220, easing: EASING.smoothOut },
         );
       }
     };
-    const tapCenter = () => {
-      const t = layoutRef.current.tap;
-      return { x: t.left + t.width * HERO.paw.x, y: t.top + t.height * HERO.paw.y };
+    const catCenter = () => {
+      const c = layoutRef.current.cat;
+      return { x: c.left + c.width / 2, y: c.top + c.height * 0.5 };
     };
     const headPoint = () => {
       const c = layoutRef.current.cat;
-      return { x: c.left + c.width * HERO.head.x, y: c.top + c.height * HERO.head.y };
+      return { x: c.left + c.width * rigRef.current.head.x, y: c.top + c.height * rigRef.current.head.y };
     };
     const coinSalute = () => {
-      const c = tapCenter();
-      const r = layoutRef.current.tap.width / 2;
+      const c = catCenter();
+      const r = layoutRef.current.cat.width / 2;
       coins.forEach((el, i) => {
         const angle = (i / COIN_POOL) * Math.PI * 2 + Math.random() * 0.4;
-        const dist = r * (1.1 + Math.random() * 0.6);
+        const dist = r * (1 + Math.random() * 0.5);
         el.animate(
           [
             {
@@ -233,90 +283,64 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       playSound('coin');
     };
 
-    // ── движения кота ──
-    const hop = (strength: number) => {
-      if (reduced()) return;
-      const s = strength;
-      bounce.animate(
-        [
-          { transform: `scale(${1 + 0.02 * s}, ${1 - 0.045 * s})` },
-          { transform: `translateY(${-3.2 * s}%) scale(${1 - 0.012 * s}, ${1 + 0.03 * s})`, offset: 0.42 },
-          { transform: 'translateY(0) scale(1, 1)' },
-        ],
-        { duration: 300 + 120 * s, easing: EASING.springOut },
-      );
-    };
-    let tailBusy = false;
-    const flick = (strength = 1) => {
-      if (tailBusy || reduced()) return;
-      tailBusy = true;
-      const a = 7 * strength;
-      tail
-        .animate(
-          [
-            { transform: 'rotate(0deg)' },
-            { transform: `rotate(${a}deg)` },
-            { transform: `rotate(${-a * 0.5}deg)` },
-            { transform: 'rotate(0deg)' },
-          ],
-          { duration: 460, easing: 'ease-out' },
-        )
-        .finished.catch(() => undefined)
-        .finally(() => (tailBusy = false));
-    };
-    const pressButton = (strength: number) => {
-      if (reduced()) return;
-      tapEl.animate(
-        [
-          { transform: `scale(${1 - 0.1 * strength})` },
-          { transform: `scale(${1 + 0.04 * strength})`, offset: 0.55 },
-          { transform: 'scale(1)' },
-        ],
-        { duration: 300, easing: EASING.springOut },
-      );
-    };
-    let ledBusy = 0;
+    // ── огоньки и аура: короткая вспышка с перерывом ──
+    let ledAt = 0;
     const ledFlash = () => {
       const now = performance.now();
-      if (reduced() || now - ledBusy < 120) return;
-      ledBusy = now;
+      if (reduced() || now - ledAt < 140) return;
+      ledAt = now;
       root
-        .querySelectorAll<HTMLElement>('.hero-led, .tap-halo')
+        .querySelectorAll<HTMLElement>('.hero-led')
         .forEach((el) =>
-          el.animate([{ opacity: 1 }, { opacity: 0.55 }], { duration: 260, easing: 'ease-out' }),
+          el.animate([{ opacity: 0.95 }, { opacity: 0.4 }], { duration: 300, easing: 'ease-out' }),
         );
     };
-    const lids = () => Array.from(lidsRef.current?.querySelectorAll<SVGElement>('.hero-lid') ?? []);
-    const lashes = () => Array.from(lidsRef.current?.querySelectorAll<SVGElement>('.hero-lash') ?? []);
-    /** моргание: веки закрываются за 70 мс, держатся hold мс и открываются за 90 мс */
-    const blink = (eyes: number[] = [0, 1], hold = 0) => {
-      if (reduced() || mood === 'sleepy') return;
-      const duration = 160 + hold;
-      const shut = 70 / duration;
-      const open = (70 + hold) / duration;
-      const pick = (els: SVGElement[]) => els.filter((el) => eyes.includes(Number(el.dataset.eye)));
-      for (const el of pick(lids())) {
-        el.animate(
-          [
-            { transform: 'scaleY(0)' },
-            { transform: 'scaleY(1)', offset: shut },
-            { transform: 'scaleY(1)', offset: open },
-            { transform: 'scaleY(0)' },
-          ],
-          { duration, easing: 'ease-in-out' },
-        );
-      }
-      for (const el of pick(lashes())) {
-        el.animate(
-          [{ opacity: 0 }, { opacity: 1, offset: shut }, { opacity: 1, offset: open }, { opacity: 0 }],
-          {
-            duration,
-          },
-        );
-      }
+    let auraAt = 0;
+    const auraFlash = () => {
+      const now = performance.now();
+      const aura = root.querySelector<HTMLElement>('.hero-aura');
+      if (!aura || reduced() || now - auraAt < 320) return;
+      auraAt = now;
+      aura.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: 420, easing: 'ease-out' });
     };
 
-    // ── эмоции: облачко у головы и движение кота ──
+    // ── веки: одна анимация за раз (новая отменяет прежнюю — без конфликтов) ──
+    let mood: '' | 'sleepy' | 'excited' = '';
+    let lidAnims: Animation[] = [];
+    let lidAt = 0;
+    const lids = (eyes: number[]) =>
+      Array.from(lidsRef.current?.querySelectorAll<SVGElement>('.hero-lid, .hero-lash') ?? []).filter((el) =>
+        eyes.includes(Number(el.dataset.eye)),
+      );
+    /** shut — насколько закрыть (1 — полностью), close/hold/open — мс */
+    const eyelids = (eyes: number[], shut: number, close: number, hold: number, open: number) => {
+      if (reduced() || mood === 'sleepy') return;
+      lidAnims.forEach((a) => a.cancel());
+      lidAnims = [];
+      lidAt = performance.now();
+      const duration = close + hold + open;
+      const a = close / duration;
+      const b = (close + hold) / duration;
+      const lash = shut > 0.8 ? 1 : 0;
+      for (const el of lids(eyes)) {
+        const frames: Keyframe[] = el.classList.contains('hero-lash')
+          ? [{ opacity: 0 }, { opacity: lash, offset: a }, { opacity: lash, offset: b }, { opacity: 0 }]
+          : [
+              { transform: 'scaleY(0)' },
+              { transform: `scaleY(${shut})`, offset: a },
+              { transform: `scaleY(${shut})`, offset: b },
+              { transform: 'scaleY(0)' },
+            ];
+        lidAnims.push(el.animate(frames, { duration, easing: 'ease-in-out' }));
+      }
+    };
+    const blink = () => eyelids([0, 1], 1, 70, 0, 90);
+    const squint = () => {
+      if (performance.now() - lidAt > 700) eyelids([0, 1], 0.45, 110, 140, 160);
+    };
+    const wink = () => eyelids([0], 1, 90, 220, 140);
+
+    // ── облачко эмоции у головы ──
     let bubbleUntil = 0;
     const showBubble = (reaction: Reaction, force = false) => {
       const now = performance.now();
@@ -330,22 +354,17 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       bubble.appendChild(emoji);
       if (text) bubble.appendChild(document.createTextNode(text));
       bubble.dataset.reaction = reaction;
+      bubble.getAnimations().forEach((a) => a.cancel());
       bubble.animate(
         [
-          { opacity: 0, transform: 'scale(0.4) translateY(6px)' },
-          { opacity: 1, transform: 'scale(1.08) translateY(0)', offset: 0.18 },
-          { opacity: 1, transform: 'scale(1)', offset: 0.3 },
-          { opacity: 1, transform: 'scale(1)', offset: 0.8 },
-          { opacity: 0, transform: 'scale(0.9) translateY(-8px)' },
+          { opacity: 0, transform: 'scale(0.6) translateY(6px)' },
+          { opacity: 1, transform: 'scale(1) translateY(0)', offset: 0.16 },
+          { opacity: 1, transform: 'scale(1)', offset: 0.82 },
+          { opacity: 0, transform: 'scale(0.96) translateY(-6px)' },
         ],
         { duration: 1700, easing: 'ease-out' },
       );
     };
-    const move = (keyframes: Keyframe[], duration: number) => {
-      if (reduced()) return;
-      bounce.animate(keyframes, { duration, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
-    };
-    let mood: '' | 'sleepy' | 'excited' = '';
     let moodTimer = 0;
     const setMood = (next: typeof mood, ms = 0) => {
       mood = next;
@@ -359,133 +378,65 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       showBubble(reaction, reaction !== 'happy');
       switch (reaction) {
         case 'happy':
-        case 'smile':
-          hop(1);
-          flick(0.8);
+          squint();
+          motion.swish(45);
+          motion.nod(14);
           break;
         case 'excited':
           setMood('excited', 2600);
-          hop(1.6);
-          flick(1.3);
+          squint();
+          motion.swish(60);
+          auraFlash();
           ledFlash();
-          spawnParticles(head.x, head.y, 6, 'star', 2);
+          spawnParticles(head.x, head.y, 5, 'star', 1.6);
           break;
         case 'special':
         case 'heart':
           setMood('excited', 3000);
-          // 2.5D-разворот: кот делает оборот вокруг вертикальной оси
-          move(
-            [
-              { transform: 'perspective(900px) rotateY(0deg)' },
-              { transform: 'perspective(900px) rotateY(360deg)' },
-            ],
-            760,
-          );
-          spawnParticles(head.x, head.y, 10, 'heart', 2);
-          ledFlash();
-          haptic.notify('success');
+          squint();
+          motion.nod(-20);
+          motion.swish(70);
+          auraFlash();
+          spawnParticles(head.x, head.y, 8, 'heart', 1.8);
           break;
         case 'celebrate':
           setMood('excited', 3500);
-          hop(2.2);
-          flick(1.5);
-          confetti(centerOf(root), 70);
-          spawnParticles(head.x, head.y, 10, 'gold', 2);
+          squint();
+          motion.swish(70);
+          confetti(centerOf(root), 60);
+          spawnParticles(head.x, head.y, 8, 'gold', 1.8);
           break;
         case 'surprised':
-          move(
-            [
-              { transform: 'scale(1)' },
-              { transform: 'scale(1.04, 1.07) translateY(-2%)' },
-              { transform: 'scale(1)' },
-            ],
-            380,
-          );
-          flick(1.4);
+          motion.nod(24);
+          motion.swish(60);
+          blink();
           break;
         case 'annoyed':
-          move(
-            [
-              { transform: 'translateX(0)' },
-              { transform: 'translateX(-3%)' },
-              { transform: 'translateX(3%)' },
-              { transform: 'translateX(-2%)' },
-              { transform: 'translateX(0)' },
-            ],
-            420,
-          );
-          break;
-        case 'wink':
-          blink([0], 220);
-          flick(0.7);
-          break;
-        case 'wave':
-          move(
-            [
-              { transform: 'rotate(0deg)' },
-              { transform: 'rotate(-2.5deg)' },
-              { transform: 'rotate(2deg)' },
-              { transform: 'rotate(0deg)' },
-            ],
-            700,
-          );
-          flick(1.2);
-          break;
-        case 'look':
-          lookAtUser();
-          blink();
+          motion.nod(-16);
           break;
         case 'sleepy':
           setMood('sleepy');
+          motion.lookAt(0, 0);
           break;
       }
+      kick();
     };
 
-    // ── взгляд: кот слегка тянется к пальцу/курсору (плавно, lerp) ──
-    let gx = 0;
-    let gy = 0;
-    let tx = 0;
-    let ty = 0;
-    let lastInput = -Infinity;
-    let raf = 0;
-    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
-    const step = () => {
-      raf = 0;
-      const now = performance.now();
-      if (now - lastInput > 2600) {
-        tx = 0;
-        ty = 0;
-      }
-      gx += (tx - gx) * 0.12;
-      gy += (ty - gy) * 0.12;
-      lean.style.transform = `perspective(1100px) rotateY(${(gx * 9).toFixed(2)}deg) rotateX(${(
-        -gy * 4
-      ).toFixed(2)}deg) translate3d(${(gx * 3).toFixed(1)}px, 0, 0)`;
-      if (Math.abs(tx - gx) > 0.003 || Math.abs(ty - gy) > 0.003 || now - lastInput < 2700) {
-        raf = requestAnimationFrame(step);
-      }
-    };
+    // ── взгляд: голова чуть поворачивается к пальцу/курсору, через 2,6 с — обратно ──
+    let gazeTimer = 0;
+    let glancing = false;
     const lookAt = (clientX: number, clientY: number) => {
-      if (reduced()) return;
-      const rect = lean.getBoundingClientRect();
-      tx = clamp((clientX - (rect.left + rect.width / 2)) / (rect.width * 1.4));
-      ty = clamp((clientY - (rect.top + rect.height * 0.25)) / (rect.height * 0.8));
-      lastInput = performance.now();
-      if (!raf) raf = requestAnimationFrame(step);
-    };
-    const lookAtUser = () => {
-      tx = 0;
-      ty = 0;
-      lastInput = -Infinity;
-      if (!raf && !reduced()) raf = requestAnimationFrame(step);
-      move(
-        [
-          { transform: 'perspective(900px) rotateX(0deg)' },
-          { transform: 'perspective(900px) rotateX(5deg)' },
-          { transform: 'perspective(900px) rotateX(0deg)' },
-        ],
-        520,
-      );
+      if (reduced() || mood === 'sleepy') return;
+      const rect = hit.getBoundingClientRect();
+      const dx = Math.max(-1, Math.min(1, (clientX - (rect.left + rect.width / 2)) / (rect.width * 1.2)));
+      const dy = Math.max(-1, Math.min(1, (clientY - (rect.top + rect.height * 0.25)) / rect.height));
+      motion.lookAt(dx * 2.6 + dy * 0.8, dx * 1.2);
+      kick();
+      window.clearTimeout(gazeTimer);
+      gazeTimer = window.setTimeout(() => {
+        motion.lookAt(0, 0);
+        kick();
+      }, 2600);
     };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' || e.buttons) lookAt(e.clientX, e.clientY);
@@ -496,13 +447,15 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     let streak = 0;
     let lastActivity = performance.now();
     let lastAnnoyed = 0;
-    const markDance = (now: number) => {
-      recent.push(now);
-      while (recent.length && now - recent[0]! > 1000) recent.shift();
-      if (recent.length > DANCE_TAPS_PER_SEC && !reduced() && idle) {
-        idle.classList.add('hero-dance');
-        window.clearTimeout(danceTimer);
-        danceTimer = window.setTimeout(() => idle.classList.remove('hero-dance'), 450);
+    let lastHaptic = 0;
+    let warnedAt = 0;
+    const feel = (now: number, strong = false) => {
+      if (strong) {
+        haptic.impact('medium');
+        lastHaptic = now;
+      } else if (now - lastHaptic >= HAPTIC_GAP_MS) {
+        haptic.impact('light');
+        lastHaptic = now;
       }
     };
     const onStreak = (n: number) => {
@@ -517,53 +470,80 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         react('happy');
       }
     };
+    let hintShown = !hintSeen();
+    const dismissHint = () => {
+      if (!hintShown) return;
+      hintShown = false;
+      hintRef.current?.setAttribute('data-hidden', 'true');
+      try {
+        localStorage.setItem(HINT_KEY, 'done');
+      } catch {
+        /* приватный режим — подсказка просто покажется ещё раз */
+      }
+    };
 
     const onDown = (e: PointerEvent) => {
-      const zone = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-hit]')?.dataset.hit;
-      if (!zone) return;
-      // тап — только игровое действие: без выделения, меню, жестов и обработчиков родителей
+      if (!(e.target as HTMLElement | null)?.closest('[data-hit]')) return;
+      // тап по коту — только игровое действие: без выделения, меню, жестов и обработчиков родителей
       e.preventDefault();
       e.stopPropagation();
-      const rect = root.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const onButton = zone === 'tap';
+      const rootRect = root.getBoundingClientRect();
+      const catRect = hit.getBoundingClientRect();
+      const x = e.clientX - rootRect.left;
+      const y = e.clientY - rootRect.top;
+      const side = Math.max(-1, Math.min(1, ((e.clientX - catRect.left) / catRect.width - 0.5) * 2));
+      const onHead = (e.clientY - catRect.top) / catRect.height < rigRef.current.headBottom;
       const now = performance.now();
       lastActivity = now;
       lookAt(e.clientX, e.clientY);
       wakeUp();
       if (onPressRef.current) {
         pressStarts.set(e.pointerId, now);
-        pressButton(onButton ? 0.7 : 0.3);
-        hop(onButton ? 0.4 : 0.8);
-        haptic.impact('light');
+        motion.tap(0.6, side, onHead);
+        kick();
+        feel(now);
         return;
       }
       const h = handlerRef.current;
-      const ok = h.tap();
-      if (!ok) {
-        pressButton(0.3);
-        haptic.notify('warning');
+      if (!h.tap()) {
+        // энергии нет: кот только устало кивает, награды нет
+        motion.tap(0.35, side, false);
+        kick();
+        if (now - warnedAt > 600) {
+          warnedAt = now;
+          haptic.notify('warning');
+        }
         if (now - lastAnnoyed > 2500) {
           lastAnnoyed = now;
           react('annoyed');
         }
         return;
       }
-      pressButton(onButton ? 1 : 0.35);
-      hop(onButton ? 0.55 : 1);
-      spawnFloat(x, y, `+${formatShort(h.reward(), localeRef.current)}`);
-      spawnRing(x, y);
-      // Легендарная Корона: свои реакции — двойная неоновая волна
-      if (skinRef.current === 'legendary_crown') spawnRing(x, y, 90);
-      spawnParticles(x, y, 2);
-      flick(0.45);
-      ledFlash();
-      haptic.impact('light');
-      playSound('tap');
-      markDance(now);
       streak = now - lastTap < STREAK_GAP_MS ? streak + 1 : 1;
       lastTap = now;
+      // серия усиливает только картинку: 1–3 обычно, 4–9 живее, 10+ заметнее; награда — как в логике игры
+      const tier = streak >= 10 ? 3 : streak >= 4 ? 2 : 1;
+      const strength = tier === 3 ? 1.35 : tier === 2 ? 1.18 : 1;
+      motion.tap(reduced() ? 0 : strength, side, onHead);
+      kick();
+      spawnFloat(
+        x,
+        y - 10,
+        `+${formatShort(h.reward(), localeRef.current)}`,
+        tier === 3 ? 1.18 : tier === 2 ? 1.08 : 1,
+      );
+      spawnFlash(x, y, tier === 3 ? 1.5 : 1.15);
+      spawnRing(x, y, tier === 3 ? 1.35 : 1);
+      // Легендарная Корона: своя реакция — двойная волна
+      if (skinRef.current === 'legendary_crown') spawnRing(x, y, 1.7);
+      spawnParticles(x, y, tier + 1);
+      if (tier === 3) spawnParticles(x, y, 1, 'gold', 1.4);
+      if (onHead || tier >= 2) squint();
+      ledFlash();
+      if (tier >= 2) auraFlash();
+      feel(now, streak === 10);
+      playSound('tap');
+      dismissHint();
       onStreak(streak);
       taps++;
       if (taps % 100 === 0) coinSalute();
@@ -589,23 +569,59 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     root.addEventListener('click', noMenu);
     window.addEventListener('pointermove', onMove, { passive: true });
 
-    // моргание раз в 2,5–6 секунд
+    // моргание раз в 3–7 секунд
     let blinkTimer = 0;
     const scheduleBlink = () => {
       blinkTimer = window.setTimeout(
         () => {
-          if (!document.hidden) blink();
+          if (!document.hidden && performance.now() - lidAt > 1200) blink();
           scheduleBlink();
         },
-        2500 + Math.random() * 3500,
+        3000 + Math.random() * 4000,
       );
     };
     scheduleBlink();
 
-    // случайные «живые» действия в простое и засыпание
-    const IDLE_ACTIONS: Reaction[] = ['look', 'wink', 'wave', 'smile', 'look'];
+    // спокойные действия в простое (не чаще раза в 6 с) и засыпание
+    type Idle = 'glance' | 'blink' | 'wink' | 'swish' | 'nod' | 'look';
+    const IDLE: Idle[] = ['glance', 'blink', 'swish', 'glance', 'wink', 'nod', 'look'];
     let idleTimer = 0;
     let lastIdle = -1;
+    const idleAction = (a: Idle) => {
+      switch (a) {
+        case 'glance': {
+          if (glancing) break;
+          glancing = true;
+          const dir = Math.random() < 0.5 ? -1 : 1;
+          motion.lookAt(dir * 2.2, dir * 1.1);
+          window.clearTimeout(gazeTimer);
+          gazeTimer = window.setTimeout(() => {
+            glancing = false;
+            motion.lookAt(0, 0);
+            kick();
+          }, 1700);
+          break;
+        }
+        case 'blink':
+          blink();
+          window.setTimeout(blink, 260);
+          break;
+        case 'wink':
+          wink();
+          break;
+        case 'swish':
+          motion.swish(55);
+          break;
+        case 'nod':
+          motion.nod(-14);
+          break;
+        case 'look':
+          motion.lookAt(0, 0);
+          blink();
+          break;
+      }
+      kick();
+    };
     const scheduleIdle = () => {
       idleTimer = window.setTimeout(runIdle, IDLE_MIN_MS + Math.random() * IDLE_SPREAD_MS);
     };
@@ -614,12 +630,12 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       if (!document.hidden && !onPressRef.current) {
         if (quiet > SLEEP_AFTER_MS) {
           if (mood !== 'sleepy') react('sleepy');
-          showBubble('sleepy', true);
-        } else if (quiet > IDLE_QUIET_MS) {
-          let i = Math.floor(Math.random() * IDLE_ACTIONS.length);
-          if (i === lastIdle) i = (i + 1) % IDLE_ACTIONS.length;
+          else showBubble('sleepy', true);
+        } else if (quiet > IDLE_QUIET_MS && !reduced()) {
+          let i = Math.floor(Math.random() * IDLE.length);
+          if (i === lastIdle) i = (i + 1) % IDLE.length;
           lastIdle = i;
-          react(IDLE_ACTIONS[i]!);
+          idleAction(IDLE[i]!);
         }
       }
       scheduleIdle();
@@ -673,11 +689,12 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     return () => {
       stopFrame();
       offMood();
-      window.clearTimeout(danceTimer);
       window.clearTimeout(idleTimer);
       window.clearTimeout(blinkTimer);
       window.clearTimeout(moodTimer);
+      window.clearTimeout(gazeTimer);
       if (raf) cancelAnimationFrame(raf);
+      lidAnims.forEach((a) => a.cancel());
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pointermove', onMove);
       root.removeEventListener('pointerdown', onDown);
@@ -685,11 +702,11 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       root.removeEventListener('pointercancel', cancel);
       root.removeEventListener('contextmenu', noMenu);
       root.removeEventListener('click', noMenu);
-      [...floats, ...rings, ...coins, ...pts].forEach((el) => el.remove());
+      [...floats, ...rings, ...flashes, ...coins, ...pts].forEach((el) => el.remove());
     };
   }, []);
 
-  const head = { x: L.cat.left + L.cat.width * HERO.head.x, y: L.cat.top + L.cat.height * HERO.head.y };
+  const head = { x: L.cat.left + L.cat.width * rig.head.x, y: L.cat.top + L.cat.height * rig.head.y };
   const fontSize = Math.max(13, Math.round(L.cat.height * 0.045));
   return (
     <div
@@ -703,34 +720,18 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         <HeroFigure
           skinId={skinId}
           height={L.cat.height}
-          refs={{ lean: leanRef, bounce: bounceRef, tail: tailRef, lids: lidsRef }}
+          refs={{ body: bodyRef, head: headRef, tail: tailRef, lids: lidsRef }}
         />
       </div>
       <div
-        className="hero-tap absolute"
-        style={{ left: L.tap.left, top: L.tap.top, width: L.tap.width, height: L.tap.height }}
-      >
-        <div className="tap-halo absolute" />
-        <div ref={tapRef} className="tap-press absolute inset-0">
-          <div
-            className="hero-layer tap-img absolute inset-0"
-            style={{ backgroundImage: `url(${heroAsset(skinId, 'tap')})` }}
-          />
-          <div
-            className="tap-paw absolute"
-            style={{ left: `${HERO.paw.x * 100}%`, top: `${HERO.paw.y * 100}%`, width: '44%' }}
-          />
-        </div>
-      </div>
-      <div
-        className="hero-zzz pointer-events-none absolute text-3xl font-black text-white/80"
-        style={{ left: head.x + L.cat.width * 0.12, top: Math.max(0, head.y - L.cat.height * 0.12) }}
+        className="hero-zzz pointer-events-none absolute text-2xl font-black text-white/80"
+        style={{ left: head.x + L.cat.width * 0.18, top: Math.max(0, head.y - L.cat.height * 0.1) }}
       >
         Zzz
       </div>
       <div
         className="hero-tired pointer-events-none absolute text-center text-sm font-extrabold text-white/90"
-        style={{ left: L.tap.left - 20, width: L.tap.width + 40, top: L.tap.top + L.tap.height + 2 }}
+        style={{ left: 0, width, top: L.cat.top + L.cat.height * 0.86 }}
       >
         <span className="rounded-full bg-black/55 px-3 py-1">{sleepyLabel}</span>
       </div>
@@ -739,37 +740,39 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         className="cat-bubble pointer-events-none"
         style={{
           fontSize,
-          left: head.x + L.cat.width * 0.16,
+          left: head.x + L.cat.width * 0.18,
           top: Math.max(0, head.y - L.cat.height * 0.13),
         }}
         data-testid="cat-bubble"
         aria-hidden
       />
+      {!hintSeen() && (
+        <div
+          ref={hintRef}
+          className="hero-hint pointer-events-none absolute"
+          style={{ left: L.cat.left + L.cat.width * 0.5, top: L.cat.top + L.cat.height * 0.5 }}
+          data-testid="cat-hint"
+          aria-hidden
+        >
+          <span className="hero-hint-ring" />
+          <span className="hero-hint-hand">👆</span>
+        </div>
+      )}
       <div ref={fxRef} className="pointer-events-none absolute inset-0 overflow-visible" />
-      {/* зоны нажатия поверх визуала: круг кнопки TAP и силуэт кота */}
+      {/* зона тапа — силуэт кота целиком, от ушей до кроссовок */}
       <div
-        className="hero-hit absolute rounded-full"
-        style={{
-          left: L.tap.left + L.tap.width * 0.06,
-          top: L.tap.top + L.tap.height * 0.08,
-          width: L.tap.width * 0.88,
-          height: L.tap.width * 0.88,
-        }}
-        data-hit="tap"
-        role="button"
-        aria-label="Tap"
-        data-testid="tap-button"
-      />
-      <div
+        ref={hitRef}
         className="hero-hit absolute"
         style={{
-          left: L.cat.left + L.cat.width * 0.16,
+          left: L.cat.left + L.cat.width * 0.06,
           top: L.cat.top,
-          width: L.cat.width * 0.74,
+          width: L.cat.width * 0.88,
           height: L.cat.height,
-          borderRadius: '42% 42% 18% 18%',
+          borderRadius: '46% 46% 24% 24% / 30% 30% 12% 12%',
         }}
         data-hit="cat"
+        role="button"
+        aria-label={locale === 'ru' ? 'Погладить кота' : 'Pet the cat'}
         data-testid="cat-hit"
       />
     </div>

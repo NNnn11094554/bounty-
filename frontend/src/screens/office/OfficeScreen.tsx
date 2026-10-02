@@ -70,12 +70,13 @@ function QuickAction({
       type="button"
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      className="relative flex h-[50px] w-[58px] flex-col max-[350px]:w-[48px] items-center justify-center gap-0.5 rounded-2xl border border-line bg-night-700/80 shadow-card"
+      aria-label={label}
+      className="relative flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-2xl border border-line bg-night-700/80 px-2 shadow-card short:h-10"
       data-testid={testId}
       data-tour={tour}
     >
       {children}
-      <span className="max-w-full truncate px-1 text-[10.5px] font-extrabold text-white/80">{label}</span>
+      <span className="truncate text-[13px] font-extrabold text-white/85 short:hidden">{label}</span>
       {badge && (
         <span
           className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-night-700 bg-coral-to"
@@ -127,6 +128,19 @@ export function OfficeScreen({
     });
   }, [leagues, leagueLevel]);
 
+  // полоска энергии — каждый кадр по «живой» энергии, без перерисовки React
+  const energyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let last = '';
+    return onFrame(() => {
+      const max = tapEngine.state?.maxEnergy ?? 0;
+      const value = (max ? Math.min(1, tapEngine.energyNow() / max) : 0).toFixed(3);
+      if (value === last || !energyRef.current) return;
+      last = value;
+      energyRef.current.style.transform = `scaleX(${value})`;
+    });
+  }, []);
+
   const handler = useMemo<TapHandler>(
     () => ({
       tap: () => tapEngine.tap(),
@@ -143,7 +157,7 @@ export function OfficeScreen({
   if (!player || !league || !config) return null;
   // минимальный размер кота; в режиме шифра на низких экранах — чуть меньше, чтобы поместилась строка Морзе
   // сцена с котом и кнопкой TAP занимает всё место между плашками и энергией и масштабируется под него
-  const stageH = Math.max(80, Math.floor(catSize.height));
+  const stageH = Math.max(40, Math.floor(catSize.height));
   const leagueColor = league.color === 'rainbow' ? '#ffc93c' : league.color;
 
   return (
@@ -272,28 +286,40 @@ export function OfficeScreen({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 pb-3">
+        {/* энергия с полоской заряда, ниже — быстрые кнопки; на низких экранах всё в одну строку */}
+        <div className="flex flex-col short:flex-row short:items-center short:gap-2 short:pb-2">
           <div
-            className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px] font-extrabold max-[350px]:gap-1 max-[350px]:text-[13px]"
+            className="flex items-center gap-2 pb-2 text-[15px] font-extrabold short:shrink-0 short:gap-1.5 short:pb-0"
             data-testid="energy"
             data-tour="energy"
           >
-            <BoltIcon size={22} className="shrink-0" />
+            <BoltIcon size={20} className="shrink-0" />
             <LiveText
               getText={() => `${tapEngine.energyNow()} / ${tapEngine.state?.maxEnergy ?? 0}`}
-              className="tabular"
+              className="tabular shrink-0 whitespace-nowrap"
               testId="energy-value"
             />
+            <div className="relative ml-1 h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10 short:hidden">
+              <div
+                ref={energyRef}
+                className="h-full origin-left rounded-full bg-gradient-to-r from-[#ffd84a] to-[#ff8a3d]"
+                style={{ transform: 'scaleX(1)' }}
+              />
+            </div>
           </div>
-          <div className="flex shrink-0 gap-1.5 max-[350px]:gap-1" data-tour="quick">
+          {/* быстрые кнопки: карточки, задания, бусты */}
+          <div
+            className="grid grid-cols-3 gap-2 pb-3 short:flex-1 short:gap-1.5 short:pb-0"
+            data-tour="quick"
+          >
             {onOpenMine && (
               <QuickAction label={t('nav.mine')} onClick={onOpenMine} testId="open-mine">
-                <MineNavIcon active size={24} />
+                <MineNavIcon active size={22} />
               </QuickAction>
             )}
             {onOpenEarn && (
               <QuickAction label={t('nav.earn')} onClick={onOpenEarn} testId="open-earn" badge={dailyReady}>
-                <EarnNavIcon active size={24} />
+                <EarnNavIcon active size={22} />
               </QuickAction>
             )}
             {onOpenBoosts && (
@@ -303,7 +329,7 @@ export function OfficeScreen({
                 testId="open-boosts"
                 tour="boosts"
               >
-                <RocketIcon size={24} />
+                <RocketIcon size={22} />
               </QuickAction>
             )}
           </div>

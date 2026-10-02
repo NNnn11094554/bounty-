@@ -1,7 +1,7 @@
 import { COSMETICS } from '@meowgul/shared';
 import { describe, expect, it } from 'vitest';
 import { heroLayout } from '../components/hero/layout';
-import { heroAsset, SKIN_STYLES } from './skins';
+import { CAT_RIGS, heroAsset, SKIN_STYLES } from './skins';
 
 describe('hero skins', () => {
   const skins = COSMETICS.filter((c) => c.kind === 'skin')
@@ -20,21 +20,24 @@ describe('hero skins', () => {
 
   it('an unknown skin falls back to the base images', () => {
     expect(heroAsset('nope', 'body')).toBe('/assets/generated/hero/black_crown-body.webp');
-    expect(heroAsset('queen', 'tap')).toBe('/assets/generated/hero/queen-tap.webp');
+    expect(heroAsset('queen', 'head')).toBe('/assets/generated/hero/queen-head.webp');
   });
 
-  it('the cat and the TAP button fit the stage side by side', () => {
+  it('the cat fits the stage, stands on its bottom edge and is centred', () => {
+    const { aspect } = CAT_RIGS.street;
     for (const w of [280, 328, 360, 398, 460]) {
-      for (const h of [150, 260, 340, 420, 600]) {
-        const { cat, tap } = heroLayout(w, h);
-        expect(cat.left).toBeGreaterThanOrEqual(-0.5);
-        expect(cat.top).toBeGreaterThanOrEqual(-0.5);
-        expect(cat.left + cat.width).toBeLessThanOrEqual(tap.left);
-        expect(tap.left + tap.width).toBeLessThanOrEqual(w + 0.5);
-        expect(tap.top).toBeGreaterThanOrEqual(-0.5);
-        expect(tap.top + tap.height).toBeLessThanOrEqual(h + 0.5);
-        expect(tap.width).toBeGreaterThanOrEqual(60);
+      for (const h of [120, 260, 340, 420, 600]) {
+        const { cat } = heroLayout(w, h, aspect);
+        expect(cat.left).toBeGreaterThanOrEqual(0);
+        expect(cat.left + cat.width).toBeLessThanOrEqual(w + 0.01);
+        expect(cat.top).toBeGreaterThanOrEqual(-0.01);
+        expect(cat.top + cat.height).toBeCloseTo(h, 5);
+        expect(cat.left + cat.width / 2).toBeCloseTo(w / 2, 5);
       }
     }
+  });
+
+  it('every skin uses a known rig', () => {
+    for (const id of skins) expect(CAT_RIGS[SKIN_STYLES[id]!.rig]).toBeDefined();
   });
 });

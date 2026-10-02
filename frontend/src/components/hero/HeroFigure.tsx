@@ -1,30 +1,33 @@
 import { useId, type Ref } from 'react';
-import { HERO, heroAsset, skinRarity, skinStyle, skinVars } from '../../game/skins';
+import { heroAsset, skinRarity, skinRig, skinStyle, skinVars } from '../../game/skins';
 
 export interface HeroRefs {
-  /** наклон к пальцу (2.5D) */
-  lean?: Ref<HTMLDivElement>;
-  /** прыжок и сжатие от тапа, разворот */
-  bounce?: Ref<HTMLDivElement>;
-  /** взмах хвоста поверх его постоянного покачивания */
+  /** реакция корпуса на тап (сжатие, наклон) — ведёт физика CatMotion */
+  body?: Ref<HTMLDivElement>;
+  /** голова: взгляд, кивок */
+  head?: Ref<HTMLDivElement>;
+  /** взмах хвоста поверх его спокойного покачивания */
   tail?: Ref<HTMLDivElement>;
-  /** веки (моргание, подмигивание, сон) */
+  /** веки (моргание, прищур, сон) */
   lids?: Ref<SVGSVGElement>;
 }
 
 const PARTICLES: Record<string, number> = { COMMON: 0, RARE: 4, EPIC: 5, LEGENDARY: 7, MYTHIC: 9 };
 
 /**
- * Кот в полный рост из слоёв: аура → хвост (качается вокруг точки за штаниной) → тело → веки
- * (моргание) → огоньки на наушниках и кроссовках. Слои — div с фоном, а не <img>: долгое нажатие
- * не вызывает меню картинки. Событий не принимает. Анимации — transform/opacity (CSS и WAAPI).
+ * Кот в полный рост из слоёв по его скелету (rig): хвост и голова — под телом, их стык спрятан под
+ * одеждой и наушниками. Слои вложены так, что каждое движение живёт на своём элементе и не спорит с
+ * другими: поза (медленно) → дыхание → реакция на тап (физика) → голова/хвост (свои покачивания + физика).
+ * Слои — div с фоном, а не <img>: долгое нажатие не вызывает меню картинки. Событий не принимает.
  */
 export function HeroFigure({ skinId, height, refs }: { skinId: string; height: number; refs?: HeroRefs }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const width = Math.round(height * HERO.aspect);
+  const rig = skinRig(skinId);
+  const width = Math.round(height * rig.aspect);
   const rarity = skinRarity(skinId);
   const particle = skinStyle(skinId).particle;
   const count = particle ? (PARTICLES[rarity] ?? 0) : 0;
+  const layer = (part: 'body' | 'head' | 'tail') => ({ backgroundImage: `url(${heroAsset(skinId, part)})` });
   return (
     <div
       className={`hero-fig pointer-events-none relative rarity-${rarity.toLowerCase()}`}
@@ -44,7 +47,7 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
                 top: `${18 + ((i * 53) % 64)}%`,
                 ['--pt' as string]: `${Math.round(Math.max(10, height * 0.04))}px`,
                 animationDelay: `${(-i * 0.83).toFixed(2)}s`,
-                animationDuration: `${(3.4 + (i % 3) * 0.7).toFixed(1)}s`,
+                animationDuration: `${(3.6 + (i % 3) * 0.8).toFixed(1)}s`,
               }}
             >
               {particle === 'code' ? (i % 2 ? '1' : '0') : null}
@@ -52,57 +55,59 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
           ))}
         </div>
       )}
-      <div ref={refs?.lean} className="hero-lean absolute inset-0">
-        <div className="hero-idle absolute inset-0">
-          <div ref={refs?.bounce} className="hero-bounce absolute inset-0">
+      <div className="hero-pose absolute inset-0">
+        <div className="hero-breath absolute inset-0">
+          <div ref={refs?.body} className="hero-react absolute inset-0">
             <div
               ref={refs?.tail}
-              className="hero-layer absolute inset-0"
-              style={{ transformOrigin: HERO.tailOrigin }}
+              className="hero-part absolute inset-0"
+              style={{ transformOrigin: rig.tailOrigin }}
             >
               <div
                 className="hero-tail hero-layer absolute inset-0"
-                style={{
-                  backgroundImage: `url(${heroAsset(skinId, 'tail')})`,
-                  transformOrigin: HERO.tailOrigin,
-                }}
+                style={{ ...layer('tail'), transformOrigin: rig.tailOrigin }}
               />
             </div>
             <div
-              className="hero-body hero-layer absolute inset-0"
-              style={{ backgroundImage: `url(${heroAsset(skinId, 'body')})` }}
-              data-testid="hero-body"
-            />
-            <svg
-              ref={refs?.lids}
-              className="absolute inset-0 h-full w-full"
-              viewBox={HERO.viewBox}
-              aria-hidden
+              ref={refs?.head}
+              className="hero-part absolute inset-0"
+              style={{ transformOrigin: rig.headOrigin }}
             >
-              {HERO.eyes.map((e, i) => (
-                <g key={i} transform={`rotate(${e.rot} ${e.cx} ${e.cy})`}>
-                  <clipPath id={`eye${uid}${i}`}>
-                    <ellipse cx={e.cx} cy={e.cy} rx={e.rx} ry={e.ry} />
-                  </clipPath>
-                  <g clipPath={`url(#eye${uid}${i})`}>
-                    <rect
-                      className="hero-lid"
-                      data-eye={i}
-                      x={e.cx - e.rx - 3}
-                      y={e.cy - e.ry - 3}
-                      width={e.rx * 2 + 6}
-                      height={e.ry * 2 + 6}
-                    />
-                  </g>
-                  <path
-                    className="hero-lash"
-                    data-eye={i}
-                    d={`M ${e.cx - e.rx * 0.92} ${e.cy + e.ry * 0.1} Q ${e.cx} ${e.cy + e.ry * 0.95} ${e.cx + e.rx * 0.92} ${e.cy + e.ry * 0.1}`}
-                  />
-                </g>
-              ))}
-            </svg>
-            {HERO.leds.map((l, i) => (
+              <div className="hero-head absolute inset-0" style={{ transformOrigin: rig.headOrigin }}>
+                <div className="hero-layer absolute inset-0" style={layer('head')} data-testid="hero-head" />
+                <svg
+                  ref={refs?.lids}
+                  className="absolute inset-0 h-full w-full"
+                  viewBox={rig.viewBox}
+                  aria-hidden
+                >
+                  {rig.eyes.map((e, i) => (
+                    <g key={i} transform={`rotate(${e.rot} ${e.cx} ${e.cy})`}>
+                      <clipPath id={`eye${uid}${i}`}>
+                        <ellipse cx={e.cx} cy={e.cy} rx={e.rx} ry={e.ry} />
+                      </clipPath>
+                      <g clipPath={`url(#eye${uid}${i})`}>
+                        <rect
+                          className="hero-lid"
+                          data-eye={i}
+                          x={e.cx - e.rx - 3}
+                          y={e.cy - e.ry - 3}
+                          width={e.rx * 2 + 6}
+                          height={e.ry * 2 + 6}
+                        />
+                      </g>
+                      <path
+                        className="hero-lash"
+                        data-eye={i}
+                        d={`M ${e.cx - e.rx * 0.92} ${e.cy + e.ry * 0.1} Q ${e.cx} ${e.cy + e.ry * 0.95} ${e.cx + e.rx * 0.92} ${e.cy + e.ry * 0.1}`}
+                      />
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            </div>
+            <div className="hero-layer absolute inset-0" style={layer('body')} data-testid="hero-body" />
+            {rig.leds.map((l, i) => (
               <span
                 key={i}
                 className="hero-led absolute"
@@ -110,7 +115,7 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
                   left: l.left,
                   top: l.top,
                   width: l.size,
-                  animationDelay: `${(-i * 0.55).toFixed(2)}s`,
+                  animationDelay: `${(-i * 0.9).toFixed(2)}s`,
                 }}
               />
             ))}
@@ -134,7 +139,7 @@ export function HeroThumb({
   return (
     <div
       className={`hero-thumb pointer-events-none relative ${className}`}
-      style={{ width: Math.round(height * HERO.aspect), height, ...skinVars(skinId) }}
+      style={{ width: Math.round(height * skinRig(skinId).aspect), height, ...skinVars(skinId) }}
     >
       <div className="hero-aura absolute" />
       <div
@@ -163,20 +168,6 @@ export function HeroBust({
         height: size,
         backgroundImage: `url(${heroAsset(skinId, 'thumb')})`,
         ...skinVars(skinId),
-      }}
-    />
-  );
-}
-
-/** Кнопка TAP скина (без логики) — для превью в окне скина. */
-export function TapPreview({ skinId, size }: { skinId: string; size: number }) {
-  return (
-    <div
-      className="hero-layer pointer-events-none"
-      style={{
-        width: size,
-        height: size / HERO.tapAspect,
-        backgroundImage: `url(${heroAsset(skinId, 'tap')})`,
       }}
     />
   );
