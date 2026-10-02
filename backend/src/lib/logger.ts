@@ -1,7 +1,13 @@
 import pino from 'pino';
 import { env } from '../env.js';
 
-const redact = ['req.headers.authorization', 'req.headers["x-telegram-bot-api-secret-token"]', '*.initData'];
+// секрет вебхука также попадает в ошибку setWebhook (GrammyError.payload)
+const redact = [
+  'req.headers.authorization',
+  'req.headers["x-telegram-bot-api-secret-token"]',
+  '*.initData',
+  'err.payload.secret_token',
+];
 
 export const loggerOptions: pino.LoggerOptions = {
   level: env.isTest ? 'silent' : env.LOG_LEVEL,

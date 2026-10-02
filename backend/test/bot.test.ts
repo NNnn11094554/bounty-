@@ -107,6 +107,10 @@ describe('bot', () => {
     expect(user.allowsWriteToPm).toBe(true);
   });
 
+  it('webhook secret uses only characters Telegram accepts', () => {
+    expect(webhookSecret()).toMatch(/^[A-Za-z0-9_-]{1,256}$/);
+  });
+
   it('webhook accepts updates only with the secret', async () => {
     const calls: ApiCall[] = [];
     const bot = getBot();
