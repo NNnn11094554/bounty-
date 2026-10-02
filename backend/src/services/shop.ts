@@ -1,0 +1,264 @@
+import { randomUUID } from 'node:crypto';
+import { SHOP_PRODUCT_IDS, type Locale, type ShopProduct, type ShopProductId } from '@meowgul/shared';
+import type { Prisma, Purchase, User } from '@prisma/client';
+import { GrammyError } from 'grammy';
+import { botLocale } from '../bot/texts.js';
+import { env } from '../env.js';
+import { maxEnergy } from '../game/config/game.js';
+import { packCoins, SHOP } from '../game/config/shop.js';
+import { prisma } from '../lib/db.js';
+import { ApiError } from '../lib/errors.js';
+import { logger } from '../lib/logger.js';
+import { applyBalanceChanges } from './ledger.js';
+import { payments } from './payments.js';
+import { parseSettings } from './state.js';
+import { syncPassive } from './sync.js';
+import { withUserLock } from './userLock.js';
+
+/** Что выдаётся за покупку (рассчитано при выставлении счёта и хранится в Purchase.grant). */
+type Grant = { coins: number } | { energy: true } | { hours: number };
+
+/** Неоплаченный счёт действует сутки. */
+const INVOICE_TTL_MS = 24 * 3_600_000;
+/** Не больше стольких неоплаченных счетов за 10 минут — защита от спама. */
+const MAX_PENDING_PER_10_MIN = 10;
+
+export function shopProducts(user: Pick<User, 'profitPerHour'>): ShopProduct[] {
+  const pph = Number(user.profitPerHour);
+  const baseRate = packCoins('coins_small', pph) / SHOP.coins_small.stars;
+  return SHOP_PRODUCT_IDS.map((id) => {
+    const p = SHOP[id];
+    const coins = p.kind === 'coins' ? packCoins(id, pph) : null;
+    return {
+      id,
+      kind: p.kind,
+      stars: p.stars,
+      coins,
+      hours: p.kind === 'income_boost' ? (p.hours ?? null) : null,
+      bonusPercent:
+        coins !== null && id !== 'coins_small' ? Math.round((coins / p.stars / baseRate - 1) * 100) : null,
+      popular: p.popular ?? false,
+    };
+  });
+}
+
+function grantFor(id: ShopProductId, user: User): Grant {
+  const p = SHOP[id];
+  if (p.kind === 'coins') return { coins: packCoins(id, Number(user.profitPerHour)) };
+  if (p.kind === 'energy') return { energy: true };
+  return { hours: p.hours ?? 24 };
+}
+
+const fmt = (n: number, locale: Locale) =>
+  new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(n);
+
+const INVOICE_TEXT: Record<ShopProductId, Record<Locale, (g: Grant) => [string, string]>> = {
+  coins_small: {
+    ru: (g) => ['Горсть монет', `+${fmt('coins' in g ? g.coins : 0, 'ru')} монет на баланс в Meowgul`],
+    en: (g) => [
+      'Handful of coins',
+      `+${fmt('coins' in g ? g.coins : 0, 'en')} coins to your Meowgul balance`,
+    ],
+  },
+  coins_medium: {
+    ru: (g) => ['Мешок монет', `+${fmt('coins' in g ? g.coins : 0, 'ru')} монет на баланс в Meowgul`],
+    en: (g) => ['Bag of coins', `+${fmt('coins' in g ? g.coins : 0, 'en')} coins to your Meowgul balance`],
+  },
+  coins_large: {
+    ru: (g) => ['Сейф монет', `+${fmt('coins' in g ? g.coins : 0, 'ru')} монет на баланс в Meowgul`],
+    en: (g) => ['Vault of coins', `+${fmt('coins' in g ? g.coins : 0, 'en')} coins to your Meowgul balance`],
+  },
+  energy_refill: {
+    ru: () => ['Полная энергия', 'Энергия кота сразу на максимум — тапай дальше без ожидания'],
+    en: () => ['Full energy', 'Refill the cat’s energy instantly and keep tapping'],
+  },
+  income_x2: {
+    ru: (g) => [
+      'Доход ×2',
+      `Пассивный доход карточек удваивается на ${'hours' in g ? g.hours : 24} ч. Если буст уже идёт — время добавится`,
+    ],
+    en: (g) => [
+      'Income ×2',
+      `Your cards’ passive income doubles for ${'hours' in g ? g.hours : 24} h. Stacks with an active boost`,
+    ],
+  },
+};
+
+function playerLocale(user: User): Locale {
+  return parseSettings(user.settings).language ?? botLocale(user.languageCode);
+}
+
+/** Выставить счёт: запись покупки (PENDING) и ссылка для Telegram.WebApp.openInvoice. */
+export async function createInvoice(
+  user: User,
+  productId: ShopProductId,
+): Promise<{ purchase: Purchase; link: string }> {
+  const recent = await prisma.purchase.count({
+    where: { userId: user.id, status: 'PENDING', createdAt: { gt: new Date(Date.now() - 10 * 60_000) } },
+  });
+  if (recent >= MAX_PENDING_PER_10_MIN) throw new ApiError('RATE_LIMITED', 'Too many unpaid invoices');
+  const grant = grantFor(productId, user);
+  const purchase = await prisma.purchase.create({
+    data: {
+      userId: user.id,
+      productId,
+      stars: SHOP[productId].stars,
+      payload: randomUUID(),
+      grant: grant as Prisma.InputJsonValue,
+    },
+  });
+  const [title, description] = INVOICE_TEXT[productId][playerLocale(user)](grant);
+  try {
+    const link = await payments().createInvoiceLink({
+      title,
+      description,
+      payload: purchase.payload,
+      stars: purchase.stars,
+      photoUrl: `${env.WEBAPP_URL.replace(/\/$/, '')}/assets/generated/og-image.jpg`,
+    });
+    return { purchase, link };
+  } catch (err) {
+    logger.error({ err, productId }, 'createInvoiceLink failed');
+    await prisma.purchase.delete({ where: { id: purchase.id } });
+    throw new ApiError('UNAVAILABLE', 'Payments are unavailable, try later');
+  }
+}
+
+export interface PaymentInfo {
+  payload: string;
+  fromId: number;
+  currency: string;
+  totalAmount: number;
+}
+
+/**
+ * pre_checkout_query: Telegram спрашивает, можно ли принять оплату (ответ — за 10 секунд).
+ * Возвращает null, если можно, или текст ошибки для покупателя.
+ */
+export async function checkPreCheckout(p: PaymentInfo): Promise<string | null> {
+  const purchase = await prisma.purchase.findUnique({
+    where: { payload: p.payload },
+    include: { user: true },
+  });
+  const ru = purchase ? playerLocale(purchase.user) === 'ru' : true;
+  const stale = ru
+    ? 'Счёт устарел — откройте магазин в игре заново'
+    : 'This invoice is out of date — reopen the shop';
+  if (!purchase || purchase.status !== 'PENDING') return stale;
+  if (Date.now() - purchase.createdAt.getTime() > INVOICE_TTL_MS) return stale;
+  if (purchase.user.telegramId !== BigInt(p.fromId)) return stale;
+  if (p.currency !== 'XTR' || p.totalAmount !== purchase.stars) return stale;
+  if (purchase.user.isBanned) return ru ? 'Аккаунт заблокирован' : 'Your account is banned';
+  return null;
+}
+
+/**
+ * successful_payment: выдать покупку. Повтор того же платежа (Telegram может прислать обновление ещё раз)
+ * ничего не выдаёт второй раз.
+ */
+export async function fulfillPayment(
+  p: PaymentInfo & { chargeId: string },
+): Promise<'paid' | 'duplicate' | 'unknown'> {
+  const found = await prisma.purchase.findUnique({ where: { payload: p.payload } });
+  if (!found) {
+    // деньги пришли, а покупки нет — разбирать вручную (/paysupport, возврат через админку)
+    logger.error(
+      { payload: p.payload, chargeId: p.chargeId, fromId: p.fromId },
+      'payment for unknown purchase',
+    );
+    return 'unknown';
+  }
+  return withUserLock(
+    found.userId,
+    async (tx, locked) => {
+      const purchase = await tx.purchase.findUniqueOrThrow({ where: { id: found.id } });
+      if (purchase.status !== 'PENDING') return 'duplicate';
+      const now = new Date();
+      // сначала доход по старым условиям, потом выдача (буст дохода действует с момента покупки)
+      const { user } = await syncPassive(tx, locked, now);
+      const grant = purchase.grant as Grant;
+      if ('coins' in grant) {
+        await applyBalanceChanges(
+          tx,
+          user,
+          [
+            {
+              type: 'shop_purchase',
+              amount: grant.coins,
+              earned: false,
+              meta: { purchaseId: purchase.id, productId: purchase.productId, stars: purchase.stars },
+            },
+          ],
+          {},
+          now,
+        );
+      } else if ('energy' in grant) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { energy: maxEnergy(user.energyLimitLevel), energyUpdatedAt: now },
+        });
+      } else {
+        const from = user.incomeBoostUntil && user.incomeBoostUntil > now ? user.incomeBoostUntil : now;
+        await tx.user.update({
+          where: { id: user.id },
+          data: { incomeBoostUntil: new Date(from.getTime() + grant.hours * 3_600_000) },
+        });
+      }
+      await tx.purchase.update({
+        where: { id: purchase.id },
+        data: { status: 'PAID', chargeId: p.chargeId, paidAt: now },
+      });
+      logger.info({ userId: user.id, productId: purchase.productId, stars: purchase.stars }, 'purchase paid');
+      return 'paid' as const;
+    },
+    { allowBanned: true },
+  );
+}
+
+/**
+ * Возврат звёзд (админка): Telegram возвращает оплату, у игрока забирается выданное — монеты (сколько есть
+ * на балансе) и время буста.
+ */
+export async function refundPurchase(purchaseId: number): Promise<Purchase> {
+  const purchase = await prisma.purchase.findUnique({ where: { id: purchaseId }, include: { user: true } });
+  if (!purchase) throw new ApiError('NOT_FOUND', 'Purchase not found');
+  if (purchase.status !== 'PAID' || !purchase.chargeId)
+    throw new ApiError('CONFLICT', 'Purchase is not paid');
+  try {
+    await payments().refund(Number(purchase.user.telegramId), purchase.chargeId);
+  } catch (err) {
+    // уже возвращено (например, через поддержку Telegram) — просто отмечаем у себя
+    if (!(err instanceof GrammyError && /REFUNDED/i.test(err.description))) {
+      logger.error({ err, purchaseId }, 'refundStarPayment failed');
+      throw new ApiError('UNAVAILABLE', err instanceof GrammyError ? err.description : 'Refund failed');
+    }
+  }
+  return withUserLock(
+    purchase.userId,
+    async (tx, locked) => {
+      const fresh = await tx.purchase.findUniqueOrThrow({ where: { id: purchaseId } });
+      if (fresh.status !== 'PAID') return fresh;
+      const now = new Date();
+      const { user } = await syncPassive(tx, locked, now);
+      const grant = fresh.grant as Grant;
+      if ('coins' in grant) {
+        const take = Math.min(grant.coins, Math.max(0, user.balance.floor().toNumber()));
+        await applyBalanceChanges(
+          tx,
+          user,
+          [{ type: 'shop_refund', amount: -take, meta: { purchaseId, productId: fresh.productId } }],
+          {},
+          now,
+        );
+      } else if ('hours' in grant && user.incomeBoostUntil) {
+        const until = user.incomeBoostUntil.getTime() - grant.hours * 3_600_000;
+        await tx.user.update({
+          where: { id: user.id },
+          data: { incomeBoostUntil: until > now.getTime() ? new Date(until) : null },
+        });
+      }
+      return tx.purchase.update({ where: { id: purchaseId }, data: { status: 'REFUNDED', refundedAt: now } });
+    },
+    { allowBanned: true },
+  );
+}

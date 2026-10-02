@@ -4,6 +4,7 @@ import { env } from '../env.js';
 import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
 import { parseReferral } from '../services/referrals.js';
+import { checkPreCheckout, fulfillPayment } from '../services/shop.js';
 import { BOT_TEXTS, botLocale } from './texts.js';
 
 /** Ссылка на Mini App; с реферальным параметром — через startapp, чтобы приглашение засчиталось. */
@@ -60,6 +61,57 @@ export function createBot(token: string = env.BOT_TOKEN, botInfo?: UserFromGetMe
       });
     }
     await sendWelcome(ctx, startParam);
+  });
+
+  // оплата Stars: Telegram спрашивает, можно ли принять платёж (ответить нужно за 10 секунд)
+  bot.on('pre_checkout_query', async (ctx) => {
+    const q = ctx.preCheckoutQuery;
+    const error = await checkPreCheckout({
+      payload: q.invoice_payload,
+      fromId: q.from.id,
+      currency: q.currency,
+      totalAmount: q.total_amount,
+    }).catch((err: unknown) => {
+      logger.error({ err }, 'pre-checkout check failed');
+      return 'Try again in a minute';
+    });
+    if (error) await ctx.answerPreCheckoutQuery(false, { error_message: error });
+    else await ctx.answerPreCheckoutQuery(true);
+  });
+
+  // оплата прошла — выдаём покупку (повтор того же платежа ничего не выдаёт второй раз)
+  bot.on('message:successful_payment', async (ctx) => {
+    const p = ctx.message.successful_payment;
+    const result = await fulfillPayment({
+      payload: p.invoice_payload,
+      fromId: ctx.from.id,
+      currency: p.currency,
+      totalAmount: p.total_amount,
+      chargeId: p.telegram_payment_charge_id,
+    });
+    if (result === 'paid') {
+      const locale = botLocale(ctx.from.language_code);
+      await ctx.reply(BOT_TEXTS[locale].purchaseDone, { reply_markup: playKeyboard(locale) });
+    }
+  });
+
+  // поддержка по платежам (обязательна для ботов с оплатой): сообщение уходит админам
+  bot.command('paysupport', async (ctx) => {
+    const locale = botLocale(ctx.from?.language_code);
+    const text = ctx.match.trim();
+    if (!text || !ctx.from) {
+      await ctx.reply(BOT_TEXTS[locale].paySupport);
+      return;
+    }
+    const who = [ctx.from.first_name, ctx.from.username ? `@${ctx.from.username}` : null, `id ${ctx.from.id}`]
+      .filter(Boolean)
+      .join(' · ');
+    for (const adminId of env.adminIds) {
+      await ctx.api
+        .sendMessage(Number(adminId), `💬 /paysupport — ${who}\n\n${text}`)
+        .catch((err: unknown) => logger.warn({ err }, 'paysupport forward failed'));
+    }
+    await ctx.reply(BOT_TEXTS[locale].paySupportSent);
   });
 
   // на любое другое сообщение — та же кнопка «Играть»

@@ -31,6 +31,10 @@ export const BOT_TEXTS = {
         'Жми «Играть» 👇',
       ].join('\n'),
     play: '▶️ Играть',
+    purchaseDone: '✅ Покупка зачислена! Открой игру — всё уже на месте.',
+    paySupport:
+      'Проблема с покупкой? Напиши её одним сообщением вместе с командой, например:\n/paysupport не пришли монеты\n\nМы ответим в течение 24 часов и, если нужно, вернём звёзды.',
+    paySupportSent: '📨 Сообщение передано поддержке. Ответим в течение 24 часов.',
     channel: '📣 Подписаться на канал',
     energyFull: '⚡ Энергия восстановлена! Кот отдохнул и готов к работе — заходи тапать.',
     friendJoined: (name: string, bonus: string) =>
@@ -59,6 +63,10 @@ export const BOT_TEXTS = {
         'Press “Play” 👇',
       ].join('\n'),
     play: '▶️ Play',
+    purchaseDone: '✅ Purchase delivered! Open the game — it’s all there.',
+    paySupport:
+      'Problem with a purchase? Send it in one message with the command, e.g.:\n/paysupport coins did not arrive\n\nWe reply within 24 hours and refund the Stars if needed.',
+    paySupportSent: '📨 Your message was passed to support. We reply within 24 hours.',
     channel: '📣 Join the channel',
     energyFull: '⚡ Energy is full again! The cat has rested and is ready to work — come and tap.',
     friendJoined: (name: string, bonus: string) =>

@@ -99,6 +99,8 @@ export interface PlayerState {
   tapSeq: number;
   /** до какого момента действует Turbo (мс), null — не активен */
   turboUntil: number | null;
+  /** до какого момента пассивный доход ×INCOME_BOOST_MULTIPLIER (покупка в магазине), null — нет */
+  incomeBoostUntil: number | null;
   totalTaps: number;
   boosts: BoostsState;
   daily: DailyRewardState;
