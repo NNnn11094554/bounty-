@@ -25,7 +25,7 @@ export function CharacterImage({ size, className, style, eager = true }: Props) 
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
         className={className}
-        style={{ objectFit: 'cover', objectPosition: '55% 45%', ...style }}
+        style={{ objectFit: 'cover', objectPosition: '50% 50%', ...style }}
       />
     </picture>
   );
