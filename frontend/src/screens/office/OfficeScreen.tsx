@@ -213,12 +213,12 @@ export function OfficeScreen({
 
       <PlayerStats />
 
-      <section className="office-arc relative mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-5 short:mt-2.5 short:pt-3">
+      <section className="office-arc relative mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-4 short:mt-2.5 short:pt-2.5">
         <div className="flex items-center justify-center gap-2.5" data-testid="balance" data-coin-target>
-          <CoinIcon size={44} className="short:h-9 short:w-9" />
+          <CoinIcon size={34} className="short:h-7 short:w-7" />
           <RollingNumber
             getValue={() => tapEngine.balanceNow()}
-            className="text-[42px] font-black tracking-tight short:text-[34px]"
+            className="text-[34px] font-black leading-tight tracking-tight short:text-[28px]"
             testId="balance-value"
           />
         </div>
@@ -230,7 +230,7 @@ export function OfficeScreen({
           animate={catOverlay ? { height: 0, opacity: 0 } : { height: 'auto', opacity: 1 }}
           transition={{ duration: 0.25 }}
         >
-          <div className="mt-3 short:mt-1.5" data-tour="league">
+          <div className="mt-2 short:mt-1" data-tour="league">
             <div className="flex items-center justify-between text-sm font-extrabold">
               <button
                 type="button"
