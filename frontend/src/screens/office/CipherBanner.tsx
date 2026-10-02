@@ -64,6 +64,7 @@ export function CipherBanner() {
   const t = useT();
   const locale = useLocale();
   const cipher = useDailyGames((s) => s.cipher);
+  const failed = useDailyGames((s) => s.status === 'error');
   const load = useDailyGames((s) => s.load);
   const active = useCipherInput((s) => s.active);
   const letters = useCipherInput((s) => s.letters);
@@ -76,7 +77,28 @@ export function CipherBanner() {
   // уходя с Офиса, выходим из режима шифра
   useEffect(() => exitCipher, []);
 
-  if (!cipher) return null;
+  if (!cipher) {
+    if (failed) return null;
+    // место под плашку занято сразу — кот не «прыгает», когда шифр загрузится
+    return (
+      <div
+        className="mt-3 flex items-center gap-2.5 rounded-2xl border border-line bg-night-700/90 px-3 py-2 shadow-card short:mt-2 short:py-1.5"
+        data-testid="cipher-skeleton"
+        aria-hidden
+      >
+        <span className="font-mono text-lg font-black text-gold/40">•−</span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="text-sm font-extrabold">
+            <span className="skeleton inline-block h-3.5 w-28 rounded align-middle" />
+          </p>
+          <p className="text-xs font-extrabold">
+            <span className="skeleton inline-block h-3 w-20 rounded align-middle" />
+          </p>
+        </div>
+        <span className="skeleton h-8 w-[76px] rounded-xl short:h-7" />
+      </div>
+    );
+  }
 
   if (!active) {
     return (

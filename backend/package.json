@@ -14,7 +14,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx src/scripts/seed.ts",
     "balance-check": "tsx src/scripts/balance-check.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@ton/ton": "^16.3.0",
     "@types/node": "^22.18.0",
+    "@vitest/coverage-v8": "^3.2.7",
     "pino-pretty": "^13.1.0",
     "prisma": "^6.19.0",
     "tsup": "^8.5.0",

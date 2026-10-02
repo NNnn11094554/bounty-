@@ -19,9 +19,14 @@ import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
 import { TaskSheet } from '../earn/TaskSheet';
 
+declare const __STATIC_TONCONNECT_MANIFEST__: boolean;
+
+/** Манифест TON Connect: заданный явно → собранный рядом с игрой → из API. */
 const MANIFEST_URL =
   (import.meta.env.VITE_TONCONNECT_MANIFEST_URL as string | undefined) ??
-  apiUrl('/api/tonconnect-manifest.json');
+  (typeof __STATIC_TONCONNECT_MANIFEST__ === 'boolean' && __STATIC_TONCONNECT_MANIFEST__
+    ? new URL('/tonconnect-manifest.json', window.location.origin).toString()
+    : apiUrl('/api/tonconnect-manifest.json'));
 /** payload ton_proof живёт 15 минут — обновляем заранее */
 const PAYLOAD_REFRESH_MS = 12 * 60_000;
 

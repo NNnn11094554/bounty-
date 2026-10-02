@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "CardCategory" AS ENUM ('MARKETS', 'PR_TEAM', 'LEGAL', 'SPECIALS');
 
@@ -45,6 +48,7 @@ CREATE TABLE "User" (
     "walletAddress" TEXT,
     "walletConnectedAt" TIMESTAMP(3),
     "dailyRewardDay" INTEGER NOT NULL DEFAULT 0,
+    "dailyStreak" INTEGER NOT NULL DEFAULT 0,
     "dailyRewardClaimedAt" TIMESTAMP(3),
     "dailyRewardDayKey" TEXT,
     "bestDailyStreak" INTEGER NOT NULL DEFAULT 0,
@@ -59,6 +63,8 @@ CREATE TABLE "User" (
     "onboardingDone" BOOLEAN NOT NULL DEFAULT false,
     "settings" JSONB NOT NULL DEFAULT '{}',
     "tutorialsSeen" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "achievementIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "newAchievementIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "notifyDayKey" TEXT,
     "notifySentToday" INTEGER NOT NULL DEFAULT 0,
     "energyFullNotify" BOOLEAN NOT NULL DEFAULT false,
@@ -180,6 +186,8 @@ CREATE TABLE "UserComboProgress" (
 CREATE TABLE "DailyCipher" (
     "dayKey" TEXT NOT NULL,
     "word" TEXT NOT NULL,
+    "hintRu" TEXT NOT NULL DEFAULT '',
+    "hintEn" TEXT NOT NULL DEFAULT '',
     "source" TEXT NOT NULL DEFAULT 'auto',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -219,6 +227,14 @@ CREATE TABLE "UserAchievement" (
     "unlockedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "UserAchievement_pkey" PRIMARY KEY ("userId","achievementId")
+);
+
+-- CreateTable
+CREATE TABLE "DeletedUser" (
+    "telegramId" BIGINT NOT NULL,
+    "deletedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DeletedUser_pkey" PRIMARY KEY ("telegramId")
 );
 
 -- CreateTable
@@ -375,3 +391,4 @@ ALTER TABLE "UserEvent" ADD CONSTRAINT "UserEvent_userId_fkey" FOREIGN KEY ("use
 
 -- AddForeignKey
 ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

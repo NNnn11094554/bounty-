@@ -14,6 +14,8 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/game/**', 'src/auth/**', 'src/services/**'],
       reporter: ['text-summary', 'html'],
+      // планка ТЗ: покрытие игровой логики ≥ 80 %
+      thresholds: { statements: 80, lines: 80, functions: 80, branches: 75 },
     },
   },
 });

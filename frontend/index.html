@@ -27,9 +27,11 @@
       as="image"
       type="image/webp"
       href="/assets/generated/character-512.webp"
-      imagesrcset="/assets/generated/character-512.webp 1x, /assets/generated/character-1024.webp 2x"
+      imagesrcset="/assets/generated/character-256.webp 256w, /assets/generated/character-512.webp 512w, /assets/generated/character-1024.webp 1024w"
+      imagesizes="168px"
     />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- defer: не задерживает первую отрисовку; выполняется до модуля игры (порядок отложенных скриптов) -->
+    <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
     <style>
       /* критический CSS: фон и сплэш видны до загрузки бандла */
       html,
@@ -63,7 +65,12 @@
         <picture>
           <source
             type="image/webp"
-            srcset="/assets/generated/character-512.webp 1x, /assets/generated/character-1024.webp 2x"
+            srcset="
+              /assets/generated/character-256.webp   256w,
+              /assets/generated/character-512.webp   512w,
+              /assets/generated/character-1024.webp 1024w
+            "
+            sizes="168px"
           />
           <img src="/assets/generated/character-512.png" alt="" width="168" height="168" />
         </picture>

@@ -66,14 +66,24 @@ function bandAt(u: number, v: number): number {
   return Math.exp(-(d * d) / (2 * 0.17 * 0.17));
 }
 
-function drawNebula(
+/** Отдать управление браузеру между порциями работы — без длинных задач в основном потоке. */
+function yieldToBrowser(): Promise<void> {
+  const sched = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (sched?.yield) return sched.yield();
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** бюджет одной порции работы, мс (длинная задача — от 50 мс) */
+const SLICE_MS = 12;
+
+async function drawNebula(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   res: number,
   seed: number,
   alpha: number,
-) {
+): Promise<void> {
   const nw = res;
   const nh = Math.max(1, Math.round((res * h) / w));
   const layer = document.createElement('canvas');
@@ -85,6 +95,7 @@ function drawNebula(
   const cloud = makeFbm(seed, 5);
   const dust = makeFbm(seed + 17, 4);
   const scale = 5 / nw;
+  let sliceStart = performance.now();
   for (let y = 0; y < nh; y++) {
     for (let x = 0; x < nw; x++) {
       const u = x / nw;
@@ -101,6 +112,10 @@ function drawNebula(
       img.data[i + 1] = 48 + lit * 80; // G
       img.data[i + 2] = 92 + lit * 95; // B
       img.data[i + 3] = Math.round(Math.min(1, a) * 255 * alpha);
+    }
+    if (performance.now() - sliceStart > SLICE_MS) {
+      await yieldToBrowser();
+      sliceStart = performance.now();
     }
   }
   lctx.putImageData(img, 0, 0);
@@ -142,13 +157,15 @@ function drawStars(ctx: CanvasRenderingContext2D, w: number, h: number, seed: nu
   }
 }
 
-/** Нарисовать небо на canvas размером w×h CSS-пикселей. */
-export function renderSky(canvas: HTMLCanvasElement, w: number, h: number, dpr: number): void {
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
-  const ctx = canvas.getContext('2d');
+/**
+ * Нарисовать небо на canvas размером w×h CSS-пикселей. Работа идёт порциями в отдельном буфере,
+ * на экран небо попадает целиком одним кадром.
+ */
+export async function renderSky(canvas: HTMLCanvasElement, w: number, h: number, dpr: number): Promise<void> {
+  const buf = document.createElement('canvas');
+  buf.width = Math.round(w * dpr);
+  buf.height = Math.round(h * dpr);
+  const ctx = buf.getContext('2d');
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const bg = ctx.createLinearGradient(0, 0, 0, h);
@@ -158,16 +175,27 @@ export function renderSky(canvas: HTMLCanvasElement, w: number, h: number, dpr: 
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
   // крупные облака + тонкие волокна поверх
-  drawNebula(ctx, w, h, 96, 7, 0.75);
-  drawNebula(ctx, w, h, 220, 19, 0.45);
+  await drawNebula(ctx, w, h, 80, 7, 0.75);
+  await drawNebula(ctx, w, h, 170, 19, 0.45);
+  await yieldToBrowser();
   drawStars(ctx, w, h, 20261002);
+  canvas.width = buf.width;
+  canvas.height = buf.height;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  canvas.getContext('2d')?.drawImage(buf, 0, 0);
 }
 
-/** Небо картинкой (для экранов поверх вкладок): JPEG, чтобы строка была небольшой. */
-export function skyDataUrl(canvas: HTMLCanvasElement): string {
-  try {
-    return canvas.toDataURL('image/jpeg', 0.82);
-  } catch {
-    return '';
-  }
+/**
+ * Небо картинкой для экранов поверх вкладок: JPEG кодируется асинхронно (toBlob) — без паузы игры.
+ * Возвращает адрес картинки (blob:) или null.
+ */
+export function skyImageUrl(canvas: HTMLCanvasElement): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      canvas.toBlob((blob) => resolve(blob ? URL.createObjectURL(blob) : null), 'image/jpeg', 0.82);
+    } catch {
+      resolve(null);
+    }
+  });
 }

@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { isReducedMotion } from '../animations';
-import { renderSky, skyDataUrl } from '../lib/spaceSky';
+import { renderSky, skyImageUrl } from '../lib/spaceSky';
 import { PawIcon } from './icons';
 
 /** Еле заметные лапки — «созвездия» среди звёзд. */
@@ -68,18 +68,27 @@ function SkyCanvas() {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    let idle = 0;
+    let disposed = false;
+    let objectUrl: string | null = null;
     const draw = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      renderSky(canvas, window.innerWidth + MARGIN * 2, window.innerHeight + MARGIN * 2, dpr);
-      window.clearTimeout(idle);
-      idle = window.setTimeout(() => {
-        const url = skyDataUrl(canvas);
-        if (url) document.documentElement.style.setProperty('--space-sky', `url(${url})`);
-      }, 400);
+      if (disposed) return;
+      // мягкой туманности хватает плотности 1,5 — вдвое меньше пикселей, чем при 3
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      void renderSky(canvas, window.innerWidth + MARGIN * 2, window.innerHeight + MARGIN * 2, dpr)
+        .then(() => (disposed ? null : skyImageUrl(canvas)))
+        .then((url) => {
+          if (!url || disposed) return;
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+          objectUrl = url;
+          document.documentElement.style.setProperty('--space-sky', `url(${url})`);
+        });
     };
-    // после первого кадра: экран загрузки не ждёт рисования неба
-    const first = window.setTimeout(draw, 0);
+    // рисуем, когда браузер свободен: первая отрисовка игры не ждёт неба
+    const idle = (fn: () => void) =>
+      typeof window.requestIdleCallback === 'function'
+        ? window.requestIdleCallback(fn, { timeout: 1500 })
+        : window.setTimeout(fn, 300);
+    idle(draw);
     let timer = 0;
     const onResize = () => {
       window.clearTimeout(timer);
@@ -87,10 +96,9 @@ function SkyCanvas() {
     };
     window.addEventListener('resize', onResize);
     return () => {
+      disposed = true;
       window.removeEventListener('resize', onResize);
-      window.clearTimeout(first);
       window.clearTimeout(timer);
-      window.clearTimeout(idle);
     };
   }, []);
   return <canvas ref={ref} className="absolute" style={{ left: -MARGIN, top: -MARGIN }} />;

@@ -13,7 +13,7 @@ export function CharacterImage({ size, className, style, eager = true }: Props) 
     <picture>
       <source
         type="image/webp"
-        srcSet="/assets/generated/character-512.webp 512w, /assets/generated/character-1024.webp 1024w"
+        srcSet="/assets/generated/character-256.webp 256w, /assets/generated/character-512.webp 512w, /assets/generated/character-1024.webp 1024w"
         sizes={size ? `${size}px` : '70vw'}
       />
       <img

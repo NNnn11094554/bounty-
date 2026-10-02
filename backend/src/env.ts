@@ -25,14 +25,20 @@ const schema = z
     CHANNEL_ID: z.string().optional(),
     CHANNEL_URL: z.string().url().optional(),
     DAILY_RESET_UTC_HOUR: z.coerce.number().int().min(0).max(23).default(16),
-    TONCONNECT_MANIFEST_URL: z.string().url().optional(),
     WEBHOOK_SECRET: z.string().optional(),
     BOT_ENABLED: bool,
     MIN_CLIENT_VERSION: z.string().default('1.0.0'),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && !env.BOT_TOKEN) {
+    if (env.NODE_ENV !== 'production') return;
+    if (!env.BOT_TOKEN) {
       ctx.addIssue({ code: 'custom', path: ['BOT_TOKEN'], message: 'BOT_TOKEN обязателен в production' });
+    }
+    // Mini App и вебхук Telegram работают только по https
+    for (const key of ['WEBAPP_URL', 'API_URL'] as const) {
+      if (!env[key].startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: [key], message: `${key}: в production нужен https-адрес` });
+      }
     }
   });
 
@@ -41,6 +47,8 @@ function load() {
   const raw = Object.fromEntries(
     Object.entries(process.env).filter(([, v]) => v !== undefined && v.trim() !== ''),
   );
+  // на Render адрес сервиса известен сам (RENDER_EXTERNAL_URL) — API_URL можно не задавать
+  if (!raw.API_URL && raw.RENDER_EXTERNAL_URL) raw.API_URL = raw.RENDER_EXTERNAL_URL;
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
