@@ -40,6 +40,7 @@ describe('Earn tasks', () => {
         if (membership === 'error') throw new TelegramUnavailableError('bot is not an admin');
         return membership;
       },
+      sendMessage: async () => undefined,
     });
   });
   afterEach(() => setTelegramGateway(null));
@@ -63,6 +64,7 @@ describe('Earn tasks', () => {
     await seedTasks();
     const tasks = await prisma.task.findMany({ orderBy: { id: 'asc' } });
     expect(tasks.map((t) => [t.id, t.isActive])).toEqual([
+      ['choose_hq', true],
       ['connect_wallet', true],
       ['invite_3', true],
       ['tg_channel', false],
@@ -70,11 +72,12 @@ describe('Earn tasks', () => {
     const { c } = await player(8001);
     const list = (await c.get('/api/tasks')).json<TasksResponse>();
     expect(list.tasks.map((t) => [t.id, t.section])).toEqual([
+      ['choose_hq', 'LIST'],
       ['invite_3', 'LIST'],
       ['connect_wallet', 'AIRDROP'],
     ]);
     expect(list.tasks.find((t) => t.id === 'connect_wallet')).toMatchObject({ status: 'new', reward: 0 });
-    expect(list.tasks[0]).toMatchObject({
+    expect(list.tasks.find((t) => t.id === 'invite_3')).toMatchObject({
       status: 'new',
       reward: 25_000,
       progress: { current: 0, required: 3 },

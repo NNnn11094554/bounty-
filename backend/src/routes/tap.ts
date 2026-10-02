@@ -11,6 +11,9 @@ import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
 
+/** доля энергии, ниже которой включается напоминание «Энергия восстановлена» */
+const ENERGY_NOTIFY_RATIO = 0.2;
+
 const TapBody = z.object({
   /** номер пачки: растёт на 1 с каждой новой пачкой, повтор той же пачки — тот же номер */
   seq: z.number().int().min(1).max(2_147_483_647),
@@ -65,6 +68,10 @@ export async function tapRoutes(app: FastifyInstance): Promise<void> {
             totalTaps: { increment: result.accepted },
             lastSyncAt: now,
             lastSeenAt: now,
+            // энергия почти кончилась — когда восстановится, бот напомнит (если игрок разрешил)
+            ...(energy.energy - result.energySpent < energy.max * ENERGY_NOTIFY_RATIO
+              ? { energyFullNotify: true }
+              : {}),
             ...(result.suspicious ? { suspiciousScore: { increment: 1 } } : {}),
           },
           now,

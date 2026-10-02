@@ -11,12 +11,14 @@ import { loggerOptions } from './lib/logger.js';
 import { adminDailyRoutes } from './routes/admin/daily.js';
 import { adminTaskRoutes } from './routes/admin/tasks.js';
 import { authRoutes } from './routes/auth.js';
+import { botRoutes } from './routes/bot.js';
 import { boostRoutes } from './routes/boosts.js';
 import { cardRoutes } from './routes/cards.js';
 import { dailyRoutes } from './routes/daily.js';
 import { dailyGameRoutes } from './routes/dailyGames.js';
 import { devRoutes } from './routes/dev.js';
 import { friendRoutes } from './routes/friends.js';
+import { hqRoutes } from './routes/hq.js';
 import { leagueRoutes } from './routes/leagues.js';
 import { tapRoutes } from './routes/tap.js';
 import { taskRoutes } from './routes/tasks.js';
@@ -100,7 +102,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     timeWindow: '1 minute',
     hook: 'preHandler',
     keyGenerator: (request) => (request.tg ? `u:${request.tg.user.id}` : `ip:${request.ip}`),
-    allowList: (request) => request.url === '/health',
+    allowList: (request) => request.url === '/health' || request.url === '/api/bot/webhook',
     errorResponseBuilder: (_request, context) => ({
       statusCode: 429,
       error: { code: 'RATE_LIMITED', message: 'Too many requests', details: { retryAfterMs: context.ttl } },
@@ -123,6 +125,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(taskRoutes);
   await app.register(friendRoutes);
   await app.register(walletRoutes);
+  await app.register(hqRoutes);
+  await app.register(botRoutes);
   await app.register(adminTaskRoutes);
   await app.register(adminDailyRoutes);
   await app.register(devRoutes);

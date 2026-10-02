@@ -1,6 +1,8 @@
+import { headquartersById, hqColors, hqIcon } from '@meowgul/shared';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
+import { CardIcon } from '../../components/cards/CardIcon';
 import { CatButton, type TapHandler } from '../../components/CatButton';
 import { BoltIcon, CoinIcon, PawIcon, RocketIcon } from '../../components/icons';
 import { PlayerStats } from '../../components/PlayerStats';
@@ -56,6 +58,7 @@ export function OfficeScreen({
   const progressRef = useRef<HTMLDivElement>(null);
   const pawRef = useRef<HTMLDivElement>(null);
 
+  const hq = headquartersById(player?.profile.hqId);
   const leagues = useMemo(() => config?.leagues ?? [], [config]);
   const leagueLevel = player?.leagueLevel ?? 0;
   const league = leagues.length ? leagueAt(leagues, leagueLevel) : null;
@@ -95,14 +98,22 @@ export function OfficeScreen({
 
   return (
     <div className="flex h-full flex-col" data-testid="office">
-      <header className="flex items-center gap-2.5 px-4 pb-2 pt-3 short:pb-1.5 short:pt-2">
+      <header
+        className="flex items-center gap-2.5 px-4 pb-2 pt-3 short:pb-1.5 short:pt-2"
+        style={
+          hq ? { background: `linear-gradient(90deg, ${hqColors(hq)[0]}2e, transparent 75%)` } : undefined
+        }
+      >
         <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-[15px] font-extrabold" data-testid="player-name">
             {player.profile.firstName}
           </p>
-          <p className="text-xs font-bold text-white/50">{t('office.ceo')}</p>
+          <p className="truncate text-xs font-bold text-white/50" data-testid="player-hq">
+            {hq ? t('office.ceoAt', { hq: hq.name[locale] }) : t('office.ceo')}
+          </p>
         </div>
+        {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
         {header}
       </header>
 

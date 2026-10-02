@@ -227,6 +227,8 @@ export interface GameConfig {
   dailyResetUtcHour: number;
   /** награды ежедневки по дням цикла */
   dailyRewards: number[];
+  /** бонус за приглашённого друга (обоим) */
+  referral: { regular: number; premium: number };
 }
 
 export interface DailyClaimResponse {

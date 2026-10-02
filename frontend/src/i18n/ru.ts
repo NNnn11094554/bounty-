@@ -237,6 +237,22 @@ export const ru = {
   'wallet.error.unavailable': 'Подключение кошелька сейчас недоступно, попробуйте позже',
   'airdrop.walletTask': 'Подключи свой кошелёк TON',
   'airdrop.walletHint': 'Понадобится, чтобы получить токены Airdrop',
+  'onboarding.skip': 'Пропустить',
+  'onboarding.next': 'Дальше',
+  'onboarding.toHq': 'Выбрать штаб-квартиру',
+  'onboarding.tap.title': 'Тапай кота',
+  'onboarding.tap.text':
+    'Каждый тап приносит монеты. Энергия восстанавливается сама, а бусты помогут тапать больше.',
+  'onboarding.cards.title': 'Покупай карточки',
+  'onboarding.cards.text': 'Карточки в Mine приносят доход каждый час — даже когда ты не в игре.',
+  'onboarding.friends.title': 'Зови друзей',
+  'onboarding.friends.text':
+    'За каждого друга бонус получаете оба, а когда друг растёт в лигах — ещё больше.',
+  'hq.title': 'Выбери штаб-квартиру',
+  'hq.text': 'Где будет главный офис твоей компании? Сменить можно позже в профиле.',
+  'hq.confirm': 'Открыть офис · +{reward}',
+  'hq.done': 'Добро пожаловать в {name}!',
+  'office.ceoAt': 'CEO · {hq}',
 } as const;
 
 export type MessageKey = keyof typeof ru;

@@ -56,6 +56,7 @@ const config = {
   turbo: { durationSec: 20, multiplier: 5 },
   dailyResetUtcHour: 16,
   dailyRewards: [500, 1000, 2500, 5000, 15000, 25000, 100000, 500000, 1000000, 5000000],
+  referral: { regular: 5000, premium: 25000 },
 } satisfies GameConfig;
 
 function mockFetch(handler: (url: string) => Response) {

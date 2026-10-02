@@ -6,6 +6,7 @@ import { PawBackground } from './components/PawBackground';
 import { Toaster } from './components/Toaster';
 import { useT } from './i18n';
 import { GameShell } from './screens/GameShell';
+import { Onboarding } from './screens/onboarding/Onboarding';
 import { SplashScreen } from './screens/SplashScreen';
 import { StatusScreen } from './screens/StatusScreen';
 import { useGame } from './store/game';
@@ -102,7 +103,14 @@ function Root() {
         />
       );
     case 'ready':
-      return player ? <GameShell /> : <SplashScreen />;
+      return player ? (
+        <>
+          <GameShell />
+          <Onboarding />
+        </>
+      ) : (
+        <SplashScreen />
+      );
   }
 }
 

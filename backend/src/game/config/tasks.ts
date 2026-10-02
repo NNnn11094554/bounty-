@@ -4,7 +4,7 @@
  * Канал для задания «Подписаться» задаётся переменными CHANNEL_ID и CHANNEL_URL:
  * без них задание создаётся выключенным.
  */
-import type { TaskIcon, TaskSection, TaskType } from '@meowgul/shared';
+import { HQ_REWARD, type TaskIcon, type TaskSection, type TaskType } from '@meowgul/shared';
 
 export interface TaskConfig {
   id: string;
@@ -59,6 +59,22 @@ export function builtInTasks(channel: { id: string | null; url: string | null })
       reward: 0,
       checkDelaySec: 0,
       sortOrder: 10,
+    },
+    {
+      id: 'choose_hq',
+      type: 'CHOOSE_HQ',
+      section: 'LIST',
+      titleRu: 'Выбери штаб-квартиру',
+      titleEn: 'Choose your headquarters',
+      descRu: 'Где будет главный офис твоей компании? Выбрать можно в настройках профиля.',
+      descEn: 'Where will your company’s main office be? You can choose it in the profile settings.',
+      icon: 'hq',
+      url: null,
+      channelId: null,
+      requiredCount: null,
+      reward: HQ_REWARD,
+      checkDelaySec: 0,
+      sortOrder: 40,
     },
     {
       id: 'invite_3',

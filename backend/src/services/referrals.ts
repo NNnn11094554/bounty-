@@ -4,6 +4,7 @@ import { REFERRAL } from '../game/config/rewards.js';
 import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
 import { applyBalanceChanges, onLeagueUp } from './ledger.js';
+import { enqueueNotification } from './notifications.js';
 import { lockUser, withUserLock } from './userLock.js';
 
 const REF_RE = /^ref_(\d{1,20})$/;
@@ -70,6 +71,10 @@ export async function applyReferral(
         now,
       );
     }
+    await enqueueNotification(tx, inviter.id, 'friend_joined', {
+      name: invitee.firstName || invitee.username || '🐾',
+      bonus,
+    });
     logger.info({ inviterId: inviter.id, inviteeId: invitee.id, bonus }, 'referral registered');
     return { inviterName: inviter.firstName || inviter.username || 'Player', bonus };
   });

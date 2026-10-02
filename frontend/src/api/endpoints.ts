@@ -38,6 +38,7 @@ export const endpoints = {
   tonProofPayload: () => api<TonProofPayloadResponse>('/api/wallet/proof-payload'),
   connectWallet: (body: WalletConnectRequest) => api<StateResponse>('/api/wallet', { method: 'POST', body }),
   disconnectWallet: () => api<StateResponse>('/api/wallet', { method: 'DELETE' }),
+  chooseHq: (hqId: string) => api<StateResponse>('/api/hq', { method: 'POST', body: { hqId } }),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,
