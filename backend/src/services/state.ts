@@ -1,6 +1,6 @@
 import type { User } from '@prisma/client';
 import {
-  ACHIEVEMENTS,
+  VISIBLE_ACHIEVEMENTS,
   achievementById,
   DEFAULT_SETTINGS,
   type PlayerSettings,
@@ -84,8 +84,9 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     daily: dailyState(user, now),
     events: { happyHour: nextHappyHour(cachedAppSettings(), now) },
     achievements: {
-      unlocked: user.achievementIds.filter((id) => achievementById(id)).length,
-      total: ACHIEVEMENTS.length,
+      // только видимые: достижение за кошелёк (если было) не даёт «61 из 60», пока кошелёк скрыт
+      unlocked: user.achievementIds.filter((id) => VISIBLE_ACHIEVEMENTS.some((a) => a.id === id)).length,
+      total: VISIBLE_ACHIEVEMENTS.length,
       fresh: user.newAchievementIds.filter((id) => achievementById(id)),
     },
     wallet:

@@ -1,3 +1,4 @@
+import { TON_WALLET_ENABLED } from './features.js';
 /**
  * Достижения: условие — показатель игрока не меньше порога. Проверяет и награждает только сервер;
  * клиент берёт отсюда названия, иконки и пороги для прогресса.
@@ -135,6 +136,11 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   a('hq_chosen', 'special', 'hq', 1, 1_000, 'building/check/1', ['Свой офис', 'Own office'], ['Выбери штаб-квартиру', 'Choose your headquarters']),
   a('wallet_connected', 'special', 'wallet', 1, 10_000, 'wallet/check/5', ['Кошелёк на месте', 'Wallet ready'], ['Подключи кошелёк TON', 'Connect a TON wallet']),
 ];
+
+/** Достижения, которые сейчас можно получить (кошелёк TON временно скрыт — TON_WALLET_ENABLED). */
+export const VISIBLE_ACHIEVEMENTS: readonly Achievement[] = ACHIEVEMENTS.filter(
+  (a) => TON_WALLET_ENABLED || a.metric !== 'wallet',
+);
 
 export function achievementById(id: string): Achievement | undefined {
   return ACHIEVEMENTS.find((x) => x.id === id);

@@ -1,5 +1,5 @@
 import {
-  ACHIEVEMENTS,
+  VISIBLE_ACHIEVEMENTS,
   ACHIEVEMENT_GROUPS,
   formatInt,
   formatShort,
@@ -162,7 +162,7 @@ export function ProfileScreen() {
         </button>
       ) : (
         ACHIEVEMENT_GROUPS.map((group) => {
-          const items = ACHIEVEMENTS.filter((a) => a.group === group);
+          const items = VISIBLE_ACHIEVEMENTS.filter((a) => a.group === group);
           return (
             <section key={group} className="mt-4">
               <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-white/45">

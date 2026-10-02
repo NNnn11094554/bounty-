@@ -3,6 +3,7 @@ import {
   ACHIEVEMENT_METRICS,
   CARD_GLYPHS,
   parseCardIcon,
+  VISIBLE_ACHIEVEMENTS,
   type ApiErrorBody,
   type AuthResponse,
   type ProfileResponse,
@@ -71,7 +72,7 @@ describe('achievements, profile and settings API', () => {
     expect(state.balance).toBe(10 + paid);
     expect(state.leagueLevel).toBe(1);
     expect(state.achievements.unlocked).toBe(2);
-    expect(state.achievements.total).toBe(ACHIEVEMENTS.length);
+    expect(state.achievements.total).toBe(VISIBLE_ACHIEVEMENTS.length);
 
     const ledger = await prisma.transaction.findMany({
       where: { type: 'achievement_reward' },
@@ -136,7 +137,7 @@ describe('achievements, profile and settings API', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json<ProfileResponse>();
     expect(body.stats).toMatchObject({ totalTaps: 1_234, daysPlayed: 1, friends: 0, cards: 0 });
-    expect(body.achievements).toHaveLength(ACHIEVEMENTS.length);
+    expect(body.achievements).toHaveLength(VISIBLE_ACHIEVEMENTS.length);
     expect(body.achievements.find((a) => a.id === 'taps_1k')?.unlockedAt).toEqual(expect.any(Number));
     expect(body.achievements.find((a) => a.id === 'taps_10k')?.unlockedAt).toBeNull();
     expect(body.progress.taps).toBe(1_234);

@@ -15,6 +15,7 @@ import { adminPlayerRoutes } from './routes/admin/players.js';
 import { adminSettingsRoutes } from './routes/admin/settings.js';
 import { adminStatsRoutes } from './routes/admin/stats.js';
 import { adminTaskRoutes } from './routes/admin/tasks.js';
+import { airdropRoutes } from './routes/airdrop.js';
 import { authRoutes } from './routes/auth.js';
 import { botRoutes } from './routes/bot.js';
 import { boostRoutes } from './routes/boosts.js';
@@ -139,6 +140,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(eventRoutes);
   await app.register(shopRoutes);
   await app.register(collectionRoutes);
+  await app.register(airdropRoutes);
   await app.register(botRoutes);
   await app.register(adminTaskRoutes);
   await app.register(adminDailyRoutes);

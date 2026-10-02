@@ -105,6 +105,8 @@ model User {
   referrals     Referral[]        @relation("Inviter")
 
   @@index([leagueLevel, totalEarned(sort: Desc)])
+  /// место в Airdrop: COUNT игроков с большими очками
+  @@index([totalEarned(sort: Desc)])
   @@index([referrerId])
   @@index([suspiciousScore])
   @@index([createdAt])

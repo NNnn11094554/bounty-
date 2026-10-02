@@ -89,7 +89,7 @@ test('capture main screens', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   await page.getByTestId('nav-airdrop').click();
-  await expect(page.getByTestId('wallet-card')).toBeVisible();
+  await expect(page.getByTestId('airdrop-points')).toBeVisible();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${dir}/16-airdrop.png` });
 });

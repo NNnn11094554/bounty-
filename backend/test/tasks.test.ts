@@ -1,9 +1,10 @@
-import type {
-  AdminTask,
-  ApiErrorBody,
-  TaskCheckResponse,
-  TaskStartResponse,
-  TasksResponse,
+import {
+  TON_WALLET_ENABLED,
+  type AdminTask,
+  type ApiErrorBody,
+  type TaskCheckResponse,
+  type TaskStartResponse,
+  type TasksResponse,
 } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -71,12 +72,14 @@ describe('Earn tasks', () => {
     ]);
     const { c } = await player(8001);
     const list = (await c.get('/api/tasks')).json<TasksResponse>();
+    // задание «Подключи кошелёк» есть в базе, но скрыто, пока TON_WALLET_ENABLED = false
     expect(list.tasks.map((t) => [t.id, t.section])).toEqual([
       ['choose_hq', 'LIST'],
       ['invite_3', 'LIST'],
-      ['connect_wallet', 'AIRDROP'],
+      ...(TON_WALLET_ENABLED ? [['connect_wallet', 'AIRDROP']] : []),
     ]);
-    expect(list.tasks.find((t) => t.id === 'connect_wallet')).toMatchObject({ status: 'new', reward: 0 });
+    if (TON_WALLET_ENABLED)
+      expect(list.tasks.find((t) => t.id === 'connect_wallet')).toMatchObject({ status: 'new', reward: 0 });
     expect(list.tasks.find((t) => t.id === 'invite_3')).toMatchObject({
       status: 'new',
       reward: 25_000,

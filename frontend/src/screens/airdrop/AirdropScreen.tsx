@@ -1,209 +1,135 @@
-import type { WalletConnectRequest } from '@meowgul/shared';
-import { THEME, TonConnectUIProvider, useTonConnectUI, type Wallet } from '@tonconnect/ui-react';
+import {
+  formatInt,
+  formatShort,
+  TON_WALLET_ENABLED,
+  type AirdropRequirement,
+  type AirdropRequirementId,
+  type AirdropResponse,
+} from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
-import { apiUrl, ApiError } from '../../api/client';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { endpoints } from '../../api/endpoints';
 import { isReducedMotion } from '../../animations';
 import { Button } from '../../components/Button';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CoinIcon } from '../../components/icons';
 import { TaskIcon } from '../../components/TaskIcon';
-import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT, type MessageKey } from '../../i18n';
-import { MINI_APP_URL } from '../../lib/links';
-import { playSound } from '../../lib/sound';
 import { useGame } from '../../store/game';
 import { useTasks } from '../../store/tasks';
-import { toast } from '../../store/toasts';
-import { haptic } from '../../telegram/webapp';
 import { TaskSheet } from '../earn/TaskSheet';
 
-declare const __STATIC_TONCONNECT_MANIFEST__: boolean;
+/** Кошелёк TON и библиотека TON Connect грузятся отдельным модулем — только когда кошелёк включён. */
+const WalletSection = TON_WALLET_ENABLED ? lazy(() => import('./WalletCard')) : null;
 
-/** Манифест TON Connect: заданный явно → собранный рядом с игрой → из API. */
-const MANIFEST_URL =
-  (import.meta.env.VITE_TONCONNECT_MANIFEST_URL as string | undefined) ??
-  (typeof __STATIC_TONCONNECT_MANIFEST__ === 'boolean' && __STATIC_TONCONNECT_MANIFEST__
-    ? new URL('/tonconnect-manifest.json', window.location.origin).toString()
-    : apiUrl('/api/tonconnect-manifest.json'));
-/** payload ton_proof живёт 15 минут — обновляем заранее */
-const PAYLOAD_REFRESH_MS = 12 * 60_000;
+const REQUIREMENT_ICON: Record<AirdropRequirementId, string> = {
+  league: 'medal/sparkle/3',
+  level: 'rocket/up/5',
+  friends: 'people/star/5',
+  streak: 'calendar/fire/1',
+  cards: 'briefcase/check/8',
+  tasks: 'scroll/check/7',
+};
 
-function shortAddress(address: string): string {
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+/** Последний ответ — чтобы при повторном открытии вкладки данные были сразу, а свежие подгружались фоном. */
+let cached: AirdropResponse | null = null;
+
+function useAirdrop() {
+  const [data, setData] = useState<AirdropResponse | null>(cached);
+  const [failed, setFailed] = useState(false);
+  const load = useCallback(() => {
+    setFailed(false);
+    endpoints
+      .airdrop()
+      .then((res) => {
+        cached = res;
+        setData(res);
+      })
+      .catch(() => setFailed(true));
+  }, []);
+  useEffect(load, [load]);
+  return { data, failed, load };
 }
 
-function connectRequest(wallet: Wallet): WalletConnectRequest | null {
-  const item = wallet.connectItems?.tonProof;
-  if (!item || !('proof' in item) || !wallet.account.publicKey) return null;
-  return {
-    address: wallet.account.address,
-    network: wallet.account.chain,
-    publicKey: wallet.account.publicKey,
-    proof: { ...item.proof, stateInit: wallet.account.walletStateInit },
-  };
-}
-
-function errorKey(err: unknown): MessageKey {
-  if (err instanceof ApiError) {
-    if (err.code === 'CONFLICT') return 'wallet.error.conflict';
-    if (err.code === 'VALIDATION') return 'wallet.error.proof';
-  }
-  return 'wallet.error.unavailable';
-}
-
-/** Задание «Подключи кошелёк TON»: ton_proof проверяет сервер, адрес хранится в профиле игрока. */
-function WalletCard() {
+function RequirementRow({ req }: { req: AirdropRequirement }) {
   const t = useT();
-  const wallet = useGame((s) => s.player?.wallet ?? null);
-  const [tonConnectUI] = useTonConnectUI();
-  const [busy, setBusy] = useState(false);
-  const serverWallet = useRef(wallet);
-  serverWallet.current = wallet;
-
-  // подписанный сервером payload для ton_proof — до открытия окна подключения
-  useEffect(() => {
-    if (wallet) return;
-    let cancelled = false;
-    const refresh = () => {
-      tonConnectUI.setConnectRequestParameters({ state: 'loading' });
-      endpoints
-        .tonProofPayload()
-        .then(({ payload }) => {
-          if (!cancelled)
-            tonConnectUI.setConnectRequestParameters({ state: 'ready', value: { tonProof: payload } });
-        })
-        .catch(() => {
-          if (!cancelled) tonConnectUI.setConnectRequestParameters(null);
-        });
-    };
-    refresh();
-    const id = window.setInterval(refresh, PAYLOAD_REFRESH_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [wallet, tonConnectUI]);
-
-  useEffect(
-    () =>
-      tonConnectUI.onStatusChange((connected) => {
-        if (!connected) return;
-        const request = connectRequest(connected);
-        if (!request) {
-          // сессия кошелька без подтверждения владения — просим подключить заново
-          if (!serverWallet.current) {
-            toast.error(t('wallet.error.noProof'));
-            void tonConnectUI.disconnect();
-          }
-          return;
-        }
-        setBusy(true);
-        endpoints
-          .connectWallet(request)
-          .then((res) => {
-            tapEngine.applyServerState(res.state);
-            void useTasks.getState().load(true);
-            haptic.notify('success');
-            playSound('reward');
-            toast.success(t('wallet.connectedToast'));
-          })
-          .catch((err: unknown) => {
-            toast.error(t(errorKey(err)));
-            haptic.notify('error');
-            void tonConnectUI.disconnect();
-          })
-          .finally(() => setBusy(false));
-      }),
-    [tonConnectUI, t],
-  );
-
-  const connect = async () => {
-    haptic.impact('medium');
-    if (tonConnectUI.connected) await tonConnectUI.disconnect();
-    await tonConnectUI.openModal();
-  };
-
-  const disconnect = async () => {
-    setBusy(true);
-    try {
-      const res = await endpoints.disconnectWallet();
-      tapEngine.applyServerState(res.state);
-      void useTasks.getState().load(true);
-      if (tonConnectUI.connected) await tonConnectUI.disconnect();
-      toast.info(t('wallet.disconnectedToast'));
-    } catch (err) {
-      toast.error(t(errorKey(err)));
-    } finally {
-      setBusy(false);
-    }
-  };
-
+  const leagues = useGame((s) => s.config?.leagues);
+  const name = req.id === 'league' ? (leagues?.[req.target]?.name ?? String(req.target)) : '';
   return (
-    <div
-      className="rounded-[22px] border border-line bg-night-700 p-3 shadow-card"
-      data-testid="wallet-card"
-      data-tour="wallet"
+    <li
+      className="flex items-center gap-3 rounded-2xl bg-night-800/70 px-3 py-2.5"
+      data-testid={`airdrop-req-${req.id}`}
+      data-done={req.done}
     >
-      <div className="flex items-center gap-3">
-        <CardIcon icon="wallet/none/3" size={52} />
-        <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-extrabold leading-tight">{t('airdrop.walletTask')}</p>
-          {wallet ? (
-            <p
-              className="mt-0.5 flex items-center gap-1 text-sm font-bold text-lime"
-              data-testid="wallet-address"
-            >
-              ✓ {t('wallet.connected')} · <span className="font-mono">{shortAddress(wallet.address)}</span>
-            </p>
-          ) : (
-            <p className="mt-0.5 text-xs font-bold text-white/50">{t('airdrop.walletHint')}</p>
-          )}
-        </div>
-      </div>
-      {wallet ? (
-        <Button
-          variant="secondary"
-          block
-          className="mt-3"
-          loading={busy}
-          onClick={() => void disconnect()}
-          data-testid="wallet-disconnect"
-        >
-          {t('wallet.disconnect')}
-        </Button>
-      ) : (
-        <Button
-          block
-          className="mt-3 h-12"
-          loading={busy}
-          onClick={() => void connect()}
-          data-testid="wallet-connect"
-        >
-          {t('wallet.connect')}
-        </Button>
-      )}
+      <CardIcon icon={REQUIREMENT_ICON[req.id]} size={38} muted={!req.done} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14px] font-extrabold">
+          {t(`airdrop.req.${req.id}` as MessageKey, { target: req.target, name })}
+        </span>
+        <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-white/10">
+          <span
+            className={`block h-full rounded-full ${req.done ? 'bg-lime' : 'bg-gold'}`}
+            style={{ width: `${Math.round((req.current / req.target) * 100)}%` }}
+          />
+        </span>
+      </span>
+      <span className={`shrink-0 text-sm font-black ${req.done ? 'text-lime' : 'text-white/55'}`}>
+        {req.done ? '✓' : `${req.current}/${req.target}`}
+      </span>
+    </li>
+  );
+}
+
+function Skeleton() {
+  const t = useT();
+  return (
+    <div className="flex flex-col gap-2.5" aria-busy="true" data-testid="airdrop-loading">
+      <span className="sr-only">{t('common.loading')}</span>
+      <div className="skeleton h-[104px] rounded-[22px]" />
+      <div className="skeleton h-[260px] rounded-[22px]" />
     </div>
   );
 }
 
-function AirdropContent() {
+/** Карточка «Подключение кошелька — скоро», пока TON_WALLET_ENABLED выключен. Ничего не открывает. */
+function WalletSoon() {
+  const t = useT();
+  return (
+    <div
+      className="flex items-center gap-3 rounded-[20px] border border-dashed border-white/15 bg-night-700/60 p-3"
+      data-testid="airdrop-wallet-soon"
+    >
+      <CardIcon icon="lock/star/9" size={44} muted />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-extrabold text-white/80">{t('airdrop.walletSoon')}</span>
+        <span className="block text-xs font-bold text-white/45">{t('airdrop.walletSoonHint')}</span>
+      </span>
+      <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-black uppercase text-white/60">
+        {t('airdrop.soonBadge')}
+      </span>
+    </div>
+  );
+}
+
+/** Вкладка Airdrop: очки, место среди игроков, готовность по требованиям и задания. */
+export function AirdropScreen() {
   const t = useT();
   const locale = useLocale();
+  const { data, failed, load } = useAirdrop();
   const tasks = useTasks((s) => s.tasks);
-  const load = useTasks((s) => s.load);
+  const loadTasks = useTasks((s) => s.load);
   const [openId, setOpenId] = useState<string | null>(null);
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadTasks();
+  }, [loadTasks]);
   const extra = tasks.filter((x) => x.section === 'AIRDROP' && x.type !== 'CONNECT_WALLET');
   const openTask = openId ? (tasks.find((x) => x.id === openId) ?? null) : null;
   const reduced = isReducedMotion();
+  const percent = data ? Math.round(data.progress * 100) : 0;
 
   return (
     <div className="h-full overflow-y-auto px-4 pb-6" data-testid="airdrop">
-      <div className="flex flex-col items-center pt-8 text-center">
+      <div className="flex flex-col items-center pt-6 text-center">
         <div className="relative">
           {!reduced && (
             <motion.div
@@ -217,17 +143,85 @@ function AirdropContent() {
             animate={reduced ? undefined : { y: [0, -6, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <CoinIcon size={112} />
+            <CoinIcon size={92} />
           </motion.div>
         </div>
-        <h1 className="mt-6 text-[28px] font-black">{t('airdrop.title')}</h1>
-        <p className="mt-2 max-w-[320px] text-[15px] font-semibold leading-snug text-white/65">
+        <h1 className="mt-5 text-[28px] font-black">{t('airdrop.title')}</h1>
+        <p className="mt-1.5 max-w-[320px] text-[15px] font-semibold leading-snug text-white/65">
           {t('airdrop.text')}
         </p>
       </div>
 
-      <div className="mt-6 flex flex-col gap-2.5">
-        <WalletCard />
+      <div className="mt-5 flex flex-col gap-2.5">
+        {failed && !data ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center" data-testid="airdrop-error">
+            <p className="text-[15px] font-bold text-white/70">{t('airdrop.error')}</p>
+            <Button variant="secondary" onClick={load} data-testid="airdrop-retry">
+              {t('common.retry')}
+            </Button>
+          </div>
+        ) : !data ? (
+          <Skeleton />
+        ) : (
+          <>
+            <div
+              className="flex items-center gap-3 rounded-[22px] border border-gold/30 bg-gradient-to-br from-gold/15 to-night-700 p-4 shadow-card"
+              data-tour="points"
+            >
+              <CoinIcon size={44} />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black uppercase tracking-wide text-white/55">
+                  {t('airdrop.points')}
+                </p>
+                <p className="truncate text-[26px] font-black leading-tight" data-testid="airdrop-points">
+                  {formatInt(data.points)}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-xs font-black uppercase tracking-wide text-white/55">
+                  {t('airdrop.rank')}
+                </p>
+                <p className="text-[20px] font-black text-gold" data-testid="airdrop-rank">
+                  #{formatShort(data.rank, locale)}
+                </p>
+                <p className="text-[11px] font-bold text-white/45">
+                  {t('airdrop.ofPlayers', { count: formatShort(data.players, locale) })}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[22px] border border-line bg-night-700 p-3 shadow-card">
+              <div className="flex items-baseline justify-between px-1">
+                <p className="text-[15px] font-extrabold">{t('airdrop.readiness')}</p>
+                <p className="text-[15px] font-black text-gold" data-testid="airdrop-progress">
+                  {percent}%
+                </p>
+              </div>
+              <div className="mx-1 mt-2 h-2.5 overflow-hidden rounded-full bg-white/10">
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-gold to-lime"
+                  initial={reduced ? false : { width: 0 }}
+                  animate={{ width: `${percent}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                />
+              </div>
+              <ul className="mt-3 flex flex-col gap-1.5">
+                {data.requirements.map((req) => (
+                  <RequirementRow key={req.id} req={req} />
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+
+        {WalletSection ? (
+          <Suspense fallback={<div className="skeleton h-[120px] rounded-[22px]" />}>
+            <WalletSection />
+          </Suspense>
+        ) : (
+          <WalletSoon />
+        )}
+
         {extra.map((task) => (
           <motion.button
             key={task.id}
@@ -244,26 +238,11 @@ function AirdropContent() {
             </span>
           </motion.button>
         ))}
-        {extra.length === 0 && (
-          <p className="pt-2 text-center text-sm font-bold text-white/40" data-testid="airdrop-soon">
-            {t('airdrop.soon')}
-          </p>
-        )}
+        <p className="pt-2 text-center text-sm font-bold text-white/40" data-testid="airdrop-soon">
+          {t('airdrop.soon')}
+        </p>
       </div>
       <TaskSheet task={openTask} onClose={() => setOpenId(null)} />
     </div>
-  );
-}
-
-/** Вкладка Airdrop. TON Connect загружается только здесь. */
-export function AirdropScreen() {
-  return (
-    <TonConnectUIProvider
-      manifestUrl={MANIFEST_URL}
-      uiPreferences={{ theme: THEME.DARK }}
-      actionsConfiguration={{ twaReturnUrl: MINI_APP_URL as `${string}://${string}` }}
-    >
-      <AirdropContent />
-    </TonConnectUIProvider>
   );
 }
