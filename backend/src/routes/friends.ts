@@ -1,4 +1,4 @@
-import type { FriendsResponse } from '@meowgul/shared';
+import { playerLevel, type FriendsResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { REFERRAL } from '../game/config/rewards.js';
@@ -9,6 +9,8 @@ import { requirePlayer } from '../services/player.js';
 import { referralLink } from '../services/referrals.js';
 
 const PAGE = 50;
+/** «в сети» — заходил в игру не позже стольких мс назад */
+const ONLINE_MS = 10 * 60_000;
 const Query = z.object({ after: z.coerce.number().int().positive().optional() });
 
 export async function friendRoutes(app: FastifyInstance): Promise<void> {
@@ -31,6 +33,8 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
               isPremium: true,
               leagueLevel: true,
               balance: true,
+              totalEarned: true,
+              lastSeenAt: true,
             },
           },
         },
@@ -49,9 +53,11 @@ export async function friendRoutes(app: FastifyInstance): Promise<void> {
         photoUrl: r.invitee.photoUrl,
         isPremium: r.isPremium,
         leagueLevel: r.invitee.leagueLevel,
+        level: playerLevel(toCoins(r.invitee.totalEarned)).level,
         balance: toCoins(r.invitee.balance),
         bonus: Number(r.inviterEarned),
         joinedAt: r.createdAt.getTime(),
+        online: Date.now() - r.invitee.lastSeenAt.getTime() < ONLINE_MS,
       })),
       nextCursor: rows.length > PAGE ? page[page.length - 1]!.id : null,
       bonuses: {

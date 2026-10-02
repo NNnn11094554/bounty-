@@ -27,6 +27,13 @@ test.describe('Friends', () => {
     // 5 000 за приглашение + 20 000 за лигу Silver друга
     await expect(row.getByTestId('friend-bonus')).toHaveText('+25K');
     await expect(page.getByTestId('friends-earned')).toContainText('25 000');
+    await expect(row.getByTestId('friend-level')).toHaveText('Ур. 2');
+    await expect(row.getByTestId('friend-online')).toBeVisible();
+
+    // после перезагрузки друг на месте — список берётся с сервера
+    await page.reload();
+    await page.getByTestId('nav-friends').click();
+    await expect(page.getByTestId('friend-row')).toContainText('Друг');
   });
 
   test('copy and share the invite link; bonuses table', async ({ page, context }) => {
@@ -69,13 +76,13 @@ test.describe('Friends', () => {
     await page.getByTestId('friends-copy').click();
     await expect(page.getByText('Ссылка скопирована')).toBeVisible();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copied).toMatch(new RegExp(`^https://t\\.me/\\w+/\\w+\\?startapp=ref_${uid}$`));
+    expect(copied).toMatch(new RegExp(`^https://t\\.me/\\w+\\?start=ref_${uid}$`));
 
     const popup = context.waitForEvent('page');
     await page.getByTestId('friends-invite').click();
     const share = await popup;
     expect(share.url()).toContain('https://t.me/share/url?url=');
-    expect(decodeURIComponent(share.url())).toContain(`startapp=ref_${uid}`);
+    expect(decodeURIComponent(share.url())).toContain(`?start=ref_${uid}`);
     await share.close();
 
     await page.getByTestId('friends-more').click();

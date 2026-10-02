@@ -205,7 +205,7 @@ export const ru = {
   'friends.more': 'Больше бонусов',
   'friends.list': 'Список ваших друзей ({n})',
   'friends.refresh': 'Обновить',
-  'friends.empty': 'Вы ещё никого не пригласили. Отправьте ссылку — бонус получите вы оба!',
+  'friends.empty': 'Пока нет приглашённых друзей. Отправьте ссылку — бонус получите вы оба!',
   'friends.error': 'Не удалось загрузить друзей',
   'friends.loadMore': 'Показать ещё',
   'friends.earned': 'Получено за друзей: {value}',
@@ -357,6 +357,7 @@ export const ru = {
   'shop.support': 'Проблема с покупкой? Напишите боту /paysupport',
   'shop.loadError': 'Не удалось загрузить магазин',
   'office.incomeBoost': '×2 доход',
+  'level.short': 'Ур. {level}',
 } as const;
 
 export type MessageKey = keyof typeof ru;

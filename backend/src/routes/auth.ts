@@ -8,7 +8,7 @@ import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
-import { applyReferral, type ReferralResult } from '../services/referrals.js';
+import { referralForNewPlayer, type ReferralResult } from '../services/referrals.js';
 import { recordActivity, upsertTelegramUser } from '../services/users.js';
 import { checkAchievements, COUNTED_METRICS } from '../services/achievements.js';
 
@@ -22,10 +22,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     if (user.isBanned) throw new ApiError('BANNED', 'Account is banned', { reason: user.banReason });
     await recordActivity(user.id, now);
     // приглашение засчитывается только новому игроку
+    // (из start_param ссылки на Mini App или из /start в боте — PendingReferral)
     let referral: ReferralResult | null = null;
-    if (isNew && tg.startParam) {
+    if (isNew) {
       try {
-        referral = await applyReferral(user, tg.startParam);
+        referral = await referralForNewPlayer(user, tg.startParam ?? null);
       } catch (err) {
         request.log.error({ err, startParam: tg.startParam }, 'referral failed');
       }

@@ -16,9 +16,48 @@ export function parseReferral(startParam: string | null | undefined): bigint | n
   return match ? BigInt(match[1]!) : null;
 }
 
-/** Реферальная ссылка: t.me/<бот>/<приложение>?startapp=ref_<telegramId>. */
+/**
+ * Реферальная ссылка на бота: t.me/<бот>?start=ref_<telegramId>. Работает без регистрации Mini App в BotFather:
+ * друг жмёт Start, бот запоминает приглашение (PendingReferral), игра засчитывает его при первом входе.
+ * Ссылка вида t.me/<бот>/<app>?startapp=ref_… тоже поддерживается (start_param в initData).
+ */
 export function referralLink(telegramId: bigint): string {
-  return `https://t.me/${env.BOT_USERNAME}/${env.MINIAPP_SHORT_NAME}?startapp=ref_${telegramId}`;
+  return `https://t.me/${env.BOT_USERNAME}?start=ref_${telegramId}`;
+}
+
+/** Приглашение из /start действует столько дней — потом друг считается пришедшим сам. */
+const PENDING_TTL_MS = 7 * 24 * 3_600_000;
+
+/**
+ * Друг нажал Start по реферальной ссылке. Запоминаем пригласившего, если друга ещё нет в игре.
+ * Первое приглашение не перезаписывается другим (кроме просроченного).
+ */
+export async function rememberPendingReferral(telegramId: bigint, payload: string): Promise<boolean> {
+  const inviterTelegramId = parseReferral(payload);
+  if (inviterTelegramId === null || inviterTelegramId === telegramId) return false;
+  if (await prisma.user.findUnique({ where: { telegramId }, select: { id: true } })) return false;
+  const existing = await prisma.pendingReferral.findUnique({ where: { telegramId } });
+  if (existing && Date.now() - existing.createdAt.getTime() < PENDING_TTL_MS) return false;
+  await prisma.pendingReferral.upsert({
+    where: { telegramId },
+    create: { telegramId, inviterTelegramId },
+    update: { inviterTelegramId, createdAt: new Date() },
+  });
+  return true;
+}
+
+/** Приглашение для нового игрока: из start_param или запомненное ботом. Запомненное удаляется. */
+export async function referralForNewPlayer(
+  invitee: User,
+  startParam: string | null,
+): Promise<ReferralResult | null> {
+  const direct = parseReferral(startParam);
+  const pending = await prisma.pendingReferral.findUnique({ where: { telegramId: invitee.telegramId } });
+  if (pending)
+    await prisma.pendingReferral.delete({ where: { telegramId: invitee.telegramId } }).catch(() => null);
+  const fresh = pending && Date.now() - pending.createdAt.getTime() < PENDING_TTL_MS;
+  const inviterTgId = direct ?? (fresh ? pending.inviterTelegramId : null);
+  return inviterTgId === null ? null : applyReferral(invitee, `ref_${inviterTgId}`);
 }
 
 export interface ReferralResult {

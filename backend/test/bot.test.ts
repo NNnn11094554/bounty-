@@ -82,7 +82,7 @@ describe('bot', () => {
     await resetDb();
   });
 
-  it('/start ref_<id> greets with a photo and a Play link that keeps the referral', async () => {
+  it('/start ref_<id> greets with a photo, a web_app Play button and remembers the invite', async () => {
     const calls: ApiCall[] = [];
     const bot = createBot('1:test', BOT_INFO);
     bot.api.config.use(recorder(calls));
@@ -93,7 +93,10 @@ describe('bot', () => {
     expect(calls[0]!.payload.parse_mode).toBe('HTML');
     expect(String(calls[0]!.payload.photo)).toContain('/assets/generated/welcome.jpg');
     const markup = JSON.stringify(calls[0]!.payload.reply_markup);
-    expect(markup).toContain('startapp=ref_777');
+    expect(markup).toContain('web_app');
+    expect(await prisma.pendingReferral.findUnique({ where: { telegramId: 15001n } })).toMatchObject({
+      inviterTelegramId: 777n,
+    });
   });
 
   it('/start without a referral opens the Mini App; falls back to text without the photo', async () => {

@@ -213,10 +213,14 @@ export interface FriendEntry {
   photoUrl: string | null;
   isPremium: boolean;
   leagueLevel: number;
+  /** уровень игрока (1…50) */
+  level: number;
   balance: number;
   /** сколько получил я за этого друга */
   bonus: number;
   joinedAt: number;
+  /** заходил в игру за последние 10 минут */
+  online: boolean;
 }
 
 export interface FriendsResponse {

@@ -204,7 +204,7 @@ export const en: Record<MessageKey, string> = {
   'friends.more': 'More bonuses',
   'friends.list': 'Your friends ({n})',
   'friends.refresh': 'Refresh',
-  'friends.empty': 'You have not invited anyone yet. Send the link — you both get a bonus!',
+  'friends.empty': 'No invited friends yet. Send the link — you both get a bonus!',
   'friends.error': 'Could not load your friends',
   'friends.loadMore': 'Show more',
   'friends.earned': 'Earned from friends: {value}',
@@ -357,4 +357,5 @@ export const en: Record<MessageKey, string> = {
   'shop.support': 'Problem with a purchase? Send /paysupport to the bot',
   'shop.loadError': 'Could not load the shop',
   'office.incomeBoost': '×2 income',
+  'level.short': 'Lvl {level}',
 };

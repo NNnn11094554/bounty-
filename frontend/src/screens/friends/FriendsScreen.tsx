@@ -36,6 +36,7 @@ function GiftRow({ premium, amount }: { premium?: boolean; amount: number }) {
 
 function FriendRow({ friend, index }: { friend: FriendEntry; index: number }) {
   const locale = useLocale();
+  const t = useT();
   const leagues = useGame((s) => s.config?.leagues ?? []);
   const league = leagues[friend.leagueLevel];
   const color = league?.color === 'rainbow' ? '#ffc93c' : league?.color;
@@ -51,13 +52,26 @@ function FriendRow({ friend, index }: { friend: FriendEntry; index: number }) {
       className="flex items-center gap-3 rounded-2xl bg-night-700/80 px-3 py-2.5"
       data-testid="friend-row"
     >
-      <Avatar name={friend.name} photoUrl={friend.photoUrl} size={40} />
+      <span className="relative shrink-0">
+        <Avatar name={friend.name} photoUrl={friend.photoUrl} size={40} />
+        {friend.online && (
+          <span
+            className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-night-700 bg-lime"
+            aria-label="online"
+            data-testid="friend-online"
+          />
+        )}
+      </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-extrabold">
           {friend.name}
           {friend.isPremium && <span className="ml-1 text-gold">★</span>}
         </p>
         <p className="flex items-center gap-1 text-xs font-bold text-white/55">
+          <span className="text-white/80" data-testid="friend-level">
+            {t('level.short', { level: friend.level })}
+          </span>
+          <span>•</span>
           <span style={{ color }}>{league?.name}</span>
           <span>•</span>
           <CoinIcon size={12} />
@@ -143,7 +157,7 @@ export function FriendsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    void load();
+    void load(true);
   }, [load]);
 
   const refresh = async () => {
@@ -239,7 +253,8 @@ export function FriendsScreen() {
               </Button>
             </div>
           ) : !data ? (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-2" aria-busy="true" data-testid="friends-loading">
+              <li className="sr-only">{t('common.loading')}</li>
               {Array.from({ length: 4 }, (_, i) => (
                 <li key={i} className="flex items-center gap-3 rounded-2xl bg-night-700/80 px-3 py-2.5">
                   <span className="skeleton h-10 w-10 rounded-full" />

@@ -392,6 +392,14 @@ enum PurchaseStatus {
   REFUNDED
 }
 
+/// Приглашение до первого входа в игру: друг нажал Start в боте по ссылке ref_<id>, а игру откроет позже
+/// (кнопкой бота, без start_param) — бонус засчитывается при регистрации.
+model PendingReferral {
+  telegramId        BigInt   @id
+  inviterTelegramId BigInt
+  createdAt         DateTime @default(now())
+}
+
 /// Покупка в магазине за Telegram Stars. payload — в счёте, chargeId — от Telegram после оплаты.
 model Purchase {
   id         Int            @id @default(autoincrement())
