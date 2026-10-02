@@ -23,16 +23,23 @@ describe('hero skins', () => {
     expect(heroAsset('queen', 'head')).toBe('/assets/generated/hero/queen-head.webp');
   });
 
-  it('the cat fits the stage, stands on its bottom edge and is centred', () => {
+  it('the cat fits the stage, stands on its bottom edge, a bit left of centre; the tap zone covers it', () => {
     const { aspect } = CAT_RIGS.street;
     for (const w of [280, 328, 360, 398, 460]) {
       for (const h of [120, 260, 340, 420, 600]) {
-        const { cat } = heroLayout(w, h, aspect);
+        const { cat, hit } = heroLayout(w, h, aspect);
         expect(cat.left).toBeGreaterThanOrEqual(0);
         expect(cat.left + cat.width).toBeLessThanOrEqual(w + 0.01);
         expect(cat.top).toBeGreaterThanOrEqual(-0.01);
         expect(cat.top + cat.height).toBeCloseTo(h, 5);
-        expect(cat.left + cat.width / 2).toBeCloseTo(w / 2, 5);
+        // хвост слева — рамка кота чуть левее середины, сам кот на глаз по центру
+        const centre = cat.left + cat.width / 2;
+        expect(centre).toBeLessThan(w / 2);
+        expect(centre).toBeGreaterThan(w / 2 - cat.width * 0.1);
+        expect(hit.left).toBeGreaterThanOrEqual(0);
+        expect(hit.left + hit.width).toBeLessThanOrEqual(w + 0.01);
+        expect(hit.left).toBeLessThanOrEqual(cat.left + 0.01);
+        expect(hit.left + hit.width).toBeGreaterThanOrEqual(cat.left + cat.width - 0.01);
       }
     }
   });
