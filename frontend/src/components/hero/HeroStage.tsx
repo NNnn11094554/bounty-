@@ -93,6 +93,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   const bodyRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const tailRef = useRef<HTMLDivElement>(null);
+  const earRef = useRef<HTMLDivElement>(null);
+  const footRef = useRef<HTMLDivElement>(null);
   const lidsRef = useRef<SVGSVGElement>(null);
   const hitRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<HTMLDivElement>(null);
@@ -122,10 +124,12 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     const bodyEl = bodyRef.current;
     const headEl = headRef.current;
     const tailEl = tailRef.current;
+    const earEl = earRef.current;
+    const footEl = footRef.current;
     const hit = hitRef.current;
     const fx = fxRef.current;
     const bubble = bubbleRef.current;
-    if (!root || !bodyEl || !headEl || !tailEl || !hit || !fx || !bubble) return;
+    if (!root || !bodyEl || !headEl || !tailEl || !earEl || !footEl || !hit || !fx || !bubble) return;
     const reduced = () => isReducedMotion();
 
     // ── физика реакций: кадры идут, только пока пружины не успокоились ──
@@ -137,6 +141,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       bodyEl.style.transform = t.body;
       headEl.style.transform = t.head;
       tailEl.style.transform = t.tail;
+      earEl.style.transform = t.ear;
+      footEl.style.transform = t.foot;
     };
     const frame = (now: number) => {
       raf = 0;
@@ -157,6 +163,21 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         last = 0;
         raf = requestAnimationFrame(frame);
       }
+    };
+    // отложенные толчки пружин (серия притопов, двойное подёргивание уха); снимаются при размонтировании
+    const pending = new Set<number>();
+    const later = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        pending.delete(id);
+        fn();
+        kick();
+      }, ms);
+      pending.add(id);
+    };
+    /** n притопов кроссовкой в ритм */
+    const stomps = (n: number) => {
+      if (reduced()) return;
+      for (let i = 0; i < n; i++) later(() => motion.stomp(i === n - 1 ? 1 : 0.8), i * 280);
     };
 
     // пулы переиспользуемых элементов — никаких тысяч DOM-нод при яростном тапании
@@ -381,11 +402,14 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
           squint();
           motion.swish(45);
           motion.nod(14);
+          motion.twitch(1, 0.7);
+          stomps(2);
           break;
         case 'excited':
           setMood('excited', 2600);
           squint();
           motion.swish(60);
+          stomps(3);
           auraFlash();
           ledFlash();
           spawnParticles(head.x, head.y, 5, 'star', 1.6);
@@ -403,15 +427,18 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
           setMood('excited', 3500);
           squint();
           motion.swish(70);
+          stomps(4);
           confetti(centerOf(root), 60);
           spawnParticles(head.x, head.y, 8, 'gold', 1.8);
           break;
         case 'surprised':
+          motion.twitch(1, 1.2);
           motion.nod(24);
           motion.swish(60);
           blink();
           break;
         case 'annoyed':
+          motion.twitch(-1, 1.2);
           motion.nod(-16);
           break;
         case 'sleepy':
@@ -525,6 +552,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const tier = streak >= 10 ? 3 : streak >= 4 ? 2 : 1;
       const strength = tier === 3 ? 1.35 : tier === 2 ? 1.18 : 1;
       motion.tap(reduced() ? 0 : strength, side, onHead);
+      // в серии кот притопывает в такт — каждый второй тап
+      if (tier >= 2 && streak % 2 === 0 && !reduced()) motion.stomp(tier === 3 ? 0.9 : 0.7);
       kick();
       spawnFloat(
         x,
@@ -583,8 +612,19 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     scheduleBlink();
 
     // спокойные действия в простое (не чаще раза в 6 с) и засыпание
-    type Idle = 'glance' | 'blink' | 'wink' | 'swish' | 'nod' | 'look';
-    const IDLE: Idle[] = ['glance', 'blink', 'swish', 'glance', 'wink', 'nod', 'look'];
+    type Idle = 'glance' | 'blink' | 'wink' | 'swish' | 'nod' | 'look' | 'ear' | 'stomp';
+    const IDLE: Idle[] = [
+      'glance',
+      'stomp',
+      'blink',
+      'swish',
+      'ear',
+      'glance',
+      'wink',
+      'stomp',
+      'nod',
+      'look',
+    ];
     let idleTimer = 0;
     let lastIdle = -1;
     const idleAction = (a: Idle) => {
@@ -619,9 +659,31 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
           motion.lookAt(0, 0);
           blink();
           break;
+        case 'ear':
+          motion.twitch(-1);
+          later(() => motion.twitch(-1, 0.7), 220);
+          break;
+        case 'stomp':
+          stomps(3);
+          break;
       }
       kick();
     };
+    // ухо иногда дёргается само по себе — как у настоящего кота
+    let earTimer = 0;
+    const scheduleEar = () => {
+      earTimer = window.setTimeout(
+        () => {
+          if (!document.hidden && !reduced() && mood !== 'sleepy') {
+            motion.twitch(Math.random() < 0.7 ? -1 : 1, 0.6 + Math.random() * 0.5);
+            kick();
+          }
+          scheduleEar();
+        },
+        3_500 + Math.random() * 6_500,
+      );
+    };
+    scheduleEar();
     const scheduleIdle = () => {
       idleTimer = window.setTimeout(runIdle, IDLE_MIN_MS + Math.random() * IDLE_SPREAD_MS);
     };
@@ -690,6 +752,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       stopFrame();
       offMood();
       window.clearTimeout(idleTimer);
+      window.clearTimeout(earTimer);
+      pending.forEach((id) => window.clearTimeout(id));
       window.clearTimeout(blinkTimer);
       window.clearTimeout(moodTimer);
       window.clearTimeout(gazeTimer);
@@ -720,7 +784,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         <HeroFigure
           skinId={skinId}
           height={L.cat.height}
-          refs={{ body: bodyRef, head: headRef, tail: tailRef, lids: lidsRef }}
+          refs={{ body: bodyRef, head: headRef, ear: earRef, tail: tailRef, foot: footRef, lids: lidsRef }}
         />
       </div>
       <div

@@ -129,11 +129,16 @@ async function spaceScene(w, h, { cta }) {
         : ''
     }
   </svg>`;
-  // кот в полный рост (слои скина по умолчанию: хвост и голова под телом)
+  // кот в полный рост (слои скина по умолчанию: хвост, кроссовка, ухо и голова под телом)
   const catH = Math.round(h * 0.94);
   const layer = (part) => path.join(out, 'hero', `black_crown-${part}.webp`);
   const catImg = await sharp(layer('tail'))
-    .composite([{ input: layer('head') }, { input: layer('body') }])
+    .composite([
+      { input: layer('foot') },
+      { input: layer('ear') },
+      { input: layer('head') },
+      { input: layer('body') },
+    ])
     .png()
     .toBuffer()
     .then((b) => sharp(b).resize(null, catH).png().toBuffer());

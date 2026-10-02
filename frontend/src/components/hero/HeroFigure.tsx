@@ -8,6 +8,10 @@ export interface HeroRefs {
   head?: Ref<HTMLDivElement>;
   /** взмах хвоста поверх его спокойного покачивания */
   tail?: Ref<HTMLDivElement>;
+  /** подёргивание уха */
+  ear?: Ref<HTMLDivElement>;
+  /** притоп кроссовкой */
+  foot?: Ref<HTMLDivElement>;
   /** веки (моргание, прищур, сон) */
   lids?: Ref<SVGSVGElement>;
 }
@@ -15,8 +19,8 @@ export interface HeroRefs {
 const PARTICLES: Record<string, number> = { COMMON: 0, RARE: 4, EPIC: 5, LEGENDARY: 7, MYTHIC: 9 };
 
 /**
- * Кот в полный рост из слоёв по его скелету (rig): хвост и голова — под телом, их стык спрятан под
- * одеждой и наушниками. Слои вложены так, что каждое движение живёт на своём элементе и не спорит с
+ * Кот в полный рост из слоёв по его скелету (rig): хвост, кроссовка и голова — под телом, их стык спрятан
+ * под одеждой и наушниками; ухо — под головой. Слои вложены так, что каждое движение живёт на своём элементе и не спорит с
  * другими: поза (медленно) → дыхание → реакция на тап (физика) → голова/хвост (свои покачивания + физика).
  * Слои — div с фоном, а не <img>: долгое нажатие не вызывает меню картинки. Событий не принимает.
  */
@@ -27,7 +31,9 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
   const rarity = skinRarity(skinId);
   const particle = skinStyle(skinId).particle;
   const count = particle ? (PARTICLES[rarity] ?? 0) : 0;
-  const layer = (part: 'body' | 'head' | 'tail') => ({ backgroundImage: `url(${heroAsset(skinId, part)})` });
+  const layer = (part: 'body' | 'head' | 'ear' | 'tail' | 'foot') => ({
+    backgroundImage: `url(${heroAsset(skinId, part)})`,
+  });
   return (
     <div
       className={`hero-fig pointer-events-none relative rarity-${rarity.toLowerCase()}`}
@@ -69,11 +75,25 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
               />
             </div>
             <div
+              ref={refs?.foot}
+              className="hero-part absolute inset-0"
+              style={{ transformOrigin: rig.footOrigin }}
+            >
+              <div className="hero-layer absolute inset-0" style={layer('foot')} />
+            </div>
+            <div
               ref={refs?.head}
               className="hero-part absolute inset-0"
               style={{ transformOrigin: rig.headOrigin }}
             >
               <div className="hero-head absolute inset-0" style={{ transformOrigin: rig.headOrigin }}>
+                <div
+                  ref={refs?.ear}
+                  className="hero-part absolute inset-0"
+                  style={{ transformOrigin: rig.earOrigin }}
+                >
+                  <div className="hero-layer absolute inset-0" style={layer('ear')} data-testid="hero-ear" />
+                </div>
                 <div className="hero-layer absolute inset-0" style={layer('head')} data-testid="hero-head" />
                 <svg
                   ref={refs?.lids}

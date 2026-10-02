@@ -187,6 +187,7 @@ export const ru = {
   'combo.found': 'Карточка из комбо дня!',
   'combo.celebrate': 'Комбо собрано!',
   'cipher.title': 'Ежедневный шифр',
+  'cipher.short': 'Шифр дня',
   'cipher.enter': 'Ввести',
   'cipher.solved': 'Решено',
   'cipher.exit': 'Выйти из режима шифра',

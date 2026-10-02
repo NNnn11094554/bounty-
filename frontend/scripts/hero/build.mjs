@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { bbox, cutout, SPLIT_X } from './cutout.mjs';
-import { HEAD_PIVOT, splitLayers, TAIL_PIVOT } from './layers.mjs';
+import { EAR_PIVOT, FOOT_PIVOT, HEAD_PIVOT, splitLayers, TAIL_PIVOT } from './layers.mjs';
 import { recolor, SKIN_RECOLORS } from './recolor.mjs';
 import { eraseStrapText } from './retouch.mjs';
 
@@ -19,7 +19,8 @@ export const HERO_PORTRAIT = path.join(root, '.cache', 'hero-portrait.png');
 /** высота слоёв главного экрана и превью */
 const BODY_H = 1024;
 const THUMB_H = 384;
-const PARTS = ['body', 'head', 'tail', 'thumb'];
+const LAYERS = ['body', 'head', 'ear', 'tail', 'foot'];
+const PARTS = [...LAYERS, 'thumb'];
 
 const webp = (s, q = 86) => s.webp({ quality: q, alphaQuality: 90, effort: 5 });
 
@@ -77,6 +78,8 @@ export async function buildHero(outDir) {
   for (const [name, value] of [
     ['tailPivot', TAIL_PIVOT],
     ['headPivot', HEAD_PIVOT],
+    ['earPivot', EAR_PIVOT],
+    ['footPivot', FOOT_PIVOT],
   ]) {
     if (JSON.stringify(value) !== JSON.stringify(layout[name]))
       throw new Error(`[hero] ${name} ≠ heroLayout.json`);
@@ -90,16 +93,16 @@ export async function buildHero(outDir) {
   for (const id of ids) {
     const opts = SKIN_RECOLORS[id];
     const png = {};
-    for (const part of ['body', 'head', 'tail']) {
+    for (const part of LAYERS) {
       const buf = Buffer.from(crops[part]);
       if (opts) recolor(buf, catBox.width, catBox.height, opts, { x: catBox.left, y: catBox.top }, H);
       png[part] = await raw(buf, catBox).png().toBuffer();
       await webp(sharp(png[part]).resize(bodyW, BODY_H)).toFile(path.join(dir, `${id}-${part}.webp`));
       made++;
     }
-    // превью одной картинкой: хвост и голова под телом
+    // превью одной картинкой: хвост, кроссовка, ухо и голова под телом
     const whole = await sharp(png.tail)
-      .composite([{ input: png.head }, { input: png.body }])
+      .composite([{ input: png.foot }, { input: png.ear }, { input: png.head }, { input: png.body }])
       .png()
       .toBuffer();
     await webp(sharp(whole).resize(null, THUMB_H), 82).toFile(path.join(dir, `${id}-thumb.webp`));

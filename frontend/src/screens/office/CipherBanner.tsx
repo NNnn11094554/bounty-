@@ -77,55 +77,53 @@ export function CipherBanner() {
   // уходя с Офиса, выходим из режима шифра
   useEffect(() => exitCipher, []);
 
+  // пока шифр не введён — компактная плашка в свободном углу над котом, чтобы кот был крупнее
+  const chip =
+    'absolute left-0 top-1 z-10 flex w-[88px] flex-col items-start gap-0.5 rounded-2xl border px-2.5 py-2 text-left shadow-card';
   if (!cipher) {
     if (failed) return null;
-    // место под плашку занято сразу — кот не «прыгает», когда шифр загрузится
     return (
-      <div
-        className="mt-3 flex items-center gap-2.5 rounded-2xl border border-line bg-night-700/90 px-3 py-2 shadow-card short:mt-2 short:py-1.5"
-        data-testid="cipher-skeleton"
-        aria-hidden
-      >
-        <span className="font-mono text-lg font-black text-gold/40">•−</span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="text-sm font-extrabold">
-            <span className="skeleton inline-block h-3.5 w-28 rounded align-middle" />
-          </p>
-          <p className="text-xs font-extrabold">
-            <span className="skeleton inline-block h-3 w-20 rounded align-middle" />
-          </p>
+      <div className="relative h-0" aria-hidden>
+        <div className={`${chip} border-line bg-night-700/90`} data-testid="cipher-skeleton">
+          <span className="font-mono text-sm font-black leading-none text-gold/40">•−</span>
+          <span className="skeleton mt-1 h-3 w-14 rounded" />
+          <span className="skeleton h-3 w-16 rounded" />
         </div>
-        <span className="skeleton h-8 w-[76px] rounded-xl short:h-7" />
       </div>
     );
   }
 
   if (!active) {
     return (
-      <div
-        className="mt-3 flex items-center gap-2.5 rounded-2xl border border-line bg-night-700/90 px-3 py-2 shadow-card short:mt-2 short:py-1.5"
-        data-testid="cipher-banner"
-      >
-        <span className="font-mono text-lg font-black text-gold">•−</span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-sm font-extrabold">{t('cipher.title')}</p>
-          <p className="flex items-center gap-1 text-xs font-extrabold text-gold">
-            <CoinIcon size={13} />+{formatInt(cipher.reward)}
-          </p>
-        </div>
+      <div className="relative h-0" data-testid="cipher-banner">
         {cipher.solved ? (
-          <span className="text-sm font-extrabold text-lime" data-testid="cipher-solved">
-            ✓ {t('cipher.solved')}
-          </span>
+          <div className={`${chip} border-line bg-night-700/80`} data-testid="cipher-solved">
+            <span className="text-[11px] font-extrabold leading-tight text-white/70">
+              {t('cipher.title')}
+            </span>
+            <span className="text-sm font-black text-lime">✓ {t('cipher.solved')}</span>
+          </div>
         ) : (
           <motion.button
             type="button"
             whileTap={{ scale: 0.92 }}
             onClick={enterCipher}
-            className="rounded-xl bg-cta px-3.5 py-1.5 text-sm font-extrabold shadow-button short:py-1"
+            className={`${chip} cipher-chip border-gold/40 bg-night-700/95`}
+            aria-label={`${t('cipher.title')}: ${t('cipher.enter')}`}
             data-testid="cipher-enter"
           >
-            {t('cipher.enter')}
+            <span className="flex items-center gap-1.5">
+              <span className="font-mono text-sm font-black leading-none text-gold">•−</span>
+              <span className="text-[11px] font-extrabold leading-tight text-white/85">
+                {t('cipher.short')}
+              </span>
+            </span>
+            <span className="flex items-center gap-0.5 whitespace-nowrap text-[11px] font-black text-gold">
+              <CoinIcon size={11} />+{formatInt(cipher.reward)}
+            </span>
+            <span className="mt-0.5 w-full rounded-lg bg-cta py-0.5 text-center text-[11px] font-extrabold shadow-button">
+              {t('cipher.enter')}
+            </span>
           </motion.button>
         )}
       </div>
