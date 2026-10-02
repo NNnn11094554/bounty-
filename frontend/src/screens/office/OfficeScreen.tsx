@@ -6,7 +6,7 @@ import { CardIcon } from '../../components/cards/CardIcon';
 import { CatButton, type TapHandler } from '../../components/CatButton';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
-import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
+import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon, StarIcon } from '../../components/icons';
 import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
@@ -21,6 +21,7 @@ interface Props {
   onOpenLeagues?: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  onOpenShop?: () => void;
   /** плашки дня (шифр и т.п.) между лигой и котом */
   dailyBanner?: ReactNode;
   /** заменить обработчик нажатий (режим ввода шифра) */
@@ -50,6 +51,7 @@ export function OfficeScreen({
   onOpenBoosts,
   onOpenLeagues,
   onOpenProfile,
+  onOpenShop,
   onOpenSettings,
   dailyBanner,
   onCatPress,
@@ -132,6 +134,18 @@ export function OfficeScreen({
           {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
         </motion.button>
         {header}
+        {onOpenShop && (
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.88 }}
+            onClick={onOpenShop}
+            aria-label={t('office.shop')}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-gold/40 bg-night-700/80 shadow-card"
+            data-testid="open-shop"
+          >
+            <StarIcon size={22} />
+          </motion.button>
+        )}
         {onOpenSettings && (
           <motion.button
             type="button"

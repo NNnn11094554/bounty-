@@ -22,6 +22,8 @@ export interface AdminStats {
   banned: number;
   suspicious: number;
   pendingNotifications: number;
+  /** магазин: звёзды Telegram за оплаченные (не возвращённые) покупки — всего и за игровой день */
+  shop: { starsTotal: number; starsToday: number; purchases: number };
   /** последние 14 игровых дней, по возрастанию */
   days: AdminDayPoint[];
   topReferrers: Array<{ id: number; name: string; username: string | null; friends: number }>;
@@ -105,6 +107,15 @@ export interface AdminTransaction {
   createdAt: number;
 }
 
+export interface AdminPurchase {
+  id: number;
+  productId: string;
+  stars: number;
+  status: 'PENDING' | 'PAID' | 'REFUNDED';
+  createdAt: number;
+  paidAt: number | null;
+}
+
 export interface AdminPlayerDetails extends AdminPlayerRow {
   lastName: string | null;
   languageCode: string;
@@ -118,6 +129,8 @@ export interface AdminPlayerDetails extends AdminPlayerRow {
   walletAddress: string | null;
   achievements: number;
   hqId: string | null;
+  /** покупки в магазине за Stars (последние 20) */
+  purchases: AdminPurchase[];
   transactions: AdminTransaction[];
   /** курсор для следующей страницы журнала */
   nextBefore: string | null;

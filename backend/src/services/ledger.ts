@@ -20,6 +20,8 @@ export type TxType =
   | 'achievement_reward'
   | 'golden_coin'
   | 'hq_reward'
+  | 'shop_purchase'
+  | 'shop_refund'
   | 'admin_adjustment';
 
 const AGGREGATED: ReadonlySet<TxType> = new Set<TxType>(['tap', 'passive']);
@@ -45,6 +47,8 @@ export interface BalanceChange {
   type: TxType;
   amount: Decimal | number | bigint;
   meta?: Prisma.InputJsonValue;
+  /** false — начисление не идёт в totalEarned (купленные монеты не двигают лигу и рейтинг) */
+  earned?: boolean;
 }
 
 /**
@@ -66,7 +70,9 @@ export async function applyBalanceChanges(
     if (!c.amount.isFinite()) throw new ApiError('VALIDATION', 'Invalid amount');
   }
   const delta = items.reduce((sum, c) => sum.plus(c.amount), ZERO);
-  const earned = items.filter((c) => c.amount.gt(0)).reduce((sum, c) => sum.plus(c.amount), ZERO);
+  const earned = items
+    .filter((c) => c.amount.gt(0) && c.earned !== false)
+    .reduce((sum, c) => sum.plus(c.amount), ZERO);
   const newBalance = user.balance.plus(delta);
   if (newBalance.lt(0)) {
     throw new ApiError('INSUFFICIENT_FUNDS', 'Not enough coins', {

@@ -33,6 +33,7 @@ const state = {
   leagueLevel: 0,
   tapSeq: 0,
   turboUntil: null,
+  incomeBoostUntil: null,
   totalTaps: 0,
   boosts: {
     fullEnergy: { left: 6, perDay: 6, cooldownUntil: null, cooldownSec: 3600 },

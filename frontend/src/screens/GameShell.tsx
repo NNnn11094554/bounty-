@@ -25,6 +25,7 @@ const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ d
 const LeaguesScreen = lazy(() =>
   import('./leagues/LeaguesScreen').then((m) => ({ default: m.LeaguesScreen })),
 );
+const ShopScreen = lazy(() => import('./shop/ShopScreen').then((m) => ({ default: m.ShopScreen })));
 const ProfileScreen = lazy(() =>
   import('./profile/ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
 );
@@ -44,6 +45,8 @@ function SubScreenView({ screen }: { screen: SubScreen }) {
       return <ProfileScreen />;
     case 'settings':
       return <SettingsScreen />;
+    case 'shop':
+      return <ShopScreen />;
   }
 }
 

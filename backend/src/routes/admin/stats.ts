@@ -66,6 +66,14 @@ export async function adminStatsRoutes(app: FastifyInstance): Promise<void> {
         prisma.notification.count({ where: { status: 'PENDING' } }),
       ]);
 
+    const [shopTotal, shopToday] = await Promise.all([
+      prisma.purchase.aggregate({ where: { status: 'PAID' }, _sum: { stars: true }, _count: true }),
+      prisma.purchase.aggregate({
+        where: { status: 'PAID', paidAt: { gte: dayStart(today) } },
+        _sum: { stars: true },
+      }),
+    ]);
+
     const [activeRows, registeredRows, referrers] = await Promise.all([
       prisma.userActivity.groupBy({ by: ['dayKey'], where: { dayKey: { in: days14 } }, _count: true }),
       prisma.$queryRaw<{ day: string; n: bigint }[]>`
@@ -103,6 +111,11 @@ export async function adminStatsRoutes(app: FastifyInstance): Promise<void> {
       banned,
       suspicious,
       pendingNotifications: pending,
+      shop: {
+        starsTotal: shopTotal._sum.stars ?? 0,
+        starsToday: shopToday._sum.stars ?? 0,
+        purchases: shopTotal._count,
+      },
       days,
       topReferrers: referrers.map((r) => {
         const u = inviters.find((i) => i.id === r.inviterId);

@@ -7,6 +7,7 @@ import { prisma } from '../../lib/db.js';
 import { toCoins } from '../../lib/money.js';
 import { applyBalanceChanges } from '../../services/ledger.js';
 import { clearLeaderboardCache } from '../../services/leaderboard.js';
+import { refundPurchase } from '../../services/shop.js';
 import { requireAdmin } from '../../services/player.js';
 import { friendlyAddress } from '../../services/tonProof.js';
 import { withUserLock } from '../../services/userLock.js';
@@ -53,9 +54,14 @@ function row(u: User): AdminPlayerRow {
 async function details(id: number, before?: string): Promise<AdminPlayerDetails> {
   const u = await prisma.user.findUnique({ where: { id }, include: { referrer: true } });
   if (!u) throw new ApiError('NOT_FOUND', 'Player not found');
-  const [friends, achievements, txs] = await Promise.all([
+  const [friends, achievements, purchases, txs] = await Promise.all([
     prisma.referral.count({ where: { inviterId: id } }),
     prisma.userAchievement.count({ where: { userId: id } }),
+    prisma.purchase.findMany({
+      where: { userId: id, status: { not: 'PENDING' } },
+      orderBy: { id: 'desc' },
+      take: 20,
+    }),
     prisma.transaction.findMany({
       where: { userId: id, ...(before ? { id: { lt: BigInt(before) } } : {}) },
       orderBy: { id: 'desc' },
@@ -86,6 +92,14 @@ async function details(id: number, before?: string): Promise<AdminPlayerDetails>
     walletAddress: u.walletAddress ? friendlyAddress(u.walletAddress) : null,
     achievements,
     hqId: u.hqId,
+    purchases: purchases.map((p) => ({
+      id: p.id,
+      productId: p.productId,
+      stars: p.stars,
+      status: p.status,
+      createdAt: p.createdAt.getTime(),
+      paidAt: p.paidAt?.getTime() ?? null,
+    })),
     transactions,
     nextBefore: txs.length > TX_PAGE ? page[page.length - 1]!.id.toString() : null,
   };
@@ -171,6 +185,15 @@ export async function adminPlayerRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /** Ручное начисление или списание — через общий журнал, с админом и причиной в meta. */
+  // возврат звёзд за покупку: Telegram возвращает оплату, выданное забирается
+  app.post('/api/admin/purchases/:id/refund', async (request): Promise<AdminPlayerDetails> => {
+    await requireAdmin(request);
+    const { id } = Params.parse(request.params);
+    const purchase = await refundPurchase(id);
+    request.log.info({ purchaseId: id, userId: purchase.userId }, 'admin refund');
+    return details(purchase.userId);
+  });
+
   app.post('/api/admin/players/:id/credit', async (request): Promise<AdminPlayerDetails> => {
     const admin = await requireAdmin(request);
     const { id } = Params.parse(request.params);

@@ -76,6 +76,8 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     leagueLevel: user.leagueLevel,
     tapSeq: user.lastTapSeq,
     turboUntil: user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null,
+    incomeBoostUntil:
+      user.incomeBoostUntil && user.incomeBoostUntil > now ? user.incomeBoostUntil.getTime() : null,
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
     daily: dailyState(user, now),

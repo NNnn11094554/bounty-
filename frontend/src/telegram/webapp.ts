@@ -49,6 +49,7 @@ export interface TelegramWebApp {
   setBackgroundColor?(color: string): void;
   setBottomBarColor?(color: string): void;
   isVersionAtLeast(version: string): boolean;
+  openInvoice?(url: string, callback?: (status: InvoiceStatus) => void): void;
   openLink(url: string, options?: { try_instant_view?: boolean }): void;
   openTelegramLink(url: string): void;
   onEvent(event: string, cb: () => void): void;
@@ -66,6 +67,21 @@ declare global {
   interface Window {
     Telegram?: { WebApp?: TelegramWebApp };
   }
+}
+
+export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
+
+/** Окно оплаты Telegram (Stars). Вне Telegram или в старых клиентах — 'failed'. */
+export function openInvoice(url: string): Promise<InvoiceStatus> {
+  const app = getWebApp();
+  if (!app?.openInvoice || !supports('6.1')) return Promise.resolve('failed');
+  return new Promise((resolve) => {
+    try {
+      app.openInvoice?.(url, resolve);
+    } catch {
+      resolve('failed');
+    }
+  });
 }
 
 export function getWebApp(): TelegramWebApp | null {

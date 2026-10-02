@@ -17,10 +17,20 @@ import type {
   TasksResponse,
   TonProofPayloadResponse,
   WalletConnectRequest,
+  InvoiceResponse,
+  PurchaseStatusResponse,
+  ShopProductId,
+  ShopResponse,
 } from '@meowgul/shared';
 import { api } from './client';
 
 export const endpoints = {
+  shop: () => api<ShopResponse>('/api/shop'),
+  createInvoice: (productId: ShopProductId) =>
+    api<InvoiceResponse>('/api/shop/invoice', { method: 'POST', body: { productId } }),
+  purchaseStatus: (id: number) => api<PurchaseStatusResponse>(`/api/shop/purchases/${id}`, { silent: true }),
+  /** только разработка и e2e: имитация оплаты счёта dev-invoice:// */
+  devPay: (id: number) => api<{ result: string }>(`/api/dev/shop/pay/${id}`, { method: 'POST' }),
   auth: () => api<AuthResponse>('/api/auth', { method: 'POST', retry: true }),
   state: () => api<StateResponse>('/api/state'),
   boost: (type: BoostType) => api<StateResponse>(`/api/boost/${type}`, { method: 'POST' }),

@@ -12,7 +12,7 @@ export async function syncPassive(
   user: User,
   now: Date,
 ): Promise<{ user: User; passive: PassiveAccrual }> {
-  const passive = accruePassive(user.profitPerHour, user.lastSyncAt, now);
+  const passive = accruePassive(user.profitPerHour, user.lastSyncAt, now, user.incomeBoostUntil);
   const updated = await applyBalanceChanges(
     tx,
     user,

@@ -16,6 +16,7 @@ export function OfficeTab({ open }: Props) {
       onOpenLeagues={() => open('leagues')}
       onOpenProfile={() => open('profile')}
       onOpenSettings={() => open('settings')}
+      onOpenShop={() => open('shop')}
       dailyBanner={<CipherBanner />}
       onCatPress={cipherActive ? cipherPress : undefined}
       catOverlay={cipherActive ? <MorseOverlay /> : undefined}

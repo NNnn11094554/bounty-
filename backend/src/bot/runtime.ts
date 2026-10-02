@@ -64,6 +64,8 @@ async function configure(bot: Bot): Promise<void> {
 }
 
 const RETRY_MS = 30_000;
+/** сообщения (в том числе successful_payment) и подтверждение оплаты Stars */
+const ALLOWED_UPDATES = ['message', 'pre_checkout_query'] as const;
 
 /**
  * Запуск бота: в production — вебхук на API_URL/api/bot/webhook, в разработке — long polling.
@@ -85,13 +87,16 @@ export function startBot(): () => Promise<void> {
       if (env.isProd) {
         await bot.api.setWebhook(`${env.API_URL.replace(/\/$/, '')}/api/bot/webhook`, {
           secret_token: webhookSecret(),
-          allowed_updates: ['message'],
+          allowed_updates: ALLOWED_UPDATES,
         });
         logger.info({ bot: bot.botInfo.username }, 'bot webhook set');
       } else {
         await bot.api.deleteWebhook();
         polling = true;
-        void bot.start({ allowed_updates: ['message'], onStart: () => logger.info('bot polling started') });
+        void bot.start({
+          allowed_updates: ALLOWED_UPDATES,
+          onStart: () => logger.info('bot polling started'),
+        });
       }
       // ошибка настройки (например, лимит запросов Telegram) не останавливает бота — повтор при следующем запуске
       await configure(bot).catch((err: unknown) => logger.warn({ err }, 'bot profile setup failed'));

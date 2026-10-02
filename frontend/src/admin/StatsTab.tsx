@@ -120,6 +120,9 @@ export function StatsTab() {
         <Kpi label={a('stats.d30')} value={pct(stats.retention.d30)} hint={a('stats.retentionHint')} />
         <Kpi label={a('stats.balance')} value={formatShort(stats.coins.balance, locale)} />
         <Kpi label={a('stats.earned')} value={formatShort(stats.coins.earned, locale)} />
+        <Kpi label={a('stats.stars')} value={n(stats.shop.starsTotal)} />
+        <Kpi label={a('stats.starsToday')} value={n(stats.shop.starsToday)} />
+        <Kpi label={a('stats.purchases')} value={n(stats.shop.purchases)} />
         <Kpi label={a('stats.banned')} value={n(stats.banned)} />
         <Kpi label={a('stats.suspicious')} value={n(stats.suspicious)} />
         <Kpi label={a('stats.queue')} value={n(stats.pendingNotifications)} />
