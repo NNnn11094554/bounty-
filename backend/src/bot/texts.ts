@@ -1,6 +1,15 @@
 import type { Locale } from '@meowgul/shared';
+import { REFERRAL, REWARDS } from '../game/config/rewards.js';
 
-/** Тексты бота на двух языках. */
+/** Имя игрока для текста с parse_mode HTML. */
+export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const num = (n: number, locale: Locale) =>
+  new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(n);
+/** комбо + шифр за день */
+const DAILY_MAX = REWARDS.combo + REWARDS.cipher;
+
+/** Тексты бота на двух языках. welcome — HTML (parse_mode: 'HTML'), имя экранируется. */
 export const BOT_TEXTS = {
   ru: {
     description:
@@ -8,7 +17,19 @@ export const BOT_TEXTS = {
     shortDescription: 'Тапай кота, строй крипто-империю и готовься к Airdrop 🐾',
     startCommand: 'Открыть игру',
     welcome: (name: string) =>
-      `Привет, ${name}! 🐾\n\nТеперь ты CEO крипто-компании Meowgul. Тапай кота — зарабатывай монеты, покупай карточки — получай доход каждый час, даже когда не в игре. Зови друзей: бонус получите оба.\n\nЖми «Играть»!`,
+      [
+        `<b>Мяу, ${escapeHtml(name)}!</b> 🐾`,
+        '',
+        'Чёрный кот Meowgul назначил тебя CEO своей крипто-компании. Пока это офис с одним столом — но это ненадолго.',
+        '',
+        '👆 <b>Тапай кота</b> — каждый тап приносит монеты',
+        '📈 <b>Покупай карточки</b> — прибыль капает каждый час, даже когда ты офлайн',
+        `🧩 <b>Комбо и шифр дня</b> — до +${num(DAILY_MAX, 'ru')} монет каждый день`,
+        `👥 <b>Зови друзей</b> — от +${num(REFERRAL.regular, 'ru')} монет вам обоим`,
+        '🪂 <b>Airdrop</b> — подключи кошелёк и будь готов',
+        '',
+        'Жми «Играть» 👇',
+      ].join('\n'),
     play: '▶️ Играть',
     channel: '📣 Подписаться на канал',
     energyFull: '⚡ Энергия восстановлена! Кот отдохнул и готов к работе — заходи тапать.',
@@ -24,7 +45,19 @@ export const BOT_TEXTS = {
     shortDescription: 'Tap the cat, build a crypto empire and get ready for the Airdrop 🐾',
     startCommand: 'Open the game',
     welcome: (name: string) =>
-      `Hi, ${name}! 🐾\n\nYou are now the CEO of the Meowgul crypto company. Tap the cat to earn coins, buy cards to earn every hour — even when you are away. Invite friends: you both get a bonus.\n\nPress “Play”!`,
+      [
+        `<b>Meow, ${escapeHtml(name)}!</b> 🐾`,
+        '',
+        'The black cat Meowgul just made you CEO of the Meowgul crypto company. Right now it’s an office with a single desk — but not for long.',
+        '',
+        '👆 <b>Tap the cat</b> — every tap earns coins',
+        '📈 <b>Buy cards</b> — profit drips in every hour, even while you’re offline',
+        `🧩 <b>Daily combo & cipher</b> — up to +${num(DAILY_MAX, 'en')} coins every day`,
+        `👥 <b>Invite friends</b> — from +${num(REFERRAL.regular, 'en')} coins for both of you`,
+        '🪂 <b>Airdrop</b> — connect your wallet and get ready',
+        '',
+        'Press “Play” 👇',
+      ].join('\n'),
     play: '▶️ Play',
     channel: '📣 Join the channel',
     energyFull: '⚡ Energy is full again! The cat has rested and is ready to work — come and tap.',
@@ -36,7 +69,10 @@ export const BOT_TEXTS = {
   },
 } as const;
 
+/** Языки Telegram, для которых бот отвечает по-русски. */
+export const RU_LANGS = ['ru', 'uk', 'be', 'kk', 'uz', 'ky', 'tg', 'hy', 'az'] as const;
+
 export function botLocale(code: string | null | undefined): Locale {
   const base = (code ?? '').toLowerCase().split('-')[0] ?? '';
-  return ['ru', 'uk', 'be', 'kk', 'uz', 'ky', 'tg', 'hy', 'az'].includes(base) ? 'ru' : 'en';
+  return (RU_LANGS as readonly string[]).includes(base) ? 'ru' : 'en';
 }

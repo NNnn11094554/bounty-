@@ -5,6 +5,7 @@ import type { UserFromGetMe } from 'grammy/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createBot } from '../src/bot/bot.js';
 import { getBot, webhookSecret } from '../src/bot/runtime.js';
+import { BOT_TEXTS } from '../src/bot/texts.js';
 import { dayKey } from '../src/game/dayKey.js';
 import { prisma } from '../src/lib/db.js';
 import {
@@ -88,7 +89,9 @@ describe('bot', () => {
     await bot.handleUpdate(startUpdate(15001, '/start ref_777'));
     expect(calls).toHaveLength(1);
     expect(calls[0]!.method).toBe('sendPhoto');
-    expect(String(calls[0]!.payload.caption)).toContain('Привет, Мурка!');
+    expect(String(calls[0]!.payload.caption)).toContain('<b>Мяу, Мурка!</b>');
+    expect(calls[0]!.payload.parse_mode).toBe('HTML');
+    expect(String(calls[0]!.payload.photo)).toContain('/assets/generated/welcome.jpg');
     const markup = JSON.stringify(calls[0]!.payload.reply_markup);
     expect(markup).toContain('startapp=ref_777');
   });
@@ -100,11 +103,18 @@ describe('bot', () => {
     await client(app, tgUser(15002, { allows_write_to_pm: false })).post('/api/auth');
     await bot.handleUpdate(startUpdate(15002, '/start', 'en'));
     expect(calls.map((c) => c.method)).toEqual(['sendPhoto', 'sendMessage']);
-    expect(String(calls[1]!.payload.text)).toContain('Hi, Мурка!');
+    expect(String(calls[1]!.payload.text)).toContain('<b>Meow, Мурка!</b>');
+    expect(calls[1]!.payload.parse_mode).toBe('HTML');
     expect(JSON.stringify(calls[1]!.payload.reply_markup)).toContain('web_app');
     // написал боту — уведомления разрешены
     const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 15002n } });
     expect(user.allowsWriteToPm).toBe(true);
+  });
+
+  it('welcome escapes the player name for HTML', () => {
+    const text = BOT_TEXTS.ru.welcome('<Кот & Ко>');
+    expect(text).toContain('<b>Мяу, &lt;Кот &amp; Ко&gt;!</b>');
+    expect(BOT_TEXTS.ru.welcome('Мурка')).toMatch(/6\s000\s000/);
   });
 
   it('webhook secret uses only characters Telegram accepts', () => {

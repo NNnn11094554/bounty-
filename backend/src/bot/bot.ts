@@ -23,7 +23,7 @@ export function playKeyboard(locale: 'ru' | 'en', startParam?: string): InlineKe
   return kb;
 }
 
-const WELCOME_IMAGE = () => `${env.WEBAPP_URL.replace(/\/$/, '')}/assets/generated/og-image.png`;
+const WELCOME_IMAGE = () => `${env.WEBAPP_URL.replace(/\/$/, '')}/assets/generated/welcome.jpg`;
 /** file_id картинки после первой отправки — дальше Telegram не скачивает её заново */
 let welcomePhotoId: string | null = null;
 
@@ -33,12 +33,16 @@ async function sendWelcome(ctx: Context, startParam: string | undefined): Promis
   const caption = t.welcome(ctx.from?.first_name ?? 'CEO');
   const reply_markup = playKeyboard(locale, startParam);
   try {
-    const msg = await ctx.replyWithPhoto(welcomePhotoId ?? WELCOME_IMAGE(), { caption, reply_markup });
+    const msg = await ctx.replyWithPhoto(welcomePhotoId ?? WELCOME_IMAGE(), {
+      caption,
+      parse_mode: 'HTML',
+      reply_markup,
+    });
     welcomePhotoId = msg.photo.at(-1)?.file_id ?? welcomePhotoId;
   } catch (err) {
     // картинка недоступна (локальный адрес и т.п.) — приветствие текстом
     logger.warn({ err }, 'welcome photo failed');
-    await ctx.reply(caption, { reply_markup });
+    await ctx.reply(caption, { parse_mode: 'HTML', reply_markup });
   }
 }
 
