@@ -144,7 +144,9 @@ export const haptic = {
 };
 
 export function openLink(url: string): void {
-  const app = getWebApp();
+  // вне Telegram скрипт SDK тоже создаёт WebApp, но его openTelegramLink уводит саму игру со страницы —
+  // методы Telegram используем только внутри Telegram, в браузере — новая вкладка
+  const app = isInsideTelegram() ? getWebApp() : null;
   if (url.startsWith('https://t.me/') && app) app.openTelegramLink(url);
   else if (app) app.openLink(url);
   else window.open(url, '_blank', 'noopener');

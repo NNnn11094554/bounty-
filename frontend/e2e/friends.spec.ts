@@ -36,6 +36,34 @@ test.describe('Friends', () => {
     await context.route('https://t.me/**', (route) =>
       route.fulfill({ body: 'ok', contentType: 'text/plain' }),
     );
+    // Вне Telegram скрипт telegram-web-app.js всё равно создаёт объект WebApp (пустой initData), а его
+    // openTelegramLink уводит текущую страницу. В песочнице разработки telegram.org недоступен, в CI —
+    // доступен; подкладываем такой же объект, чтобы сценарий был одинаковым везде.
+    await page.addInitScript(() => {
+      const w = window as unknown as { Telegram?: { WebApp?: Record<string, unknown> } };
+      if (w.Telegram?.WebApp) return;
+      w.Telegram = {
+        WebApp: {
+          initData: '',
+          initDataUnsafe: {},
+          platform: 'unknown',
+          version: '6.0',
+          isVersionAtLeast: () => false,
+          ready: () => undefined,
+          expand: () => undefined,
+          onEvent: () => undefined,
+          offEvent: () => undefined,
+          openLink: (url: string) => (window.location.href = url),
+          openTelegramLink: (url: string) => (window.location.href = url),
+          HapticFeedback: {
+            impactOccurred: () => undefined,
+            notificationOccurred: () => undefined,
+            selectionChanged: () => undefined,
+          },
+          BackButton: { show: () => undefined, hide: () => undefined, onClick: () => undefined },
+        },
+      };
+    });
     await page.goto(`/?uid=${uid}&name=Связной`);
     await page.getByTestId('nav-friends').click();
     await page.getByTestId('friends-copy').click();
