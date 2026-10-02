@@ -1,10 +1,12 @@
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import type { Bot } from 'grammy';
+import type { LanguageCode } from 'grammy/types';
 import { env } from '../env.js';
+import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
 import { startNotificationWorker } from '../services/notifications.js';
 import { createBot } from './bot.js';
-import { BOT_TEXTS } from './texts.js';
+import { BOT_TEXTS, RU_LANGS } from './texts.js';
 
 let instance: Bot | null = null;
 
@@ -25,11 +27,27 @@ export function webhookSecret(): string {
     .slice(0, 48);
 }
 
-/** Команды, описание «Что умеет этот бот?» и кнопка меню, открывающая игру. */
+const CONFIG_KEY = 'botConfig';
+
+/**
+ * Команды, описание «Что умеет этот бот?» и кнопка меню, открывающая игру. Русские тексты — для всех языков
+ * из RU_LANGS (у кого Telegram на украинском, тоже видит описание по-русски), английские — по умолчанию.
+ * Это десятки запросов к Telegram, а бесплатный сервер перезапускается часто, поэтому настройка повторяется,
+ * только когда изменились тексты или адрес игры.
+ */
 async function configure(bot: Bot): Promise<void> {
-  for (const lang of ['ru', 'en'] as const) {
+  // строки BOT_TEXTS (функции JSON пропускает), языки, адрес игры и сам бот
+  const signature = createHash('sha256')
+    .update(JSON.stringify([BOT_TEXTS, RU_LANGS, env.WEBAPP_URL, bot.botInfo.username]))
+    .digest('hex');
+  const saved = await prisma.appSetting.findUnique({ where: { key: CONFIG_KEY } });
+  if (saved?.value === signature) return;
+  const targets: Array<[keyof typeof BOT_TEXTS, LanguageCode | undefined]> = [
+    ['en', undefined],
+    ...RU_LANGS.map((code) => ['ru', code] as [keyof typeof BOT_TEXTS, LanguageCode]),
+  ];
+  for (const [lang, language_code] of targets) {
     const t = BOT_TEXTS[lang];
-    const language_code = lang === 'en' ? undefined : lang;
     await bot.api.setMyCommands([{ command: 'start', description: t.startCommand }], { language_code });
     await bot.api.setMyDescription(t.description, { language_code });
     await bot.api.setMyShortDescription(t.shortDescription, { language_code });
@@ -37,6 +55,12 @@ async function configure(bot: Bot): Promise<void> {
   await bot.api.setChatMenuButton({
     menu_button: { type: 'web_app', text: 'Play', web_app: { url: env.WEBAPP_URL } },
   });
+  await prisma.appSetting.upsert({
+    where: { key: CONFIG_KEY },
+    create: { key: CONFIG_KEY, value: signature },
+    update: { value: signature },
+  });
+  logger.info('bot profile configured');
 }
 
 const RETRY_MS = 30_000;
@@ -57,7 +81,7 @@ export function startBot(): () => Promise<void> {
     if (stopped) return;
     try {
       await bot.init();
-      await configure(bot);
+      // сначала приём сообщений: без вебхука бот молчит, а описание и команды — не главное
       if (env.isProd) {
         await bot.api.setWebhook(`${env.API_URL.replace(/\/$/, '')}/api/bot/webhook`, {
           secret_token: webhookSecret(),
@@ -69,6 +93,8 @@ export function startBot(): () => Promise<void> {
         polling = true;
         void bot.start({ allowed_updates: ['message'], onStart: () => logger.info('bot polling started') });
       }
+      // ошибка настройки (например, лимит запросов Telegram) не останавливает бота — повтор при следующем запуске
+      await configure(bot).catch((err: unknown) => logger.warn({ err }, 'bot profile setup failed'));
     } catch (err) {
       logger.error({ err }, 'bot start failed, retrying');
       retry = setTimeout(() => void launch(), RETRY_MS);

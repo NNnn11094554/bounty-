@@ -1,12 +1,13 @@
 import { CARD_CATEGORIES, type CardCategory, type CardView } from '@meowgul/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DURATION, SPRING, isReducedMotion } from '../../animations';
+import { DURATION, SPRING, STAGGER_MAX, isReducedMotion } from '../../animations';
 import { Button } from '../../components/Button';
 import { CoinIcon } from '../../components/icons';
 import { PlayerStats } from '../../components/PlayerStats';
 import { RollingNumber } from '../../components/RollingNumber';
 import { tapEngine } from '../../game/tapEngine';
+import { useProgressiveCount } from '../../hooks/useProgressiveCount';
 import { useT, type MessageKey } from '../../i18n';
 import { useCards, type SpecialsTab } from '../../store/cards';
 import { useGame } from '../../store/game';
@@ -107,6 +108,7 @@ export function MineScreen() {
   }, []);
   const openCard = openId ? (cards.find((c) => c.id === openId) ?? null) : null;
   const listKey = category === 'SPECIALS' ? `${category}-${specialsTab}` : category;
+  const shown = useProgressiveCount(visible.length, listKey);
   const reduced = isReducedMotion();
 
   return (
@@ -184,18 +186,21 @@ export function MineScreen() {
             <motion.div
               key={listKey}
               className="grid grid-cols-2 gap-2.5"
-              initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={reduced ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 10px, 0)' }}
+              animate={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
               exit={{ opacity: 0 }}
               transition={{ duration: DURATION.tabSwitch / 1000 }}
             >
-              {visible.map((card, i) => (
+              {visible.slice(0, shown).map((card, i) => (
                 <motion.div
                   key={card.id}
                   className="flex"
-                  initial={reduced ? false : { opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i, 12) * (DURATION.stagger / 1000), duration: 0.25 }}
+                  // появляются по очереди только первые карточки (видимые на экране), остальные — сразу
+                  initial={
+                    reduced || i >= STAGGER_MAX ? false : { opacity: 0, transform: 'translate3d(0, 12px, 0)' }
+                  }
+                  animate={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
+                  transition={{ delay: i * (DURATION.stagger / 1000), duration: 0.25 }}
                 >
                   <CardTile card={card} onOpen={open} />
                 </motion.div>

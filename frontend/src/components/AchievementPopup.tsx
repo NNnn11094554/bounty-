@@ -75,7 +75,7 @@ export function AchievementPopup() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            className="pointer-events-auto relative flex w-full max-w-[420px] items-center gap-3 overflow-hidden rounded-[22px] border border-gold/40 bg-night-700/95 p-3 text-left shadow-glow backdrop-blur"
+            className="pointer-events-auto relative flex w-full max-w-[420px] items-center gap-3 overflow-hidden rounded-[22px] border border-gold/40 bg-night-700 p-3 text-left shadow-glow"
             data-testid="achievement-popup"
             data-id={current.id}
           >

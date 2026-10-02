@@ -32,7 +32,7 @@ export function BottomNav() {
   const badges: Partial<Record<Tab, boolean>> = { earn: dailyReady };
   return (
     <nav
-      className="relative z-30 mx-3 mb-2 mt-1 grid auto-cols-fr grid-flow-col gap-1 rounded-[24px] border border-line bg-night-700/95 p-1.5 shadow-card backdrop-blur"
+      className="relative z-30 mx-3 mb-2 mt-1 grid auto-cols-fr grid-flow-col gap-1 rounded-[24px] border border-line bg-night-700 p-1.5 shadow-card"
       data-testid="bottom-nav"
     >
       {NAV_TABS.map((item) => {
