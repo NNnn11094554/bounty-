@@ -123,6 +123,42 @@ function PlayerDetails({ id, onBack }: { id: number; onBack: () => void }) {
         {p.banReason && <p className="mt-3 text-sm font-bold text-[#ff8a95]">{p.banReason}</p>}
       </Panel>
 
+      <Panel title={a('players.purchases')}>
+        {p.purchases.length === 0 ? (
+          <Empty>{a('players.noPurchases')}</Empty>
+        ) : (
+          <div className="divide-y divide-white/5" data-testid="admin-purchases">
+            {p.purchases.map((pu) => (
+              <div key={pu.id} className="flex items-center gap-2 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate font-bold">
+                  {pu.productId} · {pu.stars} ⭐
+                  <span className="ml-2 text-xs font-semibold text-white/45">
+                    {dt(pu.paidAt ?? pu.createdAt)}
+                  </span>
+                </span>
+                {pu.status === 'REFUNDED' ? (
+                  <Badge tone="warn">{a('players.refunded')}</Badge>
+                ) : (
+                  <Button
+                    variant="danger"
+                    className="h-8 px-3 text-xs"
+                    loading={busy}
+                    onClick={() =>
+                      void (async () => {
+                        if (!(await confirmAction(a('players.confirmRefund', { stars: pu.stars })))) return;
+                        await act(() => adminApi.refund(pu.id));
+                      })()
+                    }
+                  >
+                    {a('players.refund')}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
       <Panel title={a('players.credit')}>
         <div className="grid gap-2 sm:grid-cols-[160px_1fr_auto]">
           <NumberInput

@@ -1,7 +1,8 @@
-import { formatShort, formatSigned } from '@meowgul/shared';
+import { formatShort, formatSigned, INCOME_BOOST_MULTIPLIER } from '@meowgul/shared';
 import { motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import { leagueProgress } from '../game/leagues';
+import { useNow } from '../hooks/useNow';
 import { tapEngine } from '../game/tapEngine';
 import { useLocale, useT } from '../i18n';
 import { useGame } from '../store/game';
@@ -63,6 +64,22 @@ export function StatTile({
   );
 }
 
+/** «×2» у прибыли в час, пока действует буст дохода из магазина. */
+function IncomeBoostBadge({ until, serverTime }: { until: number | null; serverTime: number }) {
+  const now = useNow(1000);
+  const t = useT();
+  if (!until || until <= now + (serverTime - Date.now())) return null;
+  return (
+    <span
+      className="rounded-full bg-[#2ed3c6]/20 px-1.5 text-[10px] font-black text-[#2ed3c6]"
+      title={t('office.incomeBoost')}
+      data-testid="income-boost-badge"
+    >
+      ×{INCOME_BOOST_MULTIPLIER}
+    </span>
+  );
+}
+
 /** Три плитки статистики: прибыль за тап, монет до следующей лиги, прибыль в час. */
 export function PlayerStats({ testIdPrefix = '' }: { testIdPrefix?: string }) {
   const t = useT();
@@ -100,6 +117,7 @@ export function PlayerStats({ testIdPrefix = '' }: { testIdPrefix?: string }) {
       >
         <CoinIcon size={16} />
         <PerHourValue value={player.profitPerHour} testId={`${testIdPrefix}stat-per-hour`} />
+        <IncomeBoostBadge until={player.incomeBoostUntil} serverTime={player.serverTime} />
       </StatTile>
     </div>
   );

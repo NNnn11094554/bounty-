@@ -1,4 +1,9 @@
-import type { GoldenCoinEvent, PlayerState, TapResponse } from '@meowgul/shared';
+import {
+  INCOME_BOOST_MULTIPLIER,
+  type GoldenCoinEvent,
+  type PlayerState,
+  type TapResponse,
+} from '@meowgul/shared';
 import { api, ApiError } from '../api/client';
 
 /**
@@ -10,6 +15,14 @@ import { api, ApiError } from '../api/client';
  * с тем же номером; сервер не засчитывает номер дважды. Новые тапы копятся отдельно.
  */
 type Listener = (state: PlayerState) => void;
+
+/** Пассивный доход за elapsedMs после снимка; пока идёт буст из магазина — ×INCOME_BOOST_MULTIPLIER. */
+function passiveIncome(s: PlayerState, elapsedMs: number): number {
+  const elapsed = Math.max(0, elapsedMs);
+  const boostLeft = s.incomeBoostUntil ? Math.max(0, s.incomeBoostUntil - s.serverTime) : 0;
+  const boosted = Math.min(elapsed, boostLeft);
+  return (s.profitPerHour * (elapsed + boosted * (INCOME_BOOST_MULTIPLIER - 1))) / 3_600_000;
+}
 
 export class TapEngine {
   private snapshot: PlayerState | null = null;
@@ -105,7 +118,7 @@ export class TapEngine {
   balanceNow(now = performance.now()): number {
     const s = this.snapshot;
     if (!s) return 0;
-    const passive = (s.profitPerHour * Math.max(0, now - this.snapshotAt)) / 3_600_000;
+    const passive = passiveIncome(s, now - this.snapshotAt);
     return s.balance + passive + this.pendingEarned + (this.inflight?.earned ?? 0);
   }
 
@@ -138,7 +151,7 @@ export class TapEngine {
     const s = this.snapshot;
     if (!s) return null;
     const unacked = this.pending + (this.inflight?.taps ?? 0);
-    const passive = (s.profitPerHour * Math.max(0, now - this.snapshotAt)) / 3_600_000;
+    const passive = passiveIncome(s, now - this.snapshotAt);
     return {
       ...s,
       balance: s.balance + passive,

@@ -78,6 +78,28 @@ export function RocketIcon({ size = 20, ...props }: IconProps) {
   );
 }
 
+/** Звезда Telegram Stars (цены в магазине). */
+export function StarIcon({ size = 18, ...props }: IconProps) {
+  const id = `star-${size}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden {...props}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffe27a" />
+          <stop offset="1" stopColor="#f5a300" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M12 1.8l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 16.6l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8L12 1.8Z"
+        fill={`url(#${id})`}
+        stroke="#d98a00"
+        strokeWidth="0.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Шестерёнка (настройки). */
 export function GearIcon({ size = 22, ...props }: IconProps) {
   return (

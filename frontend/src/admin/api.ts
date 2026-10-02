@@ -51,6 +51,7 @@ export const adminApi = {
   ban: (id: number, reason: string) => post<AdminPlayerDetails>(`/api/admin/players/${id}/ban`, { reason }),
   unban: (id: number) => post<AdminPlayerDetails>(`/api/admin/players/${id}/unban`),
   clearSuspicion: (id: number) => post<AdminPlayerDetails>(`/api/admin/players/${id}/clear-suspicion`),
+  refund: (purchaseId: number) => post<AdminPlayerDetails>(`/api/admin/purchases/${purchaseId}/refund`),
 
   broadcasts: () => api<{ broadcasts: AdminBroadcast[]; audience: number }>('/api/admin/broadcasts'),
   createBroadcast: (b: AdminBroadcastInput) =>
