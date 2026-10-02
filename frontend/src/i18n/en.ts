@@ -186,7 +186,6 @@ export const en: Record<MessageKey, string> = {
   'combo.found': 'A card from the daily combo!',
   'combo.celebrate': 'Combo collected!',
   'cipher.title': 'Daily cipher',
-  'cipher.short': 'Cipher',
   'cipher.enter': 'Enter',
   'cipher.solved': 'Solved',
   'cipher.exit': 'Leave cipher mode',

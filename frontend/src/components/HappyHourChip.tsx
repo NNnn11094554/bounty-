@@ -16,7 +16,7 @@ export function HappyHourChip() {
   const left = Math.ceil((hh.endsAt - now) / 1000);
   // центрирует внешний блок: transform внутреннего занят анимацией
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-1 z-10 flex justify-end">
+    <div className="pointer-events-none absolute inset-x-0 top-1 z-10 flex justify-center">
       <motion.div
         initial={{ opacity: 0, y: -8, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
