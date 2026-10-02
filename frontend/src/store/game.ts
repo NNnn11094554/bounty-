@@ -10,7 +10,8 @@ export type BootStatus =
   | 'banned'
   | 'maintenance'
   | 'outdated'
-  | 'unauthorized';
+  | 'unauthorized'
+  | 'deleted';
 
 interface GameStore {
   status: BootStatus;

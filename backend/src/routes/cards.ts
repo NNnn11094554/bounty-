@@ -20,6 +20,7 @@ import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
+import { checkAchievements } from '../services/achievements.js';
 
 const Params = z.object({ id: z.string().regex(/^[a-z0-9_]{1,64}$/) });
 
@@ -95,7 +96,13 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         (c) => c.id === card.id || (c.condition?.type === 'card' && c.condition.cardId === card.id),
       );
       const cards = await buildCardViews(affected, progress, now);
-      return { state: buildPlayerState(combo.user, now), cards, profitDelta: profit, combo: combo.update };
+      const final = await checkAchievements(tx, combo.user, now, [
+        'cards',
+        'cardsLevel10',
+        'cardMaxLevel',
+        'combos',
+      ]);
+      return { state: buildPlayerState(final, now), cards, profitDelta: profit, combo: combo.update };
     });
   });
 }

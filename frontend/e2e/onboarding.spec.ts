@@ -32,7 +32,8 @@ test.describe('Onboarding', () => {
       await page.waitForTimeout(1200);
       await page.screenshot({ path: `${shots}/19-office-hq.png` });
     }
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^5\s000$/);
+    // 5 000 + достижения: «Свой офис» 1 000, первое задание 2 000, «Серебряный кот» 2 000
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^10\s000$/);
 
     // второй вход — без онбординга
     await page.reload();

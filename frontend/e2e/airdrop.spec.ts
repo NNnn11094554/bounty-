@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { db, setPlayer } from './db';
+import { db, markLeagueSeen, setPlayer } from './db';
 
 const RAW_ADDRESS = '0:83dfd552e63729b472fcbcc8c45ebcc6691702558b68ec7527e1ba403a0f31a8';
 
@@ -19,6 +19,8 @@ test.describe('Airdrop', () => {
     await page.goto(`/?uid=${uid}&name=Кошелёк`);
     await expect(page.getByTestId('office')).toBeVisible();
     await setPlayer(uid, { walletAddress: RAW_ADDRESS, walletConnectedAt: new Date() });
+    // достижение «Кошелёк на месте» (+10 000) поднимет в Silver — сцену лиги проверяет leagues.spec
+    await markLeagueSeen(page, uid, 1);
     await page.reload();
     await page.getByTestId('nav-airdrop').click();
     await expect(page.getByTestId('wallet-address')).toContainText('Кошелёк подключён');

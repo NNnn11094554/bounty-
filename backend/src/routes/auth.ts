@@ -10,6 +10,7 @@ import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
 import { applyReferral, type ReferralResult } from '../services/referrals.js';
 import { recordActivity, upsertTelegramUser } from '../services/users.js';
+import { checkAchievements, COUNTED_METRICS } from '../services/achievements.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   /** Вход/регистрация: возвращает полное состояние игрока. */
@@ -30,9 +31,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
     }
     // доход карточек за время отсутствия (не больше 3 часов)
-    const { user: synced, passive } = await withUserLock(user.id, (tx, locked) =>
-      syncPassive(tx, locked, now),
-    );
+    // заодно проверяем все достижения: новые в конфиге или пропущенные выдаются при входе
+    const { user: synced, passive } = await withUserLock(user.id, async (tx, locked) => {
+      const res = await syncPassive(tx, locked, now);
+      return { ...res, user: await checkAchievements(tx, res.user, now, COUNTED_METRICS) };
+    });
     const earned = toCoins(passive.amount);
     const offline =
       passive.elapsedSeconds >= GAME.passive.offlineModalMinSec && earned > 0
@@ -44,6 +47,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/state', async (request): Promise<StateResponse> => {
     const player = await requirePlayer(request);
     const now = new Date();
+    // состояние запрашивается и при смене игрового дня — отмечаем активность за новый день
+    await recordActivity(player.id, now);
     const { user } = await withUserLock(player.id, (tx, locked) => syncPassive(tx, locked, now));
     return { state: buildPlayerState(user, now) };
   });

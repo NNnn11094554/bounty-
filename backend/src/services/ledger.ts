@@ -31,6 +31,16 @@ export function onLeagueUp(hook: LeagueUpHook): void {
   leagueUpHooks.push(hook);
 }
 
+/**
+ * Обработчики после любого изменения баланса (достижения по показателям игрока) — в той же транзакции.
+ * Возвращают актуальную строку игрока.
+ */
+export type AfterChangeHook = (tx: Tx, user: User, now: Date) => Promise<User>;
+const afterChangeHooks: AfterChangeHook[] = [];
+export function afterBalanceChange(hook: AfterChangeHook): void {
+  afterChangeHooks.push(hook);
+}
+
 export interface BalanceChange {
   type: TxType;
   amount: Decimal | number | bigint;
@@ -102,5 +112,7 @@ export async function applyBalanceChanges(
   if (updated.leagueLevel > user.leagueLevel) {
     for (const hook of leagueUpHooks) await hook(tx, updated, user.leagueLevel, updated.leagueLevel);
   }
-  return updated;
+  let result = updated;
+  for (const hook of afterChangeHooks) result = await hook(tx, result, now);
+  return result;
 }

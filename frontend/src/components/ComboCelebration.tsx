@@ -8,12 +8,14 @@ import { useT } from '../i18n';
 import { playSound } from '../lib/sound';
 import { useDailyGames } from '../store/dailyGames';
 import { haptic } from '../telegram/webapp';
+import { useBlockingOverlay } from '../store/overlays';
 
 /** «Комбо собрано!»: фейерверк и +5 000 000 на весь экран. Закрывается сама или по нажатию. */
 export function ComboCelebration() {
   const t = useT();
   const reward = useDailyGames((s) => s.celebrate);
   const dismiss = useDailyGames((s) => s.dismissCelebration);
+  useBlockingOverlay(reward !== null);
 
   useEffect(() => {
     if (reward === null) return;

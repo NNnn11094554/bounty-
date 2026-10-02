@@ -11,6 +11,7 @@ import { syncPassive } from '../services/sync.js';
 import { friendsCount, listTasks, taskView } from '../services/tasks.js';
 import { TelegramUnavailableError, telegram } from '../services/telegram.js';
 import { withUserLock, type Tx } from '../services/userLock.js';
+import { checkAchievements } from '../services/achievements.js';
 
 const Params = z.object({ id: z.string().regex(/^[a-z0-9_]{1,64}$/) });
 
@@ -124,8 +125,9 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
           update: { status: 'DONE', completedAt: now },
         });
         const friends = await friendsCount(tx, user.id);
+        const final = await checkAchievements(tx, updated, now, ['tasks']);
         return {
-          state: buildPlayerState(updated, now),
+          state: buildPlayerState(final, now),
           task: taskView(task, done, { friends, now, walletConnected: Boolean(user.walletAddress) }),
           reward,
         };

@@ -71,6 +71,10 @@ model User {
   settings       Json     @default("{}")
   tutorialsSeen  String[] @default([])
 
+  /// полученные достижения и ещё не показанные игроку (всплывающее уведомление)
+  achievementIds    String[] @default([])
+  newAchievementIds String[] @default([])
+
   /// уведомления бота: не больше N в игровой день
   notifyDayKey     String?
   notifySentToday  Int     @default(0)
@@ -293,6 +297,12 @@ model UserAchievement {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, achievementId])
+}
+
+/// Удалённые аккаунты: при повторной регистрации приглашение не засчитывается (защита от накрутки бонусов).
+model DeletedUser {
+  telegramId BigInt   @id
+  deletedAt  DateTime @default(now())
 }
 
 /// Дни, в которые игрок заходил в игру (DAU/WAU/MAU и удержание).

@@ -16,6 +16,7 @@ import { playSound } from '../../lib/sound';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
+import { useBlockingOverlay } from '../../store/overlays';
 
 function TapVisual() {
   const reduced = isReducedMotion();
@@ -117,6 +118,7 @@ export function Onboarding() {
   const t = useT();
   const locale = useLocale();
   const open = useGame((s) => s.onboarding);
+  useBlockingOverlay(open);
   const finish = useGame((s) => s.finishOnboarding);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);

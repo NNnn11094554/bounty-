@@ -11,6 +11,7 @@ import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
+import { checkAchievements } from '../services/achievements.js';
 
 const CipherBody = z.object({
   word: z
@@ -78,8 +79,9 @@ export async function dailyGameRoutes(app: FastifyInstance): Promise<void> {
             where: { userId_dayKey: { userId: user.id, dayKey: key } },
             data: { solved: true, attempts: { increment: 1 } },
           });
+          const final = await checkAchievements(tx, updated, now, ['ciphers']);
           return {
-            state: buildPlayerState(updated, now),
+            state: buildPlayerState(final, now),
             cipher: cipherState(cipher, true),
             reward: REWARDS.cipher,
           };

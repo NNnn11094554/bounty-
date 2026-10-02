@@ -1,7 +1,7 @@
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { haptic } from '../telegram/webapp';
 
-type Variant = 'primary' | 'secondary' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 interface Props extends HTMLMotionProps<'button'> {
   variant?: Variant;
@@ -13,6 +13,8 @@ const STYLES: Record<Variant, string> = {
   primary: 'bg-cta text-white shadow-button',
   secondary: 'bg-night-600 text-white shadow-card border border-line',
   ghost: 'bg-transparent text-white/80',
+  danger:
+    'bg-[#d63a4a] text-white shadow-[0_8px_20px_rgba(214,58,74,0.35),inset_0_1px_0_rgba(255,255,255,0.3)]',
 };
 
 /** Кнопка с пружинящим нажатием и тактильным откликом. */

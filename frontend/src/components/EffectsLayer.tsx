@@ -114,8 +114,10 @@ export function EffectsLayer() {
     let pi = 0;
 
     const fly = (from: Point, count: number) => {
-      // верхний видимый счётчик баланса (экран поверх вкладки добавляется в DOM позже)
-      const targets = document.querySelectorAll('[data-coin-target]');
+      // счётчик баланса на видимом экране: если поверх вкладки открыт экран (бусты, профиль),
+      // берём только его счётчик; нет счётчика — монеты не летят
+      const scope = document.querySelector('[data-subscreen]') ?? document;
+      const targets = scope.querySelectorAll('[data-coin-target]');
       const target = targets[targets.length - 1];
       if (!target) return;
       const r = target.getBoundingClientRect();

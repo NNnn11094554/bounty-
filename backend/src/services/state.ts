@@ -1,5 +1,11 @@
 import type { User } from '@prisma/client';
-import { DEFAULT_SETTINGS, type PlayerSettings, type PlayerState } from '@meowgul/shared';
+import {
+  ACHIEVEMENTS,
+  achievementById,
+  DEFAULT_SETTINGS,
+  type PlayerSettings,
+  type PlayerState,
+} from '@meowgul/shared';
 import { env } from '../env.js';
 import { dailyBoostUsage, fullEnergyCooldownUntil } from '../game/boosts.js';
 import { BOOSTS, boostLevelPrice, type PaidBoost } from '../game/config/boosts.js';
@@ -71,6 +77,11 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
     daily: dailyState(user, now),
+    achievements: {
+      unlocked: user.achievementIds.filter((id) => achievementById(id)).length,
+      total: ACHIEVEMENTS.length,
+      fresh: user.newAchievementIds.filter((id) => achievementById(id)),
+    },
     wallet:
       user.walletAddress && user.walletConnectedAt
         ? { address: friendlyAddress(user.walletAddress), connectedAt: user.walletConnectedAt.getTime() }

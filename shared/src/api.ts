@@ -102,6 +102,13 @@ export interface PlayerState {
   totalTaps: number;
   boosts: BoostsState;
   daily: DailyRewardState;
+  achievements: {
+    /** сколько получено */
+    unlocked: number;
+    total: number;
+    /** полученные, но ещё не показанные игроку (всплывающее уведомление) */
+    fresh: string[];
+  };
   /** подключённый кошелёк TON (адрес в user-friendly формате) */
   wallet: { address: string; connectedAt: number } | null;
   /** время сервера, на которое рассчитано состояние (мс) */

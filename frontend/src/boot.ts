@@ -1,13 +1,12 @@
 import { formatInt } from '@meowgul/shared';
-import { setReducedMotion } from './animations';
 import { ApiError, onGlobalApiError, setInitData } from './api/client';
 import { endpoints } from './api/endpoints';
 import { setTurboMultiplier, tapEngine } from './game/tapEngine';
 import { resolveLocale, translate } from './i18n';
-import { setSoundEnabled } from './lib/sound';
+import { applyClientSettings } from './lib/clientSettings';
 import { useGame } from './store/game';
 import { toast, useToasts } from './store/toasts';
-import { getWebApp, setHapticsEnabled, setupWebApp } from './telegram/webapp';
+import { getWebApp, setupWebApp } from './telegram/webapp';
 
 /** Параметры моковой авторизации для разработки: ?uid=…&name=…&premium=1&ref=ref_…&lang=en */
 function devParams(): Record<string, string> {
@@ -78,22 +77,6 @@ function wireEngine(): void {
   window.addEventListener('pagehide', flushNow);
   window.addEventListener('online', flushNow);
   getWebApp()?.onEvent('viewportChanged', flushNow);
-}
-
-/** Применить настройки игрока к клиенту: язык, звук, вибрация, анимации. */
-export function applyClientSettings(
-  settings: {
-    language: 'ru' | 'en' | null;
-    sound: boolean;
-    vibration: boolean;
-    animations: 'full' | 'reduced';
-  },
-  telegramLang: string,
-): void {
-  useGame.getState().setLocale(resolveLocale(settings.language, telegramLang));
-  setHapticsEnabled(settings.vibration);
-  setSoundEnabled(settings.sound);
-  setReducedMotion(settings.animations === 'reduced');
 }
 
 export async function boot(): Promise<void> {

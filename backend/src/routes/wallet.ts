@@ -9,6 +9,7 @@ import { applyBalanceChanges } from '../services/ledger.js';
 import { buildPlayerState } from '../services/state.js';
 import { createProofPayload, verifyTonProof } from '../services/tonProof.js';
 import { withUserLock } from '../services/userLock.js';
+import { checkAchievements } from '../services/achievements.js';
 
 const ConnectBody = z.object({
   address: z.string().trim().min(10).max(100),
@@ -87,7 +88,8 @@ export async function walletRoutes(app: FastifyInstance): Promise<void> {
             now,
           );
           request.log.info({ userId: user.id }, 'wallet connected');
-          return { state: buildPlayerState(updated, now) };
+          const final = tasks.length ? await checkAchievements(tx, updated, now, ['tasks']) : updated;
+          return { state: buildPlayerState(final, now) };
         });
       try {
         return await connect();

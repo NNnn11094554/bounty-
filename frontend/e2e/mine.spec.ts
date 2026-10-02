@@ -108,6 +108,7 @@ test.describe('Mine', () => {
     await expect(sheet).toContainText('максимум 3 часа');
     await sheet.getByTestId('offline-thanks').click();
     await expect(sheet.getByRole('dialog')).toBeHidden();
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^10\s8\d\d$/);
+    // 10 800 + достижения «Своё дело» (прибыль 1 000/ч) 10 000 и «Серебряный кот» 2 000
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^22\s8\d\d$/);
   });
 });

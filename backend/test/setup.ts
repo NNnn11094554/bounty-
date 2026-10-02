@@ -6,3 +6,8 @@ process.env.DATABASE_URL =
 process.env.BOT_TOKEN = '1234567890:TEST_TOKEN_for_unit_tests_only';
 process.env.ADMIN_TELEGRAM_IDS = '999000999';
 process.env.DAILY_RESET_UTC_HOUR = '16';
+
+// достижения меняют баланс — в тестах других механик они выключены (их проверяет achievements.test.ts)
+const { setAchievementsEnabled } = await import('../src/services/achievements.js');
+setAchievementsEnabled(false);
+export {};

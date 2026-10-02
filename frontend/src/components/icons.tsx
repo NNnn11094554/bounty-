@@ -77,3 +77,48 @@ export function RocketIcon({ size = 20, ...props }: IconProps) {
     </svg>
   );
 }
+
+/** Шестерёнка (настройки). */
+export function GearIcon({ size = 22, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M10.3 2.8h3.4l.5 2.5a7.4 7.4 0 0 1 1.9 1.1l2.4-.9 1.7 2.9-1.9 1.7a7.6 7.6 0 0 1 0 2.2l1.9 1.7-1.7 2.9-2.4-.9a7.4 7.4 0 0 1-1.9 1.1l-.5 2.5h-3.4l-.5-2.5a7.4 7.4 0 0 1-1.9-1.1l-2.4.9-1.7-2.9 1.9-1.7a7.6 7.6 0 0 1 0-2.2L3.8 8.4l1.7-2.9 2.4.9a7.4 7.4 0 0 1 1.9-1.1l.5-2.5Z"
+        fill="currentColor"
+        fillOpacity=".16"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+/** Кубок (достижения). */
+export function CupIcon({ size = 22, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
+      <path
+        d="M7 4h10v5a5 5 0 0 1-10 0V4Z"
+        fill="#ffc93c"
+        stroke="#fff"
+        strokeOpacity=".6"
+        strokeWidth="1.3"
+      />
+      <path
+        d="M7 6H4.5v1.2A3 3 0 0 0 7.4 10M17 6h2.5v1.2a3 3 0 0 1-2.9 2.8"
+        stroke="#ffc93c"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path d="M10.5 14h3l.6 3.5h-4.2l.6-3.5Z" fill="#e8a317" />
+      <rect x="7.5" y="17.5" width="9" height="2.6" rx="1.2" fill="#ff8a3d" />
+      <path
+        d="m12 5.6.9 1.8 2 .3-1.4 1.4.3 2-1.8-.9-1.8.9.3-2-1.4-1.4 2-.3.9-1.8Z"
+        fill="#fff"
+        fillOpacity=".85"
+      />
+    </svg>
+  );
+}

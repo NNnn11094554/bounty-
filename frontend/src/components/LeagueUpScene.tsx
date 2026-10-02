@@ -10,6 +10,7 @@ import { useGame } from '../store/game';
 import { haptic } from '../telegram/webapp';
 import { Button } from './Button';
 import { LeagueAvatar } from './LeagueAvatar';
+import { useBlockingOverlay } from '../store/overlays';
 
 const storageKey = (userId: number) => `meowgul.league.${userId}`;
 
@@ -62,6 +63,7 @@ export function LeagueUpScene() {
     setShown(null);
   };
   useBackHandler(shown !== null, close);
+  useBlockingOverlay(shown !== null);
 
   useEffect(() => {
     if (shown === null) return;

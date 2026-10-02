@@ -12,7 +12,8 @@ test.describe('Friends', () => {
     // друг открывает игру по ссылке ref_<id>
     await page.goto(`/?uid=700000902&name=Друг&ref=ref_${inviter}`);
     await expect(page.getByText('Вас пригласил(а) Пригласивший: +5 000 монет!')).toBeVisible();
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^5\s000$/);
+    // 5 000 за приглашение + 2 000 за достижение «Серебряный кот»
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^7\s000$/);
 
     // пригласивший вернулся: 5 000 + 20 000 за Silver друга подняли его в Gold
     await page.goto(`/?uid=${inviter}&name=Пригласивший`);

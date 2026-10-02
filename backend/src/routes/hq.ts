@@ -6,6 +6,7 @@ import { requirePlayer } from '../services/player.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
+import { checkAchievements } from '../services/achievements.js';
 
 const Body = z.object({
   hqId: z.enum(HEADQUARTERS.map((h) => h.id) as [string, ...string[]]),
@@ -43,7 +44,8 @@ export async function hqRoutes(app: FastifyInstance): Promise<void> {
         { hqId, onboardingDone: true },
         now,
       );
-      return { state: buildPlayerState(updated, now) };
+      const final = tasks.length ? await checkAchievements(tx, updated, now, ['tasks']) : updated;
+      return { state: buildPlayerState(final, now) };
     });
   });
 }

@@ -6,6 +6,7 @@ import { logger } from '../lib/logger.js';
 import { applyBalanceChanges, onLeagueUp } from './ledger.js';
 import { enqueueNotification } from './notifications.js';
 import { lockUser, withUserLock } from './userLock.js';
+import { checkAchievements } from './achievements.js';
 
 const REF_RE = /^ref_(\d{1,20})$/;
 
@@ -35,6 +36,8 @@ export async function applyReferral(
 ): Promise<ReferralResult | null> {
   const inviterTgId = parseReferral(startParam);
   if (inviterTgId === null || inviterTgId === invitee.telegramId) return null;
+  // игрок уже был в игре и удалил аккаунт — повторное приглашение бонусов не даёт
+  if (await prisma.deletedUser.findUnique({ where: { telegramId: invitee.telegramId } })) return null;
   const inviter = await prisma.user.findUnique({ where: { telegramId: inviterTgId } });
   if (!inviter || inviter.isBanned || inviter.id === invitee.id || inviter.createdAt > invitee.createdAt)
     return null;
@@ -63,13 +66,14 @@ export async function applyReferral(
     );
     const lockedInviter = await lockUser(tx, inviter.id);
     if (lockedInviter) {
-      await applyBalanceChanges(
+      const credited = await applyBalanceChanges(
         tx,
         lockedInviter,
         [{ type: 'referral_bonus', amount: bonus, meta: { inviteeId: invitee.id } }],
         {},
         now,
       );
+      await checkAchievements(tx, credited, now, ['friends', 'premiumFriends']);
     }
     await enqueueNotification(tx, inviter.id, 'friend_joined', {
       name: invitee.firstName || invitee.username || '🐾',

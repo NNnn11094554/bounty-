@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { DURATION, isReducedMotion } from '../animations';
+import { AchievementPopup } from '../components/AchievementPopup';
 import { BottomNav } from '../components/BottomNav';
 import { ComboCelebration } from '../components/ComboCelebration';
 import { LeagueUpScene } from '../components/LeagueUpScene';
@@ -23,6 +24,12 @@ const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ d
 const LeaguesScreen = lazy(() =>
   import('./leagues/LeaguesScreen').then((m) => ({ default: m.LeaguesScreen })),
 );
+const ProfileScreen = lazy(() =>
+  import('./profile/ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
+);
+const SettingsScreen = lazy(() =>
+  import('./settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
+);
 
 const TAB_ORDER: readonly Tab[] = ['office', 'mine', 'friends', 'earn', 'airdrop'];
 
@@ -32,8 +39,10 @@ function SubScreenView({ screen }: { screen: SubScreen }) {
       return <BoostsScreen />;
     case 'leagues':
       return <LeaguesScreen />;
-    default:
-      return null;
+    case 'profile':
+      return <ProfileScreen />;
+    case 'settings':
+      return <SettingsScreen />;
   }
 }
 
@@ -48,7 +57,7 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
     case 'airdrop':
       return <AirdropScreen />;
     default:
-      return <OfficeTab onOpenBoosts={() => open('boosts')} onOpenLeagues={() => open('leagues')} />;
+      return <OfficeTab open={open} />;
   }
 }
 
@@ -109,6 +118,7 @@ export function GameShell() {
             <motion.div
               key={top}
               className="absolute inset-0 z-20 bg-app"
+              data-subscreen={top}
               initial={{ opacity: 0, x: slide }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: slide }}
@@ -125,6 +135,7 @@ export function GameShell() {
       <OfflineIncomeSheet />
       <LeagueUpScene />
       <ComboCelebration />
+      <AchievementPopup />
     </div>
   );
 }

@@ -44,7 +44,8 @@ test.describe('Boosts', () => {
     await page.keyboard.press('Escape'); // «Назад» — как кнопка BackButton в Telegram
     await expect(page.getByTestId('boosts')).toBeHidden();
     await expect(page.getByTestId('stat-per-tap')).toHaveText('+2');
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^3\s000$/);
+    // 5 000 + 2 000 (достижение «Серебряный кот») − 2 000 за Multitap
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^5\s000$/);
   });
 
   test('how boosts work sheet opens and closes with a swipe', async ({ page }) => {

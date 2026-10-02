@@ -93,6 +93,15 @@ function Root() {
           text={t('error.unauthorized.text')}
         />
       );
+    case 'deleted':
+      return (
+        <StatusScreen
+          testId="screen-deleted"
+          title={t('deleted.title')}
+          text={t('deleted.text')}
+          action={{ label: t('deleted.restart'), onClick: () => window.location.reload() }}
+        />
+      );
     case 'error':
       return (
         <StatusScreen

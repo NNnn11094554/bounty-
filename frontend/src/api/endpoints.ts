@@ -8,6 +8,8 @@ import type {
   DailyGamesResponse,
   FriendsResponse,
   LeaderboardResponse,
+  PlayerSettings,
+  ProfileResponse,
   StateResponse,
   TaskCheckResponse,
   TaskStartResponse,
@@ -39,6 +41,14 @@ export const endpoints = {
   connectWallet: (body: WalletConnectRequest) => api<StateResponse>('/api/wallet', { method: 'POST', body }),
   disconnectWallet: () => api<StateResponse>('/api/wallet', { method: 'DELETE' }),
   chooseHq: (hqId: string) => api<StateResponse>('/api/hq', { method: 'POST', body: { hqId } }),
+  profile: () => api<ProfileResponse>('/api/profile'),
+  achievementsSeen: (ids: string[]) =>
+    api<StateResponse>('/api/achievements/seen', { method: 'POST', body: { ids }, silent: true }),
+  updateSettings: (patch: Partial<PlayerSettings>) =>
+    api<StateResponse>('/api/settings', { method: 'PATCH', body: patch }),
+  tutorialSeen: (id: string) =>
+    api<StateResponse>(`/api/tutorials/${encodeURIComponent(id)}/seen`, { method: 'POST', silent: true }),
+  deleteAccount: () => api<{ ok: true }>('/api/account/delete', { method: 'POST', body: { confirm: true } }),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,

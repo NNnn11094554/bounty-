@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { SPRING } from '../animations';
 import { useBackHandler } from '../hooks/useBackHandler';
+import { useBlockingOverlay } from '../store/overlays';
 
 interface Props {
   open: boolean;
@@ -14,6 +15,7 @@ interface Props {
 /** Модалка снизу: выезд со spring и лёгким перелётом, затемнение с blur, закрытие свайпом вниз. */
 export function BottomSheet({ open, onClose, children, testId }: Props) {
   useBackHandler(open, onClose);
+  useBlockingOverlay(open);
   // если содержимое не помещается (маленький экран), оно прокручивается, а закрыть свайпом можно за шапку
   const contentRef = useRef<HTMLDivElement>(null);
   const [scrollable, setScrollable] = useState(false);

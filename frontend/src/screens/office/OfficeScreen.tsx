@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CatButton, type TapHandler } from '../../components/CatButton';
-import { BoltIcon, CoinIcon, PawIcon, RocketIcon } from '../../components/icons';
+import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
 import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
@@ -17,6 +17,8 @@ import { useGame } from '../../store/game';
 interface Props {
   onOpenBoosts?: () => void;
   onOpenLeagues?: () => void;
+  onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
   /** плашки дня (шифр и т.п.) между лигой и котом */
   dailyBanner?: ReactNode;
   /** заменить обработчик нажатий (режим ввода шифра) */
@@ -45,6 +47,8 @@ function useBoxSize<T extends HTMLElement>() {
 export function OfficeScreen({
   onOpenBoosts,
   onOpenLeagues,
+  onOpenProfile,
+  onOpenSettings,
   dailyBanner,
   onCatPress,
   catOverlay,
@@ -104,17 +108,39 @@ export function OfficeScreen({
           hq ? { background: `linear-gradient(90deg, ${hqColors(hq)[0]}2e, transparent 75%)` } : undefined
         }
       >
-        <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[15px] font-extrabold" data-testid="player-name">
-            {player.profile.firstName}
-          </p>
-          <p className="truncate text-xs font-bold text-white/50" data-testid="player-hq">
-            {hq ? t('office.ceoAt', { hq: hq.name[locale] }) : t('office.ceo')}
-          </p>
-        </div>
-        {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
+        <motion.button
+          type="button"
+          whileTap={onOpenProfile ? { scale: 0.97 } : undefined}
+          onClick={onOpenProfile}
+          disabled={!onOpenProfile}
+          aria-label={t('office.profile')}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+          data-testid="open-profile"
+        >
+          <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-[15px] font-extrabold" data-testid="player-name">
+              {player.profile.firstName}
+            </span>
+            <span className="block truncate text-xs font-bold text-white/50" data-testid="player-hq">
+              {hq ? t('office.ceoAt', { hq: hq.name[locale] }) : t('office.ceo')}
+            </span>
+          </span>
+          {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
+        </motion.button>
         {header}
+        {onOpenSettings && (
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.88, rotate: 30 }}
+            onClick={onOpenSettings}
+            aria-label={t('office.settings')}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-line bg-night-700/80 text-white/75 shadow-card"
+            data-testid="open-settings"
+          >
+            <GearIcon size={21} />
+          </motion.button>
+        )}
       </header>
 
       <PlayerStats />
