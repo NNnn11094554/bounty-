@@ -129,3 +129,24 @@ export function AirdropNavIcon({ active, size }: NavIconProps) {
     </Svg>
   );
 }
+
+/** Магазин: пакет с витрины со звездой. */
+export function ShopNavIcon({ active, size }: NavIconProps) {
+  const s = stroke(active);
+  return (
+    <Svg size={size}>
+      <path
+        d="M5.5 9.5h17l-1.4 14a2 2 0 0 1-2 1.8H8.9a2 2 0 0 1-2-1.8z"
+        fill={active ? '#ff4fd8' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M10 9.5V7.8a4 4 0 0 1 8 0v1.7" fill="none" stroke={s} strokeWidth="2" strokeLinecap="round" />
+      <path
+        d="m14 13.2 1.3 2.6 2.9.4-2.1 2 .5 2.9-2.6-1.4-2.6 1.4.5-2.9-2.1-2 2.9-.4z"
+        fill={active ? '#ffe27a' : s}
+      />
+    </Svg>
+  );
+}

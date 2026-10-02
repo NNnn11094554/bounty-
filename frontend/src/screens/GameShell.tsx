@@ -9,6 +9,7 @@ import { OfflineIncomeSheet } from '../components/OfflineIncomeSheet';
 import { TabTutorial } from '../components/TabTutorial';
 import { useBackHandler } from '../hooks/useBackHandler';
 import { useDayRollover } from '../hooks/useDayRollover';
+import { useLevelUp } from '../hooks/useLevelUp';
 import { useNav, type SubScreen, type Tab } from '../store/nav';
 import { OfficeTab } from './office/OfficeTab';
 
@@ -25,7 +26,11 @@ const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ d
 const LeaguesScreen = lazy(() =>
   import('./leagues/LeaguesScreen').then((m) => ({ default: m.LeaguesScreen })),
 );
-const ShopScreen = lazy(() => import('./shop/ShopScreen').then((m) => ({ default: m.ShopScreen })));
+const loadShop = () => import('./shop/ShopScreen').then((m) => ({ default: m.ShopScreen }));
+const ShopScreen = lazy(loadShop);
+const CollectionScreen = lazy(() =>
+  import('./collection/CollectionScreen').then((m) => ({ default: m.CollectionScreen })),
+);
 const ProfileScreen = lazy(() =>
   import('./profile/ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
 );
@@ -33,7 +38,7 @@ const SettingsScreen = lazy(() =>
   import('./settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
 );
 
-const TAB_ORDER: readonly Tab[] = ['office', 'mine', 'friends', 'earn', 'airdrop'];
+const TAB_ORDER: readonly Tab[] = ['office', 'mine', 'friends', 'earn', 'shop', 'airdrop'];
 
 function SubScreenView({ screen }: { screen: SubScreen }) {
   switch (screen) {
@@ -45,8 +50,8 @@ function SubScreenView({ screen }: { screen: SubScreen }) {
       return <ProfileScreen />;
     case 'settings':
       return <SettingsScreen />;
-    case 'shop':
-      return <ShopScreen />;
+    case 'collection':
+      return <CollectionScreen />;
   }
 }
 
@@ -60,6 +65,8 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
       return <EarnScreen />;
     case 'airdrop':
       return <AirdropScreen />;
+    case 'shop':
+      return <ShopScreen onOpenCollection={() => open('collection')} />;
     default:
       return <OfficeTab open={open} />;
   }
@@ -94,6 +101,7 @@ export function GameShell() {
   const top = stack[stack.length - 1];
   useBackHandler(stack.length > 0, pop);
   useDayRollover();
+  useLevelUp();
   const reduced = isReducedMotion();
   const slide = reduced ? 0 : 48;
 
@@ -111,6 +119,7 @@ export function GameShell() {
     const id = window.setTimeout(() => {
       void loadMine();
       void loadEarn();
+      void loadShop();
       void loadFriends();
     }, 1500);
     return () => window.clearTimeout(id);

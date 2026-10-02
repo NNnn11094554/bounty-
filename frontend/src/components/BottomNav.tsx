@@ -6,7 +6,14 @@ import { playSound } from '../lib/sound';
 import { useNav, type Tab } from '../store/nav';
 import { haptic } from '../telegram/webapp';
 import { useGame } from '../store/game';
-import { AirdropNavIcon, EarnNavIcon, FriendsNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
+import {
+  AirdropNavIcon,
+  EarnNavIcon,
+  FriendsNavIcon,
+  MineNavIcon,
+  OfficeNavIcon,
+  ShopNavIcon,
+} from './navIcons';
 
 interface TabDef {
   id: Tab;
@@ -19,6 +26,7 @@ const NAV_TABS: readonly TabDef[] = [
   { id: 'mine', label: 'nav.mine', icon: (active) => <MineNavIcon active={active} /> },
   { id: 'friends', label: 'nav.friends', icon: (active) => <FriendsNavIcon active={active} /> },
   { id: 'earn', label: 'nav.earn', icon: (active) => <EarnNavIcon active={active} /> },
+  { id: 'shop', label: 'nav.shop', icon: (active) => <ShopNavIcon active={active} /> },
   { id: 'airdrop', label: 'nav.airdrop', icon: (active) => <AirdropNavIcon active={active} /> },
 ];
 
@@ -72,7 +80,7 @@ export function BottomNav() {
               )}
             </motion.span>
             <span
-              className={`relative text-[11px] font-extrabold ${active ? 'text-white' : 'text-white/55'}`}
+              className={`relative max-w-full truncate px-0.5 text-[10.5px] font-extrabold ${active ? 'text-white' : 'text-white/55'}`}
             >
               {t(item.label)}
             </span>

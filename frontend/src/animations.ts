@@ -39,6 +39,8 @@ export function setReducedMotion(value: boolean): void {
     value ||
     (typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true);
+  // для CSS: живые анимации кота и частиц выключаются одним атрибутом
+  if (typeof document !== 'undefined') document.documentElement.dataset.motion = reduced ? 'reduced' : 'full';
 }
 
 export function isReducedMotion(): boolean {

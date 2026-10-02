@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { getWebApp } from '../telegram/webapp';
 
-export type Tab = 'office' | 'mine' | 'friends' | 'earn' | 'airdrop';
-export type SubScreen = 'boosts' | 'leagues' | 'settings' | 'profile' | 'shop';
+export type Tab = 'office' | 'mine' | 'friends' | 'earn' | 'shop' | 'airdrop';
+export type SubScreen = 'boosts' | 'leagues' | 'settings' | 'profile' | 'collection';
 
 interface NavStore {
   tab: Tab;

@@ -7,9 +7,12 @@ test.describe('Shop (Telegram Stars)', () => {
     await page.goto(`/?uid=${uid}&name=Покупатель`);
     await expect(page.getByTestId('office')).toBeVisible();
 
-    await page.getByTestId('open-shop').click();
+    await page.getByTestId('nav-shop').click();
     const shop = page.getByTestId('shop');
     await expect(shop).toBeVisible();
+    // разделы: скины (по умолчанию), бусты, особое, эффекты
+    await expect(page.getByTestId('shop-skins')).toBeVisible();
+    await page.getByTestId('shop-tabs-special').click();
     await expect(page.getByTestId('shop-coins_small')).toContainText('25 000');
     await expect(page.getByTestId('shop-coins_medium')).toContainText('+50%');
     await expect(page.getByTestId('buy-coins_large')).toContainText('250');
@@ -25,6 +28,7 @@ test.describe('Shop (Telegram Stars)', () => {
     // купленные монеты не двигают лигу
     expect(after.totalEarned.toNumber() - before.totalEarned.toNumber()).toBeLessThan(25_000);
 
+    await page.getByTestId('shop-tabs-boosts').click();
     await page.getByTestId('buy-income_x2').click();
     await expect(page.getByTestId('income-boost-left')).toBeVisible();
     const purchases = await db.purchase.findMany({ where: { userId: after.id }, orderBy: { id: 'asc' } });
@@ -33,7 +37,7 @@ test.describe('Shop (Telegram Stars)', () => {
       ['income_x2', 'PAID'],
     ]);
 
-    await page.keyboard.press('Escape');
+    await page.getByTestId('nav-office').click();
     await expect(page.getByTestId('office')).toBeVisible();
     await expect(page.getByTestId('income-boost-badge')).toBeVisible();
   });

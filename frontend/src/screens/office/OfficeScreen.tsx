@@ -1,4 +1,4 @@
-import { headquartersById, hqColors, hqIcon } from '@meowgul/shared';
+import { headquartersById, hqColors, hqIcon, playerLevel } from '@meowgul/shared';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
@@ -6,11 +6,13 @@ import { CardIcon } from '../../components/cards/CardIcon';
 import { CatButton, type TapHandler } from '../../components/CatButton';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
-import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon, StarIcon } from '../../components/icons';
+import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
+import { CatVisual } from '../../components/cat/CatVisual';
 import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
 import { onFrame } from '../../game/frameLoop';
+import { accessoryOverhang } from '../../game/skins';
 import { leagueAt, leagueProgress, LEAGUE_COUNT } from '../../game/leagues';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT } from '../../i18n';
@@ -21,7 +23,7 @@ interface Props {
   onOpenLeagues?: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
-  onOpenShop?: () => void;
+  onOpenCollection?: () => void;
   /** плашки дня (шифр и т.п.) между лигой и котом */
   dailyBanner?: ReactNode;
   /** заменить обработчик нажатий (режим ввода шифра) */
@@ -51,7 +53,7 @@ export function OfficeScreen({
   onOpenBoosts,
   onOpenLeagues,
   onOpenProfile,
-  onOpenShop,
+  onOpenCollection,
   onOpenSettings,
   dailyBanner,
   onCatPress,
@@ -101,7 +103,12 @@ export function OfficeScreen({
   if (!player || !league || !config) return null;
   // минимальный размер кота; в режиме шифра на низких экранах — чуть меньше, чтобы поместилась строка Морзе
   const minCat = catOverlay ? 100 : 120;
-  const catDiameter = Math.max(minCat, Math.floor(Math.min(catSize.width * 0.74, catSize.height * 0.94)));
+  // аксессуар скина (корона, нимб…) выступает над кругом: оставляем ему место, чтобы не налезал на блок выше
+  const overhang = accessoryOverhang(player.cosmetics.skin);
+  const catDiameter = Math.max(
+    minCat,
+    Math.floor(Math.min(catSize.width * 0.74, (catSize.height * 0.94) / (1 + overhang))),
+  );
   const leagueColor = league.color === 'rainbow' ? '#ffc93c' : league.color;
 
   return (
@@ -124,8 +131,15 @@ export function OfficeScreen({
         >
           <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-[15px] font-extrabold" data-testid="player-name">
-              {player.profile.firstName}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate text-[15px] font-extrabold" data-testid="player-name">
+                {player.profile.firstName}
+              </span>
+              <LiveText
+                getText={() => t('level.short', { level: playerLevel(tapEngine.totalEarnedNow()).level })}
+                className="shrink-0 rounded-full bg-gradient-to-r from-[#ff4fd8] to-[#7a5cff] px-1.5 py-px text-[10px] font-black text-white"
+                testId="player-level"
+              />
             </span>
             <span className="block truncate text-xs font-bold text-white/50" data-testid="player-hq">
               {hq ? t('office.ceoAt', { hq: hq.name[locale] }) : t('office.ceo')}
@@ -134,16 +148,18 @@ export function OfficeScreen({
           {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
         </motion.button>
         {header}
-        {onOpenShop && (
+        {onOpenCollection && (
           <motion.button
             type="button"
             whileTap={{ scale: 0.88 }}
-            onClick={onOpenShop}
-            aria-label={t('office.shop')}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-gold/40 bg-night-700/80 shadow-card"
-            data-testid="open-shop"
+            onClick={onOpenCollection}
+            aria-label={t('office.collection')}
+            className="relative grid h-10 w-10 shrink-0 place-items-center overflow-visible rounded-2xl border border-[#ff4fd8]/40 bg-night-700/80 shadow-card"
+            data-testid="open-collection"
           >
-            <StarIcon size={22} />
+            <span className="cat-still relative h-7 w-7">
+              <CatVisual size={28} skinId={player.cosmetics.skin} />
+            </span>
           </motion.button>
         )}
         {onOpenSettings && (
@@ -222,14 +238,18 @@ export function OfficeScreen({
         >
           {catOverlay ?? <HappyHourChip />}
           {catSize.width > 0 && (
-            <CatButton
-              size={catDiameter}
-              ringColor={league.color}
-              handler={handler}
-              locale={locale}
-              sleepyLabel={t('office.tired')}
-              onPress={onCatPress}
-            />
+            <div style={{ paddingTop: Math.round(catDiameter * overhang) }}>
+              <CatButton
+                size={catDiameter}
+                ringColor={league.color}
+                handler={handler}
+                locale={locale}
+                sleepyLabel={t('office.tired')}
+                skinId={player.cosmetics.skin}
+                effectId={player.cosmetics.effect}
+                onPress={onCatPress}
+              />
+            </div>
           )}
         </div>
 
