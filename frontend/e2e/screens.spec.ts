@@ -49,7 +49,7 @@ test('capture main screens', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
-  await page.getByTestId('nav-mine').click();
+  await page.getByTestId('open-mine').click();
   await expect(page.getByTestId('card-mk_spot')).toBeVisible();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${dir}/04-mine.png` });
@@ -67,7 +67,8 @@ test('capture main screens', async ({ page }) => {
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${dir}/08-legal-locked.png` });
 
-  await page.getByTestId('nav-earn').click();
+  await page.keyboard.press('Escape'); // из Mine — на главную
+  await page.getByTestId('open-earn').click();
   await expect(page.getByTestId('daily-row')).toBeVisible();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${dir}/11-earn.png` });
@@ -78,6 +79,7 @@ test('capture main screens', async ({ page }) => {
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/13-daily-claimed.png` });
   await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape'); // из Earn — на главную
 
   await page.getByTestId('nav-friends').click();
   await expect(page.getByTestId('friends-count')).toBeVisible();

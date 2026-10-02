@@ -60,7 +60,7 @@ export function AchievementPopup() {
 
   const open = () => {
     setQueue((q) => q.slice(1));
-    useNav.getState().push('profile');
+    useNav.getState().setTab('profile');
   };
 
   return createPortal(

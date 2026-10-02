@@ -14,7 +14,7 @@ test('main flow: login, tap, buy a card, claim the daily reward, invite a friend
 
   await setPlayer(uid, { balance: 1_010, totalEarned: 1_010 });
   await page.reload();
-  await page.getByTestId('nav-mine').click();
+  await page.getByTestId('open-mine').click();
   await page.getByTestId('card-mk_spot').click();
   await page.getByTestId('card-buy').click();
   await expect(page.getByTestId('card-mk_spot').getByTestId('card-level')).toHaveAttribute(
@@ -22,7 +22,8 @@ test('main flow: login, tap, buy a card, claim the daily reward, invite a friend
     'lvl 1',
   );
 
-  await page.getByTestId('nav-earn').click();
+  await page.keyboard.press('Escape'); // из Mine — на главную
+  await page.getByTestId('open-earn').click();
   await page.getByTestId('daily-row').click();
   await page.getByTestId('daily-claim').click();
   await expect(page.getByTestId('daily-day-1')).toHaveAttribute('data-state', 'claimed');

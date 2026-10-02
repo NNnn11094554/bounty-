@@ -57,6 +57,42 @@ test.describe('Office', () => {
     expect(page.url()).toBe(url);
     expect(context.pages().length).toBe(pages);
     expect(await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual([]);
+
+    // TEST 2: внешние ссылки работают через свои кнопки — «Пригласить» открывает окно «Поделиться»
+    await page.getByTestId('nav-friends').click();
+    await page.getByTestId('friends-invite').click();
+    const opened = await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened);
+    expect(opened).toHaveLength(1);
+    expect(opened[0]).toContain('https://t.me/share/url?url=');
+  });
+
+  test('rapid taps: every tap counts, no long freezes, effect elements are reused', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __long: number[] };
+      w.__long = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) w.__long.push(e.duration);
+      }).observe({ type: 'longtask', buffered: false });
+    });
+    await page.goto('/?uid=700000204&name=Скорострел');
+    const cat = page.getByTestId('cat-button');
+    await expect(cat).toBeVisible();
+    await page.waitForTimeout(1500); // стартовая загрузка экранов не в счёт
+    await page.evaluate(() => ((window as unknown as { __long: number[] }).__long = []));
+    const nodesBefore = await cat.evaluate((el) => el.querySelectorAll('*').length);
+
+    const box = (await page.getByTestId('cat-hit').boundingBox())!;
+    for (let i = 0; i < 100; i++) {
+      await page.mouse.click(box.x + box.width / 2 + (i % 7) * 5, box.y + box.height / 2 - (i % 5) * 5);
+    }
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '100');
+    await expect(page.getByTestId('energy-value')).toHaveText(/^9[0-9]{2} \/ 1000$/);
+    // всплывающие «+1», кольца и частицы берутся из пула — DOM не растёт от тапов
+    const nodesAfter = await cat.evaluate((el) => el.querySelectorAll('*').length);
+    expect(nodesAfter).toBeLessThanOrEqual(nodesBefore + 4);
+    // ни одной заметной заминки основного потока во время серии
+    const long = await page.evaluate(() => (window as unknown as { __long: number[] }).__long);
+    expect(Math.max(0, ...long)).toBeLessThan(250);
   });
 
   test('shows stats, league and the per-hour hint', async ({ page }) => {

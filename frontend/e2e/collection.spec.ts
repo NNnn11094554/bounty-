@@ -46,15 +46,15 @@ test.describe('Skins and collection', () => {
     await page.reload();
     await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'pink_angel');
 
-    // коллекция из офиса: вернуть базовый скин
-    await page.getByTestId('open-collection').click();
+    // вкладка «Коллекция»: вернуть базовый скин
+    await page.getByTestId('nav-collection').click();
     await expect(page.getByTestId('collection')).toBeVisible();
     await expect(page.getByTestId('collection-subtitle')).toContainText('открыто 3');
     await page.getByTestId('cosmetic-black_crown').click();
     await page.getByTestId('cosmetic-equip').click();
     await expect(page.getByTestId('cosmetic-equipped')).toBeVisible();
     await page.keyboard.press('Escape');
-    await page.keyboard.press('Escape');
+    await page.getByTestId('nav-office').click();
     await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'black_crown');
   });
 

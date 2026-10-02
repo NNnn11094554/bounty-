@@ -150,3 +150,71 @@ export function ShopNavIcon({ active, size }: NavIconProps) {
     </Svg>
   );
 }
+
+/** Коллекция: две карточки веером, на передней — силуэт кошачьей головы. */
+export function CollectionNavIcon({ active, size }: NavIconProps) {
+  const s = stroke(active);
+  return (
+    <Svg size={size}>
+      <rect
+        x="4"
+        y="6.5"
+        width="13"
+        height="17"
+        rx="2.6"
+        transform="rotate(-10 10.5 15)"
+        fill={active ? '#7a5cff' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+      />
+      <rect
+        x="11"
+        y="5"
+        width="13"
+        height="18"
+        rx="2.6"
+        transform="rotate(8 17.5 14)"
+        fill={active ? '#ff4fd8' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+      />
+      <path
+        d="M14.3 17.8c0-2.4 1.5-3.8 3.4-3.8s3.4 1.4 3.4 3.8l-.2.9h-6.4zM14.6 14.9l-.2-2.9 2 1.5M20.8 14.9l.2-2.9-2 1.5"
+        transform="rotate(8 17.5 14)"
+        fill={active ? '#fff' : 'none'}
+        stroke={active ? '#fff' : s}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Профиль: игрок с кошачьими ушками. */
+export function ProfileNavIcon({ active, size }: NavIconProps) {
+  const s = stroke(active);
+  return (
+    <Svg size={size}>
+      <path
+        d="M9 12.2c0-3 2.2-5.4 5-5.4s5 2.4 5 5.4-2.2 5-5 5-5-2-5-5z"
+        fill={active ? '#2ed3c6' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+      />
+      <path
+        d="M9.6 9.4 9.2 4.6l3.4 2.6M18.4 9.4l.4-4.8-3.4 2.6"
+        fill={active ? '#2ed3c6' : 'none'}
+        stroke={s}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 25c.8-4.2 4.5-6.6 9-6.6s8.2 2.4 9 6.6"
+        fill="none"
+        stroke={s}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}

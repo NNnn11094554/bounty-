@@ -114,6 +114,10 @@ export function CatButton({
   effectRef.current = EFFECT_PARTICLE[effectId] ?? 'coin';
   const skinRef = useRef(skinId);
   skinRef.current = skinId;
+  // размер — через ref: при смене размера (свернулась лига, Telegram развернул окно) обработчики, пулы
+  // и начатое нажатие остаются, иначе нажатие, пришедшееся на перестройку, терялось
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
 
   useEffect(() => {
     const fx = fxRef.current;
@@ -201,7 +205,7 @@ export function CatButton({
       }
     };
     const coinSalute = () => {
-      const c = size / 2;
+      const c = sizeRef.current / 2;
       coins.forEach((el, i) => {
         const angle = (i / COIN_POOL) * Math.PI * 2 + Math.random() * 0.4;
         const dist = c * (0.9 + Math.random() * 0.5);
@@ -227,7 +231,7 @@ export function CatButton({
     /** тап: наклон к точке касания, сжатие и маленький прыжок */
     const tapBounce = (x: number, y: number, squeeze: number) => {
       if (reduced()) return;
-      const r = size / 2;
+      const r = sizeRef.current / 2;
       const ry = ((x - r) / r) * 10;
       const rx = -((y - r) / r) * 10;
       tilt.animate(
@@ -309,7 +313,7 @@ export function CatButton({
       if (reduced()) return;
       dance.animate(keyframes, { duration, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
     };
-    const center = () => ({ x: size / 2, y: size / 2 });
+    const center = () => ({ x: sizeRef.current / 2, y: sizeRef.current / 2 });
     let mood: '' | 'sleepy' | 'excited' = '';
     let moodTimer = 0;
     const setMood = (next: typeof mood, ms = 0) => {
@@ -502,8 +506,8 @@ export function CatButton({
       const y = e.clientY - rect.top;
       const r = rect.width / 2;
       return {
-        x: (x * size) / rect.width,
-        y: (y * size) / rect.height,
+        x: (x * sizeRef.current) / rect.width,
+        y: (y * sizeRef.current) / rect.height,
         inside: (x - r) ** 2 + (y - r) ** 2 <= r * r * 1.02,
       };
     };
@@ -614,7 +618,7 @@ export function CatButton({
       equip: 'excited',
       levelUp: 'celebrate',
       rare: 'surprised',
-      friend: 'heart',
+      friend: 'happy',
       return: 'happy',
     };
     const offMood = catMood.on((event) => {
@@ -656,7 +660,7 @@ export function CatButton({
       root.removeEventListener('click', noMenu);
       [...floats, ...rings, ...coins, ...pts].forEach((el) => el.remove());
     };
-  }, [size]);
+  }, []);
 
   return (
     <div

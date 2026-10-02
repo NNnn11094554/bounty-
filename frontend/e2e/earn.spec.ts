@@ -5,8 +5,9 @@ test.describe('Earn', () => {
   test('daily reward: claim day 1, then come back tomorrow', async ({ page }) => {
     await page.goto('/?uid=700000701&name=Ежедневка');
     await expect(page.getByTestId('office')).toBeVisible();
-    await expect(page.getByTestId('nav-badge-earn')).toBeVisible();
-    await page.getByTestId('nav-earn').click();
+    // точка на быстрой кнопке Earn главной — награда ждёт
+    await expect(page.getByTestId('open-earn-badge')).toBeVisible();
+    await page.getByTestId('open-earn').click();
     await expect(page.getByTestId('earn')).toBeVisible();
     await page.getByTestId('daily-row').click();
 
@@ -19,10 +20,12 @@ test.describe('Earn', () => {
     await expect(sheet.getByTestId('daily-claim')).toBeDisabled();
     await expect(sheet).toContainText('Следующая награда через');
     await page.keyboard.press('Escape');
-    await expect(page.getByTestId('nav-badge-earn')).toHaveCount(0);
     await expect(page.getByTestId('daily-row')).toContainText('Получено сегодня');
 
-    await page.getByTestId('nav-office').click();
+    // «Назад» — на главную: награда получена, точки больше нет
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('office')).toBeVisible();
+    await expect(page.getByTestId('open-earn-badge')).toHaveCount(0);
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '500');
   });
 
@@ -32,7 +35,7 @@ test.describe('Earn', () => {
     await expect(page.getByTestId('office')).toBeVisible();
     await setPlayer(uid, { dailyRewardDay: 5, dailyStreak: 5, dailyRewardDayKey: gameDay(-3) });
     await page.reload();
-    await page.getByTestId('nav-earn').click();
+    await page.getByTestId('open-earn').click();
     await page.getByTestId('daily-row').click();
     await expect(page.getByTestId('daily-broken')).toBeVisible();
     await expect(page.getByTestId('daily-day-1')).toHaveAttribute('data-state', 'today');
@@ -44,7 +47,7 @@ test.describe('Earn', () => {
     await expect(page.getByTestId('office')).toBeVisible();
     await setPlayer(uid, { dailyRewardDay: 3, dailyStreak: 3, dailyRewardDayKey: gameDay(-1) });
     await page.reload();
-    await page.getByTestId('nav-earn').click();
+    await page.getByTestId('open-earn').click();
     await expect(page.getByTestId('daily-row')).toContainText('5K');
     await page.getByTestId('daily-row').click();
     await expect(page.getByTestId('daily-day-3')).toHaveAttribute('data-state', 'claimed');
@@ -68,7 +71,7 @@ test.describe('Earn', () => {
       update: {},
     });
     await page.goto('/?uid=700000704&name=Задания');
-    await page.getByTestId('nav-earn').click();
+    await page.getByTestId('open-earn').click();
     const row = page.getByTestId('task-e2e_link');
     await expect(row).toContainText('+100 000');
     await row.click();
@@ -88,7 +91,7 @@ test.describe('Earn', () => {
 
   test('invite task shows progress and is not completed without friends', async ({ page }) => {
     await page.goto('/?uid=700000705&name=Одиночка');
-    await page.getByTestId('nav-earn').click();
+    await page.getByTestId('open-earn').click();
     await page.getByTestId('task-invite_3').click();
     await expect(page.getByTestId('task-progress')).toHaveText('Друзей: 0 из 3');
     await page.getByTestId('task-check').click();
@@ -99,7 +102,7 @@ test.describe('Earn', () => {
 test('daily reward sheet works on a small 320×568 screen', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/?uid=700000706&name=Малыш');
-  await page.getByTestId('nav-earn').click();
+  await page.getByTestId('open-earn').click();
   await page.getByTestId('daily-row').click();
   const dialog = page.getByTestId('daily-sheet').getByRole('dialog');
   const box = (await dialog.boundingBox())!;

@@ -36,7 +36,8 @@ test.describe('Airdrop (TON wallet hidden by TON_WALLET_ENABLED = false)', () =>
     await expect(page.getByText(/кошел[её]к TON/i)).toHaveCount(0);
 
     // в заданиях тоже нет «Подключи кошелёк»
-    await page.getByTestId('nav-earn').click();
+    await page.getByTestId('nav-office').click();
+    await page.getByTestId('open-earn').click();
     await expect(page.getByTestId('earn')).toBeVisible();
     await expect(page.getByTestId('tasks-skeleton')).toHaveCount(0);
     await expect(page.getByText(/кошел[её]к TON/i)).toHaveCount(0);

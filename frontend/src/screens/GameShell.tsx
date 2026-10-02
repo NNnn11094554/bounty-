@@ -28,9 +28,9 @@ const LeaguesScreen = lazy(() =>
 );
 const loadShop = () => import('./shop/ShopScreen').then((m) => ({ default: m.ShopScreen }));
 const ShopScreen = lazy(loadShop);
-const CollectionScreen = lazy(() =>
-  import('./collection/CollectionScreen').then((m) => ({ default: m.CollectionScreen })),
-);
+const loadCollection = () =>
+  import('./collection/CollectionScreen').then((m) => ({ default: m.CollectionScreen }));
+const CollectionScreen = lazy(loadCollection);
 const ProfileScreen = lazy(() =>
   import('./profile/ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
 );
@@ -38,37 +38,38 @@ const SettingsScreen = lazy(() =>
   import('./settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
 );
 
-const TAB_ORDER: readonly Tab[] = ['office', 'mine', 'friends', 'earn', 'shop', 'airdrop'];
+const TAB_ORDER: readonly Tab[] = ['office', 'friends', 'shop', 'airdrop', 'collection', 'profile'];
 
 function SubScreenView({ screen }: { screen: SubScreen }) {
   switch (screen) {
+    case 'mine':
+      return <MineScreen />;
+    case 'earn':
+      return <EarnScreen />;
     case 'boosts':
       return <BoostsScreen />;
     case 'leagues':
       return <LeaguesScreen />;
-    case 'profile':
-      return <ProfileScreen />;
     case 'settings':
       return <SettingsScreen />;
-    case 'collection':
-      return <CollectionScreen />;
   }
 }
 
 function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void }) {
+  const setTab = useNav((s) => s.setTab);
   switch (tab) {
-    case 'mine':
-      return <MineScreen />;
     case 'friends':
       return <FriendsScreen />;
-    case 'earn':
-      return <EarnScreen />;
+    case 'shop':
+      return <ShopScreen onOpenCollection={() => setTab('collection')} />;
     case 'airdrop':
       return <AirdropScreen />;
-    case 'shop':
-      return <ShopScreen onOpenCollection={() => open('collection')} />;
+    case 'collection':
+      return <CollectionScreen />;
+    case 'profile':
+      return <ProfileScreen />;
     default:
-      return <OfficeTab open={open} />;
+      return <OfficeTab open={open} onOpenTab={setTab} />;
   }
 }
 
@@ -121,6 +122,7 @@ export function GameShell() {
       void loadEarn();
       void loadShop();
       void loadFriends();
+      void loadCollection();
     }, 1500);
     return () => window.clearTimeout(id);
   }, []);

@@ -12,7 +12,7 @@ export const TUTORIAL_STEPS: Record<TutorialId, TutorialStep[]> = {
   office: [
     { target: 'cat', text: 'tour.office.cat' },
     { target: 'energy', text: 'tour.office.energy' },
-    { target: 'boosts', text: 'tour.office.boosts' },
+    { target: 'quick', text: 'tour.office.quick' },
     { target: 'league', text: 'tour.office.league' },
     { target: 'profile', text: 'tour.office.profile' },
   ],

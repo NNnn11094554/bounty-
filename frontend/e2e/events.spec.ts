@@ -110,7 +110,7 @@ test.describe('Mini-events and tutorials', () => {
     await page.getByTestId('tutorial-next').click();
     await expect(tutorial).toBeHidden();
 
-    await page.getByTestId('nav-mine').click();
+    await page.getByTestId('open-mine').click();
     await expect(page.getByTestId('tutorial')).toHaveAttribute('data-tutorial', 'mine');
     await expect(page.getByTestId('tutorial-text')).toContainText('Карточки');
     await page.getByTestId('tutorial-skip').click();

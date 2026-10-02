@@ -108,7 +108,7 @@ test.describe('Friends', () => {
 
   test('earn invite task leads to the friends tab', async ({ page }) => {
     await page.goto('/?uid=700000905&name=Задачник');
-    await page.getByTestId('nav-earn').click();
+    await page.getByTestId('open-earn').click();
     await page.getByTestId('task-invite_3').click();
     await page.getByTestId('task-invite').click();
     await expect(page.getByTestId('friends')).toBeVisible();

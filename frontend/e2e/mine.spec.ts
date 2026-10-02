@@ -14,7 +14,7 @@ test.describe('Mine', () => {
     await markLeagueSeen(page, uid, 1);
     await page.reload();
 
-    await page.getByTestId('nav-mine').click();
+    await page.getByTestId('open-mine').click();
     await expect(page.getByTestId('mine')).toBeVisible();
     const tile = page.getByTestId('card-mk_spot');
     await expect(tile).toContainText('Спот-торговля');
@@ -26,12 +26,12 @@ test.describe('Mine', () => {
     await expect(sheet.getByTestId('sheet-price')).toContainText('800');
     await sheet.getByTestId('card-buy').click();
     await expect(sheet.getByRole('dialog')).toBeHidden();
-    await expect(page.getByTestId('per-hour-float')).toBeVisible();
+    await expect(page.getByTestId('mine').getByTestId('per-hour-float')).toBeVisible();
     await expect(tile.getByTestId('card-level')).toHaveAttribute('aria-label', 'lvl 1');
     await expect(page.getByTestId('mine-stat-per-hour')).toHaveText('+198');
 
-    // прибыль в час видна и в офисе
-    await page.getByTestId('nav-office').click();
+    // прибыль в час видна и на главной («Назад» из Mine)
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('office')).toBeVisible();
     await expect(page.getByTestId('stat-per-hour')).toHaveText('+198');
   });
@@ -39,7 +39,7 @@ test.describe('Mine', () => {
   test('locked cards show their condition; not enough coins disables the button', async ({ page }) => {
     const uid = 700000502;
     await page.goto(`/?uid=${uid}&name=Новичок`);
-    await page.getByTestId('nav-mine').click();
+    await page.getByTestId('open-mine').click();
     const locked = page.getByTestId('card-mk_margin20');
     await expect(locked).toHaveAttribute('data-locked', 'true');
     await expect(locked.getByTestId('card-lock')).toHaveText('«Маржа x10» ур. 5');
@@ -56,7 +56,7 @@ test.describe('Mine', () => {
   test('categories and specials sub-tabs', async ({ page }) => {
     const uid = 700000503;
     await page.goto(`/?uid=${uid}&name=Коллекционер`);
-    await page.getByTestId('nav-mine').click();
+    await page.getByTestId('open-mine').click();
     await page.getByTestId('mine-cat-LEGAL').click();
     await expect(page.getByTestId('card-lg_kyc')).toBeVisible();
     await expect(page.getByTestId('card-mk_spot')).toHaveCount(0);
@@ -84,7 +84,7 @@ test.describe('Mine', () => {
     await setPlayer(uid, { balance: 50_000_000, totalEarned: 50_000_000, leagueLevel: 7 });
     await markLeagueSeen(page, uid, 7);
     await page.reload();
-    await page.getByTestId('nav-mine').click();
+    await page.getByTestId('open-mine').click();
     const tile = page.getByTestId('card-mk_insurance_fund');
     await tile.click();
     await page.getByTestId('card-buy').click();

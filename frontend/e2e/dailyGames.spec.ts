@@ -68,6 +68,28 @@ test.describe('Daily combo and cipher', () => {
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '1');
   });
 
+  test('a press is not lost when the cat changes size mid-press', async ({ page }) => {
+    const day = gameDay();
+    await db.dailyCipher.upsert({
+      where: { dayKey: day },
+      create: { dayKey: day, word: 'MEOW', hintRu: 'Главное слово кота', hintEn: 'A cat word' },
+      update: { word: 'MEOW', hintRu: 'Главное слово кота', hintEn: 'A cat word' },
+    });
+    await page.goto('/?uid=700000803&name=Растяжка');
+    await page.getByTestId('cipher-enter').click();
+    await expect(page.getByTestId('cipher-letters').locator('span.grid')).toHaveCount(4);
+    await page.waitForTimeout(500);
+    const box = (await page.getByTestId('cat-hit').boundingBox())!;
+    // тире, во время которого окно меняет высоту (Telegram разворачивает Mini App) и кот — размер
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    const size = page.viewportSize()!;
+    await page.setViewportSize({ width: size.width, height: size.height - 120 });
+    await page.waitForTimeout(450);
+    await page.mouse.up();
+    await expect(page.getByTestId('cipher-letters')).toContainText('T');
+  });
+
   test('combo: upgrading the three cards reveals slots and pays 5 000 000', async ({ page }) => {
     const day = gameDay();
     const cardIds = ['mk_p2p', 'pr_blog', 'lg_aml'];
@@ -82,7 +104,7 @@ test.describe('Daily combo and cipher', () => {
     await setPlayer(uid, { balance: 100_000, totalEarned: 100_000, leagueLevel: 3 });
     await markLeagueSeen(page, uid, 9);
     await page.reload();
-    await page.getByTestId('nav-mine').click();
+    await page.getByTestId('open-mine').click();
     await expect(page.getByTestId('combo')).toContainText('+5 000 000');
     await expect(page.getByTestId('combo-slot-0')).toHaveText('?');
 
