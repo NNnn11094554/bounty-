@@ -59,9 +59,9 @@ export function skinRarity(id: string | undefined): Rarity {
   return cosmeticById(id ?? '')?.rarity ?? 'COMMON';
 }
 
-export type HeroPart = 'body' | 'head' | 'tail' | 'thumb';
+export type HeroPart = 'body' | 'head' | 'ear' | 'tail' | 'foot' | 'thumb';
 
-/** Картинки скина, собранные scripts/hero: слои тела, головы и хвоста (главный экран) и превью целиком. */
+/** Картинки скина, собранные scripts/hero: слои тела, головы, уха, хвоста и кроссовки (главный экран) и превью целиком. */
 export function heroAsset(id: string | undefined, part: HeroPart): string {
   return `/assets/generated/hero/${known(id)}-${part}.webp`;
 }
@@ -92,13 +92,16 @@ export const RARITY_COLOR: Record<Rarity, string> = {
 
 const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(2)}%`;
 
-/** Скелет персонажа: геометрия слоёв в долях его рамки. По нему двигаются голова, хвост, веки и огоньки. */
+/** Скелет персонажа: геометрия слоёв в долях его рамки. По нему двигаются голова, ухо, хвост, кроссовка, веки и огоньки. */
 export interface CatRig {
   /** ширина / высота кота */
   aspect: number;
   viewBox: string;
   tailOrigin: string;
   headOrigin: string;
+  /** основание подвижного уха и носок притопывающей кроссовки */
+  earOrigin: string;
+  footOrigin: string;
   /** голова: доли ширины и высоты (облачко эмоций, граница «тап по голове») */
   head: { x: number; y: number };
   /** нижний край головы (доля высоты): выше — тап по голове */
@@ -114,6 +117,8 @@ function rigFromLayout(l: typeof layout): CatRig {
     viewBox: `0 0 ${c.width} ${c.height}`,
     tailOrigin: `${pct(l.tailPivot[0]! - c.left, c.width)} ${pct(l.tailPivot[1]! - c.top, c.height)}`,
     headOrigin: `${pct(l.headPivot[0]! - c.left, c.width)} ${pct(l.headPivot[1]! - c.top, c.height)}`,
+    earOrigin: `${pct(l.earPivot[0]! - c.left, c.width)} ${pct(l.earPivot[1]! - c.top, c.height)}`,
+    footOrigin: `${pct(l.footPivot[0]! - c.left, c.width)} ${pct(l.footPivot[1]! - c.top, c.height)}`,
     head: { x: (l.head[0]! - c.left) / c.width, y: (l.head[1]! - c.top) / c.height },
     headBottom: (l.headPivot[1]! - c.top) / c.height,
     eyes: l.eyes.map((e) => ({ ...e, cx: e.cx - c.left, cy: e.cy - c.top })),

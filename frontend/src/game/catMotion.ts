@@ -1,5 +1,5 @@
 /**
- * Физика реакции кота на тапы: несколько затухающих пружин (сжатие корпуса, наклон, голова, хвост).
+ * Физика реакции кота на тапы: несколько затухающих пружин (сжатие корпуса, наклон, голова, хвост, ухо, кроссовка).
  * Тап не запускает отдельную анимацию, а добавляет пружине скорость — поэтому быстрые тапы не спорят
  * друг с другом, не копят смещение и не дёргают кота: отклонение ограничено, а после серии пружины
  * сами возвращаются точно в исходное положение (и цикл кадров останавливается).
@@ -58,8 +58,28 @@ export class CatMotion {
   readonly look = spring(90, 0.7, 2);
   /** взмах хвоста поверх его спокойного покачивания, градусы */
   readonly tail = spring(120, 0.25, 10);
+  /** подёргивание уха, градусы (быстрое и живое) */
+  readonly ear = spring(420, 0.3, 12);
+  /** притоп: подъём пятки, градусы (только вверх — ниже пола кроссовка не уходит) */
+  readonly foot = spring(260, 0.5, 6);
+  /**
+   * Объём: кот плавно поворачивается в перспективе (yaw — вокруг вертикали, pitch — наклон назад/вперёд).
+   * Пружины мягкие и сильно задемпфированные — поворот медленный и тягучий, как у 3D-модели.
+   */
+  readonly yaw = spring(34, 0.9, 9);
+  readonly pitch = spring(55, 0.75, 6);
 
-  private readonly all = [this.squash, this.tilt, this.head, this.look, this.tail];
+  private readonly all = [
+    this.squash,
+    this.tilt,
+    this.head,
+    this.look,
+    this.tail,
+    this.ear,
+    this.foot,
+    this.yaw,
+    this.pitch,
+  ];
 
   /** Продвинуть физику на dt секунд; false — всё в покое. */
   advance(dt: number): boolean {
@@ -68,6 +88,11 @@ export class CatMotion {
       const h = Math.min(STEP, left);
       for (const s of this.all) step(s, h);
       left -= h;
+    }
+    // пол: пятка не проваливается ниже исходного положения
+    if (this.foot.x < 0) {
+      this.foot.x = 0;
+      this.foot.v = Math.max(0, this.foot.v);
     }
     let active = false;
     for (const s of this.all) {
@@ -89,6 +114,26 @@ export class CatMotion {
     this.tilt.v += side * 10 * strength;
     this.head.v += (onHead ? 22 : 9) * (side >= 0 ? 1 : -1) * strength;
     this.tail.v += 40 * strength;
+    if (onHead) this.ear.v -= 160 * strength;
+    // в объёме: тап мягко откидывает кота назад и чуть разворачивает от пальца
+    this.pitch.v += 26 * strength;
+    this.yaw.v += side * 30 * strength;
+  }
+
+  /** Куда плавно повернуться в объёме (градусы); 0, 0 — анфас. */
+  orbitTo(yaw: number, pitch = 0): void {
+    this.yaw.target = Math.max(-7, Math.min(7, yaw));
+    this.pitch.target = Math.max(-3, Math.min(3, pitch));
+  }
+
+  /** Ухо дёрнулось: dir −1 назад, 1 вперёд. */
+  twitch(dir = -1, power = 1): void {
+    this.ear.v += 190 * dir * power;
+  }
+
+  /** Притоп кроссовкой: пятка поднимается и опускается. */
+  stomp(power = 1): void {
+    this.foot.v += 70 * power;
   }
 
   /** Голова смотрит в сторону: rot — градусы, shift — % ширины. */
@@ -107,7 +152,15 @@ export class CatMotion {
   }
 
   /** Трансформации слоёв; пустая строка — исходное положение без transform. */
-  transforms(): { body: string; head: string; tail: string } {
+  transforms(): {
+    body: string;
+    head: string;
+    tail: string;
+    ear: string;
+    foot: string;
+    yaw: number;
+    pitch: number;
+  } {
     const q = this.squash.x;
     const body =
       Math.abs(q) < 1e-5 && Math.abs(this.tilt.x) < 1e-4
@@ -117,7 +170,15 @@ export class CatMotion {
       Math.abs(this.head.x) < 1e-4 && Math.abs(this.look.x) < 1e-4
         ? ''
         : `translate3d(${this.look.x.toFixed(3)}%, 0, 0) rotate(${this.head.x.toFixed(3)}deg)`;
-    const tail = Math.abs(this.tail.x) < 1e-4 ? '' : `rotate(${this.tail.x.toFixed(3)}deg)`;
-    return { body, head, tail };
+    const rot = (s: Spring) => (Math.abs(s.x) < 1e-4 ? '' : `rotate(${s.x.toFixed(3)}deg)`);
+    return {
+      body,
+      head,
+      tail: rot(this.tail),
+      ear: rot(this.ear),
+      foot: rot(this.foot),
+      yaw: this.yaw.x,
+      pitch: this.pitch.x,
+    };
   }
 }

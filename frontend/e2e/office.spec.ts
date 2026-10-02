@@ -157,13 +157,15 @@ test.describe('Office', () => {
       .poll(
         () =>
           page.evaluate(() =>
-            [...document.querySelectorAll<HTMLElement>('.hero-react, .hero-part')].map(
-              (el) => el.style.transform,
-            ),
+            [...document.querySelectorAll<HTMLElement>('.hero-react, .hero-part')]
+              .map((el) => el.style.transform)
+              .join(''),
           ),
         { timeout: 6000 },
       )
-      .toEqual(['', '', '']);
+      .toBe('');
+    // корпус, хвост, кроссовка, голова и ухо
+    await expect(page.locator('.hero-react, .hero-part')).toHaveCount(5);
     const after = (await figure.boundingBox())!;
     expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
     expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);

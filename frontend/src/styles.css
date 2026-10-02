@@ -253,9 +253,59 @@ textarea {
 }
 /*
  * Слои движения (каждый — своё, без конфликтов):
- * поза (медленно, 11 с) → дыхание (4,2 с) → реакция на тап (физика из JS) → голова (8,5 с) и хвост (3,4 с).
+ * объём (поворот в перспективе, физика из JS через --yaw/--pitch) → поза (медленно, 11 с) → дыхание (4,2 с)
+ * → реакция на тап (физика из JS) → голова (8,5 с) и хвост (3,4 с).
  * Все движения маленькие и от ступней — кот стоит на месте.
  */
+.hero-fig {
+  perspective: 900px;
+  perspective-origin: 50% 45%;
+}
+/* поворот кота в перспективе: вокруг вертикали и наклон назад от ступней */
+.hero-orbit {
+  transform-origin: 50% 100%;
+  transform: rotateY(calc(var(--yaw, 0) * 1deg)) rotateX(calc(var(--pitch, 0) * 1deg));
+  will-change: transform;
+}
+/* глубина: голова ближе к зрителю — при повороте уходит дальше в сторону, хвост — за спиной, в обратную */
+.hero-depth-front {
+  transform: translate3d(calc(var(--yaw, 0) * 0.32%), calc(var(--pitch, 0) * -0.18%), 0);
+}
+.hero-depth-back {
+  transform: translate3d(calc(var(--yaw, 0) * -0.42%), 0, 0);
+}
+/* свет и тень по форме слоя: блик сверху-слева и мягкая тень с другой стороны бегут при повороте */
+.hero-shade {
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  overflow: hidden;
+}
+.hero-shade-light,
+.hero-shade-dark {
+  inset: -20%;
+  will-change: transform;
+}
+.hero-shade-light {
+  background: radial-gradient(
+    ellipse 38% 30% at 34% 30%,
+    color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.22)),
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  transform: translate3d(calc(var(--yaw, 0) * -1.6%), calc(var(--pitch, 0) * 1.2%), 0);
+}
+.hero-shade-dark {
+  background: linear-gradient(100deg, transparent 52%, rgba(2, 4, 16, 0.42) 82%);
+  mix-blend-mode: multiply;
+  transform: translate3d(calc(var(--yaw, 0) * -2.2%), 0, 0);
+}
+/* тень на полу смещается в сторону, обратную повороту */
+.hero-floor {
+  transform: translate3d(calc(var(--yaw, 0) * -0.9%), 0, 0) scaleX(calc(1 + var(--pitch, 0) * 0.02));
+}
 .hero-pose,
 .hero-breath,
 .hero-react {
@@ -750,6 +800,7 @@ textarea {
 /* Упрощённые анимации: кот неподвижен, без парящих частиц */
 [data-motion='reduced'] .hero-pose,
 [data-motion='reduced'] .hero-breath,
+[data-motion='reduced'] .hero-orbit,
 [data-motion='reduced'] .hero-head,
 [data-motion='reduced'] .hero-tail,
 [data-motion='reduced'] .hero-led,

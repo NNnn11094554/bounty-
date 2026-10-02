@@ -46,5 +46,7 @@
       "r": 40
     }
   ],
-  "headPivot": [480, 335]
+  "headPivot": [480, 335],
+  "earPivot": [400, 150],
+  "footPivot": [690, 1214]
 }

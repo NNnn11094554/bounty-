@@ -8,16 +8,25 @@ export interface HeroRefs {
   head?: Ref<HTMLDivElement>;
   /** взмах хвоста поверх его спокойного покачивания */
   tail?: Ref<HTMLDivElement>;
+  /** подёргивание уха */
+  ear?: Ref<HTMLDivElement>;
+  /** притоп кроссовкой */
+  foot?: Ref<HTMLDivElement>;
   /** веки (моргание, прищур, сон) */
   lids?: Ref<SVGSVGElement>;
 }
 
 const PARTICLES: Record<string, number> = { COMMON: 0, RARE: 4, EPIC: 5, LEGENDARY: 7, MYTHIC: 9 };
 
+type Part = 'body' | 'head' | 'ear' | 'tail' | 'foot';
+
 /**
- * Кот в полный рост из слоёв по его скелету (rig): хвост и голова — под телом, их стык спрятан под
- * одеждой и наушниками. Слои вложены так, что каждое движение живёт на своём элементе и не спорит с
- * другими: поза (медленно) → дыхание → реакция на тап (физика) → голова/хвост (свои покачивания + физика).
+ * Кот в полный рост из слоёв по его скелету (rig): хвост, кроссовка и голова — под телом, их стык спрятан
+ * под одеждой и наушниками; ухо — под головой. Слои вложены так, что каждое движение живёт на своём
+ * элементе и не спорит с другими: объём (поворот в перспективе) → поза (медленно) → дыхание → реакция
+ * на тап (физика) → голова/ухо/хвост/кроссовка (свои покачивания + физика). При повороте голова (ближе)
+ * и хвост (дальше) сдвигаются по-разному, а свет и тень бегут по форме слоёв — плоская картинка читается
+ * как объёмная. Угол поворота приходит CSS-переменными --yaw и --pitch от сцены.
  * Слои — div с фоном, а не <img>: долгое нажатие не вызывает меню картинки. Событий не принимает.
  */
 export function HeroFigure({ skinId, height, refs }: { skinId: string; height: number; refs?: HeroRefs }) {
@@ -27,7 +36,19 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
   const rarity = skinRarity(skinId);
   const particle = skinStyle(skinId).particle;
   const count = particle ? (PARTICLES[rarity] ?? 0) : 0;
-  const layer = (part: 'body' | 'head' | 'tail') => ({ backgroundImage: `url(${heroAsset(skinId, part)})` });
+  const url = (part: Part) => `url(${heroAsset(skinId, part)})`;
+  const layer = (part: Part) => ({ backgroundImage: url(part) });
+  // свет и тень строго по форме слоя: маска — сама картинка слоя
+  const shading = (part: 'body' | 'head') => (
+    <div
+      className="hero-shade absolute inset-0"
+      style={{ maskImage: url(part), WebkitMaskImage: url(part) }}
+      aria-hidden
+    >
+      <div className="hero-shade-dark absolute" />
+      <div className="hero-shade-light absolute" />
+    </div>
+  );
   return (
     <div
       className={`hero-fig pointer-events-none relative rarity-${rarity.toLowerCase()}`}
@@ -55,70 +76,100 @@ export function HeroFigure({ skinId, height, refs }: { skinId: string; height: n
           ))}
         </div>
       )}
-      <div className="hero-pose absolute inset-0">
-        <div className="hero-breath absolute inset-0">
-          <div ref={refs?.body} className="hero-react absolute inset-0">
-            <div
-              ref={refs?.tail}
-              className="hero-part absolute inset-0"
-              style={{ transformOrigin: rig.tailOrigin }}
-            >
+      <div className="hero-orbit absolute inset-0">
+        <div className="hero-pose absolute inset-0">
+          <div className="hero-breath absolute inset-0">
+            <div ref={refs?.body} className="hero-react absolute inset-0">
               <div
-                className="hero-tail hero-layer absolute inset-0"
-                style={{ ...layer('tail'), transformOrigin: rig.tailOrigin }}
-              />
-            </div>
-            <div
-              ref={refs?.head}
-              className="hero-part absolute inset-0"
-              style={{ transformOrigin: rig.headOrigin }}
-            >
-              <div className="hero-head absolute inset-0" style={{ transformOrigin: rig.headOrigin }}>
-                <div className="hero-layer absolute inset-0" style={layer('head')} data-testid="hero-head" />
-                <svg
-                  ref={refs?.lids}
-                  className="absolute inset-0 h-full w-full"
-                  viewBox={rig.viewBox}
-                  aria-hidden
-                >
-                  {rig.eyes.map((e, i) => (
-                    <g key={i} transform={`rotate(${e.rot} ${e.cx} ${e.cy})`}>
-                      <clipPath id={`eye${uid}${i}`}>
-                        <ellipse cx={e.cx} cy={e.cy} rx={e.rx} ry={e.ry} />
-                      </clipPath>
-                      <g clipPath={`url(#eye${uid}${i})`}>
-                        <rect
-                          className="hero-lid"
-                          data-eye={i}
-                          x={e.cx - e.rx - 3}
-                          y={e.cy - e.ry - 3}
-                          width={e.rx * 2 + 6}
-                          height={e.ry * 2 + 6}
-                        />
-                      </g>
-                      <path
-                        className="hero-lash"
-                        data-eye={i}
-                        d={`M ${e.cx - e.rx * 0.92} ${e.cy + e.ry * 0.1} Q ${e.cx} ${e.cy + e.ry * 0.95} ${e.cx + e.rx * 0.92} ${e.cy + e.ry * 0.1}`}
-                      />
-                    </g>
-                  ))}
-                </svg>
+                ref={refs?.tail}
+                className="hero-part absolute inset-0"
+                style={{ transformOrigin: rig.tailOrigin }}
+              >
+                <div className="hero-depth-back absolute inset-0">
+                  <div
+                    className="hero-tail hero-layer absolute inset-0"
+                    style={{ ...layer('tail'), transformOrigin: rig.tailOrigin }}
+                  />
+                </div>
               </div>
+              <div
+                ref={refs?.foot}
+                className="hero-part absolute inset-0"
+                style={{ transformOrigin: rig.footOrigin }}
+              >
+                <div className="hero-layer absolute inset-0" style={layer('foot')} />
+              </div>
+              <div
+                ref={refs?.head}
+                className="hero-part absolute inset-0"
+                style={{ transformOrigin: rig.headOrigin }}
+              >
+                <div className="hero-head absolute inset-0" style={{ transformOrigin: rig.headOrigin }}>
+                  <div className="hero-depth-front absolute inset-0">
+                    <div
+                      ref={refs?.ear}
+                      className="hero-part absolute inset-0"
+                      style={{ transformOrigin: rig.earOrigin }}
+                    >
+                      <div
+                        className="hero-layer absolute inset-0"
+                        style={layer('ear')}
+                        data-testid="hero-ear"
+                      />
+                    </div>
+                    <div
+                      className="hero-layer absolute inset-0"
+                      style={layer('head')}
+                      data-testid="hero-head"
+                    />
+                    {shading('head')}
+                    <svg
+                      ref={refs?.lids}
+                      className="absolute inset-0 h-full w-full"
+                      viewBox={rig.viewBox}
+                      aria-hidden
+                    >
+                      {rig.eyes.map((e, i) => (
+                        <g key={i} transform={`rotate(${e.rot} ${e.cx} ${e.cy})`}>
+                          <clipPath id={`eye${uid}${i}`}>
+                            <ellipse cx={e.cx} cy={e.cy} rx={e.rx} ry={e.ry} />
+                          </clipPath>
+                          <g clipPath={`url(#eye${uid}${i})`}>
+                            <rect
+                              className="hero-lid"
+                              data-eye={i}
+                              x={e.cx - e.rx - 3}
+                              y={e.cy - e.ry - 3}
+                              width={e.rx * 2 + 6}
+                              height={e.ry * 2 + 6}
+                            />
+                          </g>
+                          <path
+                            className="hero-lash"
+                            data-eye={i}
+                            d={`M ${e.cx - e.rx * 0.92} ${e.cy + e.ry * 0.1} Q ${e.cx} ${e.cy + e.ry * 0.95} ${e.cx + e.rx * 0.92} ${e.cy + e.ry * 0.1}`}
+                          />
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div className="hero-layer absolute inset-0" style={layer('body')} data-testid="hero-body" />
+              {shading('body')}
+              {rig.leds.map((l, i) => (
+                <span
+                  key={i}
+                  className="hero-led absolute"
+                  style={{
+                    left: l.left,
+                    top: l.top,
+                    width: l.size,
+                    animationDelay: `${(-i * 0.9).toFixed(2)}s`,
+                  }}
+                />
+              ))}
             </div>
-            <div className="hero-layer absolute inset-0" style={layer('body')} data-testid="hero-body" />
-            {rig.leds.map((l, i) => (
-              <span
-                key={i}
-                className="hero-led absolute"
-                style={{
-                  left: l.left,
-                  top: l.top,
-                  width: l.size,
-                  animationDelay: `${(-i * 0.9).toFixed(2)}s`,
-                }}
-              />
-            ))}
           </div>
         </div>
       </div>

@@ -23,7 +23,7 @@ describe('cat tap physics', () => {
     expect(min).toBeGreaterThan(-0.03);
     expect(max).toBeLessThan(0.015);
     settle(m);
-    expect(m.transforms()).toEqual({ body: '', head: '', tail: '' });
+    expect(m.transforms()).toEqual({ body: '', head: '', tail: '', ear: '', foot: '', yaw: 0, pitch: 0 });
   });
 
   it('50 rapid taps never exceed the limits and the cat returns to the initial pose', () => {
@@ -37,10 +37,11 @@ describe('cat tap physics', () => {
       expect(Math.abs(m.tilt.x)).toBeLessThanOrEqual(m.tilt.limit);
       expect(Math.abs(m.head.x)).toBeLessThanOrEqual(m.head.limit);
       expect(Math.abs(m.tail.x)).toBeLessThanOrEqual(m.tail.limit);
+      expect(Math.abs(m.ear.x)).toBeLessThanOrEqual(m.ear.limit);
     }
     expect(settle(m)).toBeLessThan(6);
     expect(m.active).toBe(false);
-    expect(m.transforms()).toEqual({ body: '', head: '', tail: '' });
+    expect(m.transforms()).toEqual({ body: '', head: '', tail: '', ear: '', foot: '', yaw: 0, pitch: 0 });
   });
 
   it('a long frame (tab in background) does not explode the springs', () => {
@@ -62,5 +63,57 @@ describe('cat tap physics', () => {
     m.lookAt(0, 0);
     settle(m);
     expect(m.transforms().head).toBe('');
+  });
+});
+
+describe('ear and foot', () => {
+  it('the heel never goes below the floor, ear and foot settle exactly', () => {
+    const m = new CatMotion();
+    for (let i = 0; i < 20; i++) {
+      m.stomp(1);
+      m.twitch(i % 2 ? 1 : -1, 1.2);
+      for (let f = 0; f < 4; f++) {
+        m.advance(1 / 60);
+        expect(m.foot.x).toBeGreaterThanOrEqual(0);
+        expect(m.foot.x).toBeLessThanOrEqual(m.foot.limit);
+        expect(Math.abs(m.ear.x)).toBeLessThanOrEqual(m.ear.limit);
+      }
+    }
+    for (let f = 0; f < 600 && m.advance(1 / 60); f++);
+    expect(m.active).toBe(false);
+    const t = m.transforms();
+    expect(t.ear).toBe('');
+    expect(t.foot).toBe('');
+  });
+});
+
+describe('3D orbit', () => {
+  it('turns smoothly toward the target without overshooting it much, then back to the front', () => {
+    const m = new CatMotion();
+    m.orbitTo(5, 1);
+    let prev = 0;
+    let maxStep = 0;
+    let peak = 0;
+    for (let i = 0; i < 240; i++) {
+      m.advance(1 / 60);
+      maxStep = Math.max(maxStep, Math.abs(m.yaw.x - prev));
+      prev = m.yaw.x;
+      peak = Math.max(peak, m.yaw.x);
+    }
+    // плавно: за кадр не больше 0,25°, без заметного перелёта
+    expect(maxStep).toBeLessThan(0.25);
+    expect(peak).toBeLessThan(5.3);
+    expect(m.yaw.x).toBeCloseTo(5, 1);
+    m.orbitTo(0, 0);
+    for (let i = 0; i < 600 && m.advance(1 / 60); i++);
+    expect(m.active).toBe(false);
+    expect(m.transforms().yaw).toBe(0);
+  });
+
+  it('targets are clamped', () => {
+    const m = new CatMotion();
+    m.orbitTo(40, -20);
+    expect(m.yaw.target).toBe(7);
+    expect(m.pitch.target).toBe(-3);
   });
 });

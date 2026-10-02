@@ -77,44 +77,30 @@ export function CipherBanner() {
   // уходя с Офиса, выходим из режима шифра
   useEffect(() => exitCipher, []);
 
+  // пока шифр не введён — тонкая строка над котом: всё в одну линию, чтобы кот оставался крупным
+  const row = 'mt-2 flex h-9 items-center gap-2 rounded-xl border px-2.5 shadow-card short:mt-1.5 short:h-8';
   if (!cipher) {
     if (failed) return null;
-    // место под плашку занято сразу — кот не «прыгает», когда шифр загрузится
+    // место под строку занято сразу — кот не «прыгает», когда шифр загрузится
     return (
-      <div
-        className="mt-3 flex items-center gap-2.5 rounded-2xl border border-line bg-night-700/90 px-3 py-2 shadow-card short:mt-2 short:py-1.5"
-        data-testid="cipher-skeleton"
-        aria-hidden
-      >
-        <span className="font-mono text-lg font-black text-gold/40">•−</span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="text-sm font-extrabold">
-            <span className="skeleton inline-block h-3.5 w-28 rounded align-middle" />
-          </p>
-          <p className="text-xs font-extrabold">
-            <span className="skeleton inline-block h-3 w-20 rounded align-middle" />
-          </p>
-        </div>
-        <span className="skeleton h-8 w-[76px] rounded-xl short:h-7" />
+      <div className={`${row} border-line bg-night-700/90`} data-testid="cipher-skeleton" aria-hidden>
+        <span className="font-mono text-sm font-black text-gold/40">•−</span>
+        <span className="skeleton h-3 w-24 rounded" />
+        <span className="skeleton ml-auto h-6 w-16 rounded-lg" />
       </div>
     );
   }
 
   if (!active) {
     return (
-      <div
-        className="mt-3 flex items-center gap-2.5 rounded-2xl border border-line bg-night-700/90 px-3 py-2 shadow-card short:mt-2 short:py-1.5"
-        data-testid="cipher-banner"
-      >
-        <span className="font-mono text-lg font-black text-gold">•−</span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-sm font-extrabold">{t('cipher.title')}</p>
-          <p className="flex items-center gap-1 text-xs font-extrabold text-gold">
-            <CoinIcon size={13} />+{formatInt(cipher.reward)}
-          </p>
-        </div>
+      <div className={`${row} border-line bg-night-700/90`} data-testid="cipher-banner">
+        <span className="font-mono text-sm font-black text-gold">•−</span>
+        <span className="min-w-0 truncate text-[13px] font-extrabold">{t('cipher.title')}</span>
+        <span className="flex shrink-0 items-center gap-0.5 text-xs font-extrabold text-gold">
+          <CoinIcon size={12} />+{formatInt(cipher.reward)}
+        </span>
         {cipher.solved ? (
-          <span className="text-sm font-extrabold text-lime" data-testid="cipher-solved">
+          <span className="ml-auto shrink-0 text-xs font-extrabold text-lime" data-testid="cipher-solved">
             ✓ {t('cipher.solved')}
           </span>
         ) : (
@@ -122,7 +108,7 @@ export function CipherBanner() {
             type="button"
             whileTap={{ scale: 0.92 }}
             onClick={enterCipher}
-            className="rounded-xl bg-cta px-3.5 py-1.5 text-sm font-extrabold shadow-button short:py-1"
+            className="ml-auto shrink-0 rounded-lg bg-cta px-3 py-1 text-xs font-extrabold shadow-button"
             data-testid="cipher-enter"
           >
             {t('cipher.enter')}
