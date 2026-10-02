@@ -129,25 +129,17 @@ async function spaceScene(w, h, { cta }) {
         : ''
     }
   </svg>`;
-  // кот в полный рост и кнопка TAP (слои скина по умолчанию: хвост под телом)
+  // кот в полный рост (слои скина по умолчанию: хвост и голова под телом)
   const catH = Math.round(h * 0.94);
-  const bodyFile = path.join(out, 'hero', 'black_crown-body.webp');
-  const tailFile = path.join(out, 'hero', 'black_crown-tail.webp');
-  const catImg = await sharp(tailFile)
-    .composite([{ input: bodyFile }])
+  const layer = (part) => path.join(out, 'hero', `black_crown-${part}.webp`);
+  const catImg = await sharp(layer('tail'))
+    .composite([{ input: layer('head') }, { input: layer('body') }])
     .png()
     .toBuffer()
     .then((b) => sharp(b).resize(null, catH).png().toBuffer());
   const catW = (await sharp(catImg).metadata()).width ?? 0;
-  const tapW = Math.round(h * 0.34);
-  const tapImg = await sharp(path.join(out, 'hero', 'black_crown-tap.webp'))
-    .resize(tapW)
-    .png()
-    .toBuffer();
-  const catLeft = Math.round(cx - catW * 0.62);
   return sharp(Buffer.from(svg)).composite([
-    { input: catImg, left: Math.max(0, catLeft), top: h - catH },
-    { input: tapImg, left: Math.round(cx + catW * 0.2), top: Math.round(h * 0.56) },
+    { input: catImg, left: Math.max(0, Math.round(cx - catW / 2)), top: h - catH },
   ]);
 }
 

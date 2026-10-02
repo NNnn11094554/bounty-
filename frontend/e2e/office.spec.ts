@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { setPlayer } from './db';
 
 test.describe('Office', () => {
   test('tapping earns coins, spends energy and survives a reload', async ({ page }) => {
@@ -6,7 +7,7 @@ test.describe('Office', () => {
     await expect(page.getByTestId('office')).toBeVisible();
     await expect(page.getByTestId('energy-value')).toHaveText('1000 / 1000');
 
-    const box = (await page.getByTestId('tap-button').boundingBox())!;
+    const box = (await page.getByTestId('cat-hit').boundingBox())!;
     for (let i = 0; i < 15; i++) {
       await page.mouse.click(box.x + box.width / 2 + (i % 5) * 6, box.y + box.height / 2 - (i % 3) * 6);
     }
@@ -94,6 +95,104 @@ test.describe('Office', () => {
     expect(Math.max(0, ...long)).toBeLessThan(250);
   });
 
+  test('the cat itself is the tap target: no TAP button, no TAP or BOUNTY text', async ({ page }) => {
+    // ошибки игры: исключения в скриптах, ошибки в консоли и сбои загрузки своих файлов
+    // (внешний telegram-web-app.js из песочницы тестов недоступен — его не считаем)
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push(m.text());
+    });
+    page.on('requestfailed', (r) => {
+      if (new URL(r.url()).hostname === 'localhost')
+        errors.push(`${r.url()} ${r.failure()?.errorText ?? ''}`);
+    });
+    page.on('response', (r) => {
+      if (new URL(r.url()).hostname === 'localhost' && r.status() >= 400)
+        errors.push(`${r.status()} ${r.url()}`);
+    });
+    await page.goto('/?uid=700000206&name=Котоман');
+    await expect(page.getByTestId('hero')).toBeVisible();
+    await expect(page.getByTestId('tap-button')).toHaveCount(0);
+    const text = await page.getByTestId('office').innerText();
+    expect(text).not.toMatch(/\bTAP\b/);
+    expect(text).not.toMatch(/bounty/i);
+    // зона тапа — сам кот, почти во весь рост
+    const hit = (await page.getByTestId('cat-hit').boundingBox())!;
+    const body = (await page.getByTestId('hero-body').boundingBox())!;
+    expect(hit.height).toBeGreaterThan(body.height * 0.95);
+    expect(hit.width).toBeGreaterThan(body.width * 0.8);
+    // тап по голове и по кроссовкам — тоже награда
+    await page.mouse.click(hit.x + hit.width * 0.6, hit.y + hit.height * 0.12);
+    await page.mouse.click(hit.x + hit.width * 0.45, hit.y + hit.height * 0.93);
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '2');
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
+  test('50 rapid taps: the cat returns exactly to its pose and does not drift', async ({ page }) => {
+    await page.goto('/?uid=700000207&name=Барабанщик');
+    await expect(page.getByTestId('hero')).toBeVisible();
+    await page.waitForTimeout(800);
+    const figure = page.locator('.hero-fig');
+    const before = (await figure.boundingBox())!;
+    const hit = (await page.getByTestId('cat-hit').boundingBox())!;
+    for (let i = 0; i < 50; i++) {
+      await page.mouse.click(
+        hit.x + hit.width * (0.3 + (i % 5) * 0.1),
+        hit.y + hit.height * (0.2 + (i % 4) * 0.18),
+      );
+    }
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '50');
+    // пружины успокаиваются — трансформации реакции снимаются полностью
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            [...document.querySelectorAll<HTMLElement>('.hero-react, .hero-part')].map(
+              (el) => el.style.transform,
+            ),
+          ),
+        { timeout: 6000 },
+      )
+      .toEqual(['', '', '']);
+    const after = (await figure.boundingBox())!;
+    expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
+    expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);
+    // запущенные из скрипта анимации не копятся (остаются только бесконечные CSS-покачивания)
+    const scripted = await page.evaluate(
+      () =>
+        document.getAnimations().filter((a) => !(a instanceof CSSAnimation) && a.playState === 'running')
+          .length,
+    );
+    expect(scripted).toBeLessThanOrEqual(4);
+  });
+
+  test('without energy taps give nothing and the cat looks tired; energy comes back', async ({ page }) => {
+    const uid = 700000208;
+    await page.addInitScript(() => {
+      const w = window as unknown as { __sleepy: boolean };
+      w.__sleepy = false;
+      new MutationObserver(() => {
+        if (document.querySelector('[data-testid="hero"][data-sleepy="true"]')) w.__sleepy = true;
+      }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-sleepy'] });
+    });
+    await page.goto(`/?uid=${uid}&name=Усталый`);
+    await expect(page.getByTestId('office')).toBeVisible();
+    await setPlayer(uid, { energy: 0, energyUpdatedAt: new Date() });
+    await page.reload();
+    await expect(page.getByTestId('hero')).toBeVisible();
+    await tapMany(page, 40);
+    const gained = Number(await page.getByTestId('balance-value').getAttribute('aria-label'));
+    // наградой стали только тапы на восстановившуюся энергию (3 в секунду)
+    expect(gained).toBeGreaterThan(0);
+    expect(gained).toBeLessThan(20);
+    expect(await page.evaluate(() => (window as unknown as { __sleepy: boolean }).__sleepy)).toBe(true);
+    const low = parseInt((await page.getByTestId('energy-value').innerText()).split('/')[0]!, 10);
+    await page.waitForTimeout(2000);
+    const later = parseInt((await page.getByTestId('energy-value').innerText()).split('/')[0]!, 10);
+    expect(later).toBeGreaterThan(low);
+  });
+
   test('shows stats, league and the per-hour hint', async ({ page }) => {
     await page.goto('/?uid=700000202&name=Мурка');
     await expect(page.getByTestId('stat-per-tap')).toHaveText('+1');
@@ -104,3 +203,8 @@ test.describe('Office', () => {
     await expect(page.getByTestId('per-hour-hint')).toContainText('3');
   });
 });
+
+async function tapMany(page: Page, n: number) {
+  const hit = (await page.getByTestId('cat-hit').boundingBox())!;
+  for (let i = 0; i < n; i++) await page.mouse.click(hit.x + hit.width / 2, hit.y + hit.height * 0.5);
+}

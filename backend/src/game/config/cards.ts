@@ -790,8 +790,8 @@ const LEGAL: Def[] = [
     tier: 3,
     k: 1,
     icon: 'bug/coin/4',
-    ru: ['Баг-баунти', 'Платим за найденных жуков. Кот уже принёс трёх.'],
-    en: ['Bug Bounty', 'We pay for every bug found. The cat brought three already.'],
+    ru: ['Охота на баги', 'Платим за найденных жуков. Кот уже принёс трёх.'],
+    en: ['Bug Hunt', 'We pay for every bug found. The cat brought three already.'],
     cond: card('lg_audit', 3),
   },
   {

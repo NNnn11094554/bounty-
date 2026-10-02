@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { EFFECT_PARTICLE, RARITY_COLOR } from '../../game/skins';
 import { useLocale, useT, type MessageKey } from '../../i18n';
 import { CoinIcon, StarIcon } from '../icons';
-import { HeroFigure, HeroThumb, TapPreview } from '../hero/HeroFigure';
+import { HeroFigure, HeroThumb } from '../hero/HeroFigure';
 
 /** Рамка по редкости: COMMON — простая, RARE — свечение, EPIC — пульс, LEGENDARY — бегущая полоса, MYTHIC — + блик. */
 export function RarityFrame({
@@ -27,8 +27,8 @@ export function RarityFrame({
 }
 
 /**
- * Картинка предмета: кот в скине (в сетке — одной картинкой, в окне предмета — живой, с кнопкой TAP
- * этого скина) или частица эффекта тапа вокруг монетки.
+ * Картинка предмета: кот в скине (в сетке — одной картинкой, в окне предмета — живой, с теми же
+ * покачиваниями, что на главной) или частица эффекта тапа вокруг монетки.
  */
 export function CosmeticPreview({
   item,
@@ -41,14 +41,7 @@ export function CosmeticPreview({
 }) {
   if (item.kind === 'skin') {
     if (still) return <HeroThumb skinId={item.id} height={size} className="cat-still" />;
-    return (
-      <div className="relative flex items-end gap-1" style={{ height: size }}>
-        <HeroFigure skinId={item.id} height={size} />
-        <div className="mb-[12%]">
-          <TapPreview skinId={item.id} size={Math.round(size * 0.42)} />
-        </div>
-      </div>
-    );
+    return <HeroFigure skinId={item.id} height={size} />;
   }
   const kind = EFFECT_PARTICLE[item.id] ?? 'coin';
   const r = size * 0.36;
