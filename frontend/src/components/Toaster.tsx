@@ -27,7 +27,7 @@ export function Toaster() {
             exit={{ opacity: 0, y: -16, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 520, damping: 34 }}
             onClick={() => dismiss(t.id)}
-            className={`pointer-events-auto flex max-w-[360px] items-center gap-2 rounded-2xl border border-line px-4 py-2.5 text-sm font-bold shadow-card backdrop-blur ${STYLE[t.kind]}`}
+            className={`pointer-events-auto flex max-w-[360px] items-center gap-2 rounded-2xl border border-line px-4 py-2.5 text-sm font-bold shadow-card ${STYLE[t.kind]}`}
             data-testid={`toast-${t.kind}`}
           >
             {t.kind === 'reward' && <CoinIcon size={18} />}

@@ -38,7 +38,7 @@ export function BottomSheet({ open, onClose, children, testId }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end" data-testid={testId}>
           <motion.div
-            className="absolute inset-0 bg-black/55 backdrop-blur-[3px]"
+            className="absolute inset-0 bg-black/60"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -47,7 +47,7 @@ export function BottomSheet({ open, onClose, children, testId }: Props) {
           <motion.div
             role="dialog"
             aria-modal="true"
-            className="pb-safe relative mx-auto flex max-h-[calc(100%-16px)] w-full max-w-[520px] flex-col rounded-t-[32px] border-t border-line bg-night-700 px-5 pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
+            className="pb-safe relative mx-auto flex max-h-[calc(100%-16px)] w-full max-w-[520px] flex-col rounded-t-[32px] will-change-transform border-t border-line bg-night-700 px-5 pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}

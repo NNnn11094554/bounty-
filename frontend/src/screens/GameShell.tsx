@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { lazy, startTransition, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { DURATION, isReducedMotion } from '../animations';
 import { AchievementPopup } from '../components/AchievementPopup';
 import { BottomNav } from '../components/BottomNav';
@@ -62,6 +62,26 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
   }
 }
 
+/**
+ * Сдвиг строкой transform, а не x: так framer-motion отдаёт анимацию браузеру (WAAPI) и она идёт на видеокарте
+ * с частотой экрана, даже пока основной поток рисует новую вкладку.
+ */
+const shift = (px: number) => `translate3d(${px}px, 0, 0)`;
+
+/**
+ * Содержимое вкладки рисуется кадром позже и прерываемо (startTransition): сначала стартует анимация
+ * перехода, и пока React строит длинный список карточек, она не замирает.
+ */
+function Deferred({ instant, children }: { instant: boolean; children: ReactNode }) {
+  const [ready, setReady] = useState(instant);
+  useEffect(() => {
+    if (ready) return;
+    const id = requestAnimationFrame(() => startTransition(() => setReady(true)));
+    return () => cancelAnimationFrame(id);
+  }, [ready]);
+  return ready ? children : null;
+}
+
 /** Оболочка игры после входа: вкладки, экраны поверх вкладок, модалки. */
 export function GameShell() {
   const tab = useNav((s) => s.tab);
@@ -76,6 +96,8 @@ export function GameShell() {
 
   // направление слайда — по порядку вкладок в меню
   const prevTab = useRef(tab);
+  // первая вкладка после входа появляется сразу, без отложенной отрисовки
+  const firstTab = useRef(tab);
   const direction = TAB_ORDER.indexOf(tab) >= TAB_ORDER.indexOf(prevTab.current) ? 1 : -1;
   useEffect(() => {
     prevTab.current = tab;
@@ -98,11 +120,11 @@ export function GameShell() {
           <motion.div
             key={tab}
             custom={direction}
-            className="absolute inset-0"
+            className="absolute inset-0 will-change-transform"
             variants={{
-              enter: (d: number) => ({ opacity: 0, x: d * slide }),
-              center: { opacity: 1, x: 0 },
-              exit: (d: number) => ({ opacity: 0, x: -d * slide }),
+              enter: (d: number) => ({ opacity: 0, transform: shift(d * slide) }),
+              center: { opacity: 1, transform: shift(0) },
+              exit: (d: number) => ({ opacity: 0, transform: shift(-d * slide) }),
             }}
             initial="enter"
             animate="center"
@@ -110,7 +132,9 @@ export function GameShell() {
             transition={{ duration: DURATION.tabSwitch / 1000, ease: [0.22, 1, 0.36, 1] }}
           >
             <Suspense fallback={null}>
-              <TabView tab={tab} open={push} />
+              <Deferred instant={reduced || tab === firstTab.current}>
+                <TabView tab={tab} open={push} />
+              </Deferred>
             </Suspense>
           </motion.div>
         </AnimatePresence>
@@ -118,15 +142,17 @@ export function GameShell() {
           {top && (
             <motion.div
               key={top}
-              className="bg-space absolute inset-0 z-20"
+              className="bg-space absolute inset-0 z-20 will-change-transform"
               data-subscreen={top}
-              initial={{ opacity: 0, x: slide }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: slide }}
+              initial={{ opacity: 0, transform: shift(slide) }}
+              animate={{ opacity: 1, transform: shift(0) }}
+              exit={{ opacity: 0, transform: shift(slide) }}
               transition={{ duration: DURATION.tabSwitch / 1000, ease: [0.22, 1, 0.36, 1] }}
             >
               <Suspense fallback={null}>
-                <SubScreenView screen={top} />
+                <Deferred instant={reduced}>
+                  <SubScreenView screen={top} />
+                </Deferred>
               </Suspense>
             </motion.div>
           )}

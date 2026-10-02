@@ -14,6 +14,9 @@ export const DURATION = {
   coinFlight: 700,
 } as const;
 
+/** сколько первых элементов списка появляются по очереди (остальные ниже экрана — сразу) */
+export const STAGGER_MAX = 8;
+
 export const EASING = {
   /** пружинистый возврат с лёгким перелётом */
   springOut: 'cubic-bezier(0.34, 1.56, 0.64, 1)',

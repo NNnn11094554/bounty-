@@ -81,7 +81,7 @@ export function LeagueUpScene() {
     <AnimatePresence>
       {league && (
         <motion.div
-          className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-black/85 px-6 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-black/90 px-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

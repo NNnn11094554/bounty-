@@ -1,7 +1,7 @@
 import { formatInt, formatShort, type FriendEntry } from '@meowgul/shared';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { DURATION, isReducedMotion } from '../../animations';
+import { DURATION, STAGGER_MAX, isReducedMotion } from '../../animations';
 import { Avatar } from '../../components/Avatar';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
@@ -41,9 +41,13 @@ function FriendRow({ friend, index }: { friend: FriendEntry; index: number }) {
   const color = league?.color === 'rainbow' ? '#ffc93c' : league?.color;
   return (
     <motion.li
-      initial={isReducedMotion() ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index, 12) * (DURATION.stagger / 1000), duration: 0.25 }}
+      initial={
+        isReducedMotion() || index >= STAGGER_MAX
+          ? false
+          : { opacity: 0, transform: 'translate3d(0, 10px, 0)' }
+      }
+      animate={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
+      transition={{ delay: index * (DURATION.stagger / 1000), duration: 0.25 }}
       className="flex items-center gap-3 rounded-2xl bg-night-700/80 px-3 py-2.5"
       data-testid="friend-row"
     >
