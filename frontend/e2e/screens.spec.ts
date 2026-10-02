@@ -84,4 +84,10 @@ test('capture main screens', async ({ page }) => {
   await page.getByTestId('friends-more').click();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${dir}/15-friend-bonuses.png` });
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('nav-airdrop').click();
+  await expect(page.getByTestId('wallet-card')).toBeVisible();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${dir}/16-airdrop.png` });
 });

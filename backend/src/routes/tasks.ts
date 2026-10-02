@@ -86,7 +86,7 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
       update: {},
     });
     const friends = await friendsCount(prisma, user.id);
-    return { task: taskView(task, userTask, { friends, now }) };
+    return { task: taskView(task, userTask, { friends, now, walletConnected: Boolean(user.walletAddress) }) };
   });
 
   app.post(
@@ -126,7 +126,7 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
         const friends = await friendsCount(tx, user.id);
         return {
           state: buildPlayerState(updated, now),
-          task: taskView(task, done, { friends, now }),
+          task: taskView(task, done, { friends, now, walletConnected: Boolean(user.walletAddress) }),
           reward,
         };
       });

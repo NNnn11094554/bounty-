@@ -8,6 +8,7 @@ import { nextResetAt } from '../game/dayKey.js';
 import { dailyRewardStatus } from '../game/daily.js';
 import { currentEnergy } from '../game/energy.js';
 import { toCoins } from '../lib/money.js';
+import { friendlyAddress } from './tonProof.js';
 
 export function parseSettings(raw: unknown): PlayerSettings {
   const s = (raw && typeof raw === 'object' ? raw : {}) as Partial<PlayerSettings>;
@@ -70,6 +71,10 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
     daily: dailyState(user, now),
+    wallet:
+      user.walletAddress && user.walletConnectedAt
+        ? { address: friendlyAddress(user.walletAddress), connectedAt: user.walletConnectedAt.getTime() }
+        : null,
     serverTime: now.getTime(),
     nextResetAt: nextResetAt(now).getTime(),
   };

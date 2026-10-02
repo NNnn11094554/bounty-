@@ -12,6 +12,8 @@ import type {
   TaskCheckResponse,
   TaskStartResponse,
   TasksResponse,
+  TonProofPayloadResponse,
+  WalletConnectRequest,
 } from '@meowgul/shared';
 import { api } from './client';
 
@@ -33,6 +35,9 @@ export const endpoints = {
   claimCipher: (word: string) =>
     api<CipherClaimResponse>('/api/cipher/claim', { method: 'POST', body: { word } }),
   friends: (after?: number) => api<FriendsResponse>(`/api/friends${after ? `?after=${after}` : ''}`),
+  tonProofPayload: () => api<TonProofPayloadResponse>('/api/wallet/proof-payload'),
+  connectWallet: (body: WalletConnectRequest) => api<StateResponse>('/api/wallet', { method: 'POST', body }),
+  disconnectWallet: () => api<StateResponse>('/api/wallet', { method: 'DELETE' }),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,

@@ -41,6 +41,7 @@ const state = {
     energyLimit: { level: 1, nextLevel: 2, price: 2000, maxLevel: 20, perLevel: 500 },
   },
   daily: { day: 1, claimedToday: false, streakBroken: false, streak: 0 },
+  wallet: null,
   serverTime: Date.now(),
   nextResetAt: Date.now() + 1000,
 } satisfies PlayerState;

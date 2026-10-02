@@ -6,7 +6,7 @@ import { playSound } from '../lib/sound';
 import { useNav, type Tab } from '../store/nav';
 import { haptic } from '../telegram/webapp';
 import { useGame } from '../store/game';
-import { EarnNavIcon, FriendsNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
+import { AirdropNavIcon, EarnNavIcon, FriendsNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
 
 interface TabDef {
   id: Tab;
@@ -19,6 +19,7 @@ const NAV_TABS: readonly TabDef[] = [
   { id: 'mine', label: 'nav.mine', icon: (active) => <MineNavIcon active={active} /> },
   { id: 'friends', label: 'nav.friends', icon: (active) => <FriendsNavIcon active={active} /> },
   { id: 'earn', label: 'nav.earn', icon: (active) => <EarnNavIcon active={active} /> },
+  { id: 'airdrop', label: 'nav.airdrop', icon: (active) => <AirdropNavIcon active={active} /> },
 ];
 
 /** Нижнее меню: подсветка переезжает между вкладками, активная иконка подпрыгивает. */

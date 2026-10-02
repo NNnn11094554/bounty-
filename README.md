@@ -154,3 +154,15 @@ Legendary +195K, Master +400K, Grandmaster +800K, Lord +2M; за Premium-дру�
 Все суммы — `REFERRAL` в `backend/src/game/config/rewards.ts`.
 
 `GET /api/friends?after=<id>` — ссылка, таблица бонусов, сколько всего получено и список друзей по 50.
+
+## Airdrop и кошелёк TON
+
+Вкладка Airdrop: задание «Подключи свой кошелёк TON» через TON Connect (`@tonconnect/ui-react`, грузится
+только на этой вкладке) и задания раздела `AIRDROP` из админки. Владение кошельком подтверждается
+**ton_proof**: сервер выдаёт подписанный payload на 15 минут (`GET /api/wallet/proof-payload`), кошелёк
+подписывает адрес, домен игры, время и payload, сервер сверяет адрес с `stateInit`, берёт из него публичный
+ключ (кошельки v3/v4/v5) и проверяет подпись ed25519 (`POST /api/wallet`). Домен должен совпадать с
+`WEBAPP_URL`/`CORS_ORIGINS`, в production принимается только mainnet. Один кошелёк — один игрок.
+`DELETE /api/wallet` — отключить. Манифест TON Connect отдаёт API: `GET /api/tonconnect-manifest.json`
+(название, адрес и иконка игры из `WEBAPP_URL`); другой адрес манифеста можно задать в
+`VITE_TONCONNECT_MANIFEST_URL`.

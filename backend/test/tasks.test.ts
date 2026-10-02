@@ -63,12 +63,17 @@ describe('Earn tasks', () => {
     await seedTasks();
     const tasks = await prisma.task.findMany({ orderBy: { id: 'asc' } });
     expect(tasks.map((t) => [t.id, t.isActive])).toEqual([
+      ['connect_wallet', true],
       ['invite_3', true],
       ['tg_channel', false],
     ]);
     const { c } = await player(8001);
     const list = (await c.get('/api/tasks')).json<TasksResponse>();
-    expect(list.tasks.map((t) => t.id)).toEqual(['invite_3']);
+    expect(list.tasks.map((t) => [t.id, t.section])).toEqual([
+      ['invite_3', 'LIST'],
+      ['connect_wallet', 'AIRDROP'],
+    ]);
+    expect(list.tasks.find((t) => t.id === 'connect_wallet')).toMatchObject({ status: 'new', reward: 0 });
     expect(list.tasks[0]).toMatchObject({
       status: 'new',
       reward: 25_000,

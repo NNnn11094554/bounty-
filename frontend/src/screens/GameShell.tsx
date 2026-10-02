@@ -14,6 +14,9 @@ const loadMine = () => import('./mine/MineScreen').then((m) => ({ default: m.Min
 const MineScreen = lazy(loadMine);
 const loadFriends = () => import('./friends/FriendsScreen').then((m) => ({ default: m.FriendsScreen }));
 const FriendsScreen = lazy(loadFriends);
+const AirdropScreen = lazy(() =>
+  import('./airdrop/AirdropScreen').then((m) => ({ default: m.AirdropScreen })),
+);
 const loadEarn = () => import('./earn/EarnScreen').then((m) => ({ default: m.EarnScreen }));
 const EarnScreen = lazy(loadEarn);
 const BoostsScreen = lazy(() => import('./boosts/BoostsScreen').then((m) => ({ default: m.BoostsScreen })));
@@ -42,6 +45,8 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
       return <FriendsScreen />;
     case 'earn':
       return <EarnScreen />;
+    case 'airdrop':
+      return <AirdropScreen />;
     default:
       return <OfficeTab onOpenBoosts={() => open('boosts')} onOpenLeagues={() => open('leagues')} />;
   }

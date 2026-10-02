@@ -37,12 +37,14 @@ function icon(value: string): TaskIcon {
 export interface TaskContext {
   friends: number;
   now: Date;
+  /** у игрока подключён кошелёк — задание кошелька выполнено, пока он подключён */
+  walletConnected: boolean;
 }
 
 export function taskView(task: Task, userTask: UserTask | null, ctx: TaskContext): TaskView {
-  const done = userTask?.status === 'DONE';
+  const done = task.type === 'CONNECT_WALLET' ? ctx.walletConnected : userTask?.status === 'DONE';
   const timed = task.type === 'LINK' || task.type === 'VIDEO';
-  const status = done ? 'done' : userTask ? 'started' : 'new';
+  const status = done ? 'done' : userTask && task.type !== 'CONNECT_WALLET' ? 'started' : 'new';
   return {
     id: task.id,
     type: task.type,
@@ -74,7 +76,8 @@ export async function listTasks(user: User, now: Date): Promise<TaskView[]> {
     prisma.referral.count({ where: { inviterId: user.id } }),
   ]);
   const byTask = new Map(progress.map((p) => [p.taskId, p]));
-  return tasks.map((t) => taskView(t, byTask.get(t.id) ?? null, { friends, now }));
+  const walletConnected = Boolean(user.walletAddress);
+  return tasks.map((t) => taskView(t, byTask.get(t.id) ?? null, { friends, now, walletConnected }));
 }
 
 export async function friendsCount(db: Tx | typeof prisma, userId: number): Promise<number> {

@@ -101,3 +101,31 @@ export function FriendsNavIcon({ active, size }: NavIconProps) {
     </Svg>
   );
 }
+
+/** Airdrop: посылка на парашюте. */
+export function AirdropNavIcon({ active, size }: NavIconProps) {
+  const s = stroke(active);
+  return (
+    <Svg size={size}>
+      <path
+        d="M3.5 11C3.5 6 8.2 2.5 14 2.5S24.5 6 24.5 11c-1.8-1.3-3.6-1.3-5.2 0-1.6-1.3-3.6-1.3-5.3 0-1.7-1.3-3.7-1.3-5.3 0-1.6-1.3-3.4-1.3-5.2 0z"
+        fill={active ? '#a66bff' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M4 11.5l6.5 7.5M24 11.5l-6.5 7.5M14 11v7" stroke={s} strokeWidth="1.6" />
+      <rect
+        x="9.5"
+        y="18"
+        width="9"
+        height="8"
+        rx="1.8"
+        fill={active ? '#ffc93c' : 'none'}
+        stroke={s}
+        strokeWidth="2"
+      />
+      <path d="M14 18v8" stroke={active ? '#14101f' : s} strokeWidth="1.6" />
+    </Svg>
+  );
+}

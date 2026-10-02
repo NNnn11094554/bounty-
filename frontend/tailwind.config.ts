@@ -7,6 +7,8 @@ export default {
       screens: {
         /** низкие экраны (iPhone SE и т.п.) — компактная раскладка */
         short: { raw: '(max-height: 640px)' },
+        /** узкие экраны (320–359 px) */
+        narrow: { raw: '(max-width: 359px)' },
       },
       colors: {
         night: { 900: '#14101f', 800: '#1d1530', 700: '#2a2140', 600: '#352a52', 500: '#45386a' },

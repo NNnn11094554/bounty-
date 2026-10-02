@@ -10,8 +10,9 @@ import { SplashScreen } from './screens/SplashScreen';
 import { StatusScreen } from './screens/StatusScreen';
 import { useGame } from './store/game';
 import { openLink } from './telegram/webapp';
+import { MINI_APP_URL } from './lib/links';
 
-const BOT_URL = `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'meowgul_bot'}/${import.meta.env.VITE_MINIAPP_SHORT_NAME ?? 'app'}`;
+const BOT_URL = MINI_APP_URL;
 
 function Root() {
   const status = useGame((s) => s.status);

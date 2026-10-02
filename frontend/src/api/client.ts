@@ -3,6 +3,11 @@ import { APP_VERSION } from '../lib/version';
 
 const BASE_URL: string = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
+/** Полный адрес ресурса API (для ссылок, которые открывают не через fetch: манифест TON Connect и т.п.). */
+export function apiUrl(path: string): string {
+  return new URL(`${BASE_URL}${path}`, window.location.origin).toString();
+}
+
 export type ClientErrorCode = ApiErrorCode | 'NETWORK' | 'TIMEOUT';
 
 export class ApiError extends Error {

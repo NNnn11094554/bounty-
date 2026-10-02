@@ -223,6 +223,20 @@ export const ru = {
   'friends.premium': 'Premium',
   'friends.forFriend': 'За друга',
   'task.inviteFriends': 'Пригласить друзей',
+  'airdrop.title': 'Задания Airdrop',
+  'airdrop.text': 'Листинг уже в пути. Задания появятся ниже. Выполните их, чтобы принять участие в Airdrop.',
+  'airdrop.soon': 'Новые задания появятся ближе к листингу.',
+  'wallet.connect': 'Подключить кошелёк',
+  'wallet.connected': 'Кошелёк подключён',
+  'wallet.disconnect': 'Отключить',
+  'wallet.connectedToast': 'Кошелёк подключён!',
+  'wallet.disconnectedToast': 'Кошелёк отключён',
+  'wallet.error.proof': 'Не удалось подтвердить кошелёк — подключите его ещё раз',
+  'wallet.error.conflict': 'Этот кошелёк уже привязан к другому игроку',
+  'wallet.error.noProof': 'Кошелёк не прислал подтверждение — подключите его ещё раз',
+  'wallet.error.unavailable': 'Подключение кошелька сейчас недоступно, попробуйте позже',
+  'airdrop.walletTask': 'Подключи свой кошелёк TON',
+  'airdrop.walletHint': 'Понадобится, чтобы получить токены Airdrop',
 } as const;
 
 export type MessageKey = keyof typeof ru;

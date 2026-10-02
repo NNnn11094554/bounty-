@@ -102,6 +102,8 @@ export interface PlayerState {
   totalTaps: number;
   boosts: BoostsState;
   daily: DailyRewardState;
+  /** подключённый кошелёк TON (адрес в user-friendly формате) */
+  wallet: { address: string; connectedAt: number } | null;
   /** время сервера, на которое рассчитано состояние (мс) */
   serverTime: number;
   /** следующий сброс ежедневных активностей (мс) */
@@ -195,6 +197,25 @@ export interface FriendsResponse {
     regular: number;
     premium: number;
     leagues: Array<{ level: number; regular: number; premium: number }>;
+  };
+}
+
+export interface TonProofPayloadResponse {
+  payload: string;
+  expiresAt: number;
+}
+
+/** Данные TON Connect после подключения кошелька с ton_proof. */
+export interface WalletConnectRequest {
+  address: string;
+  network: string;
+  publicKey: string;
+  proof: {
+    timestamp: number;
+    domain: { lengthBytes: number; value: string };
+    signature: string;
+    payload: string;
+    stateInit: string;
   };
 }
 

@@ -16,7 +16,7 @@
   "dependencies": {
     "@fontsource-variable/nunito": "^5.2.0",
     "@meowgul/shared": "1.0.0",
-    "@tonconnect/ui-react": "^2.3.0",
+    "@tonconnect/ui-react": "^2.4.4",
     "framer-motion": "^12.23.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -13,7 +13,10 @@ function Slot({ card, index, fresh }: { card: ComboCard | null; index: number; f
   const locale = useLocale();
   const reduced = isReducedMotion();
   return (
-    <div className="relative h-14 w-14 [perspective:400px]" data-testid={`combo-slot-${index}`}>
+    <div
+      className="relative h-14 w-14 shrink-0 [perspective:400px] narrow:h-11 narrow:w-11"
+      data-testid={`combo-slot-${index}`}
+    >
       <motion.div
         key={card?.id ?? 'empty'}
         className="absolute inset-0"
@@ -28,7 +31,7 @@ function Slot({ card, index, fresh }: { card: ComboCard | null; index: number; f
             title={card.name[locale]}
             data-card={card.id}
           >
-            <CardIcon icon={card.icon} size={56} />
+            <CardIcon icon={card.icon} size={56} className="h-full w-full" />
           </div>
         ) : (
           <div className="grid h-full w-full place-items-center rounded-[16px] border-2 border-dashed border-white/20 bg-night-600 text-2xl font-black text-white/40">
@@ -67,21 +70,21 @@ export function ComboPanel() {
       data-testid="combo"
     >
       <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-black">{t('combo.title')}</p>
+        <p className="whitespace-nowrap text-[15px] font-black">{t('combo.title')}</p>
         {combo.rewarded ? (
           <p className="text-xs font-extrabold text-lime" data-testid="combo-done">
             ✓ {t('combo.done')}
           </p>
         ) : (
-          <p className="flex items-center gap-1 text-xs font-extrabold text-gold">
-            <CoinIcon size={14} />+{formatInt(combo.reward)}
+          <p className="flex items-center gap-1 whitespace-nowrap text-xs font-extrabold text-gold">
+            <CoinIcon size={14} className="shrink-0" />+{formatInt(combo.reward)}
           </p>
         )}
         <p className="mt-0.5 truncate text-[11px] font-bold tabular text-white/45">
           {t('combo.resetIn', { time: formatDuration(Math.max(0, nextResetAt - serverNow) / 1000) })}
         </p>
       </div>
-      <div className="flex gap-1.5">
+      <div className="flex shrink-0 gap-1.5 narrow:gap-1">
         {combo.slots.map((card, i) => (
           <Slot key={i} card={card} index={i} fresh={card !== null && card.id === revealed} />
         ))}
