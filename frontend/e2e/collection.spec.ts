@@ -18,7 +18,7 @@ test.describe('Skins and collection', () => {
   }) => {
     const uid = 700001601;
     const user = await player(page, uid, 23_000, 20_000); // уровень 3
-    await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'black_crown');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'black_crown');
 
     await page.getByTestId('nav-shop').click();
     await expect(page.getByTestId('shop-skins')).toBeVisible();
@@ -42,9 +42,15 @@ test.describe('Skins and collection', () => {
     expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(1);
 
     await page.getByTestId('nav-office').click();
-    await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'pink_angel');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'pink_angel');
+    // кот и кнопка TAP — картинки этого скина, и они есть на сервере
+    await expect(page.getByTestId('hero-body')).toHaveAttribute('style', /pink_angel-body\.webp/);
+    for (const part of ['body', 'tail', 'tap', 'thumb']) {
+      const res = await page.request.get(`/assets/generated/hero/pink_angel-${part}.webp`);
+      expect(res.ok()).toBe(true);
+    }
     await page.reload();
-    await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'pink_angel');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'pink_angel');
 
     // вкладка «Коллекция»: вернуть базовый скин
     await page.getByTestId('nav-collection').click();
@@ -55,7 +61,7 @@ test.describe('Skins and collection', () => {
     await expect(page.getByTestId('cosmetic-equipped')).toBeVisible();
     await page.keyboard.press('Escape');
     await page.getByTestId('nav-office').click();
-    await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'black_crown');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'black_crown');
   });
 
   test('locked skins cannot be bought; a new level unlocks them', async ({ page }) => {
@@ -101,7 +107,7 @@ test.describe('Skins and collection', () => {
     expect([purchase.productId, purchase.status]).toEqual(['skin_diamond', 'PAID']);
     await page.keyboard.press('Escape');
     await page.getByTestId('nav-office').click();
-    await expect(page.getByTestId('cat-button')).toHaveAttribute('data-skin', 'diamond');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'diamond');
   });
 
   test('tap effects tab: buy and equip an effect', async ({ page }) => {

@@ -6,8 +6,7 @@ test.describe('Office', () => {
     await expect(page.getByTestId('office')).toBeVisible();
     await expect(page.getByTestId('energy-value')).toHaveText('1000 / 1000');
 
-    const cat = page.getByTestId('cat-button');
-    const box = (await cat.boundingBox())!;
+    const box = (await page.getByTestId('tap-button').boundingBox())!;
     for (let i = 0; i < 15; i++) {
       await page.mouse.click(box.x + box.width / 2 + (i % 5) * 6, box.y + box.height / 2 - (i % 3) * 6);
     }
@@ -30,7 +29,7 @@ test.describe('Office', () => {
       }) as typeof window.open;
     });
     await page.goto('/?uid=700000203&name=Безссылок');
-    const cat = page.getByTestId('cat-button');
+    const cat = page.getByTestId('hero');
     await expect(cat).toBeVisible();
     // в зоне тапа нет <img> и ссылок — WebView не покажет меню картинки «Открыть/Сохранить»
     await expect(cat.locator('img, a')).toHaveCount(0);
@@ -75,7 +74,7 @@ test.describe('Office', () => {
       }).observe({ type: 'longtask', buffered: false });
     });
     await page.goto('/?uid=700000204&name=Скорострел');
-    const cat = page.getByTestId('cat-button');
+    const cat = page.getByTestId('hero');
     await expect(cat).toBeVisible();
     await page.waitForTimeout(1500); // стартовая загрузка экранов не в счёт
     await page.evaluate(() => ((window as unknown as { __long: number[] }).__long = []));

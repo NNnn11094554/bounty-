@@ -7,7 +7,7 @@ test('main flow: login, tap, buy a card, claim the daily reward, invite a friend
   await page.goto(`/?uid=${uid}&name=Игрок`);
   await expect(page.getByTestId('office')).toBeVisible();
 
-  const cat = (await page.getByTestId('cat-button').boundingBox())!;
+  const cat = (await page.getByTestId('tap-button').boundingBox())!;
   for (let i = 0; i < 10; i++) await page.mouse.click(cat.x + cat.width / 2, cat.y + cat.height / 2);
   await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '10');
   await page.waitForResponse((r) => r.url().includes('/api/tap') && r.ok(), { timeout: 8000 });

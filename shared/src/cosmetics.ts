@@ -64,8 +64,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     null,
     ['Чёрный Король', 'Black Crown Cat'],
     [
-      'С него всё началось: чёрный кот с короной и холодным взглядом трейдера.',
-      'Where it all began: a black cat with a crown and a trader’s cold stare.',
+      'Стритвир, наушники с короной и синий неон. С него всё началось.',
+      'Streetwear, crown headphones and blue neon. Where it all began.',
     ],
   ),
   skin(
@@ -75,8 +75,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(10_000),
     ['Розовый Ангел', 'Pink Angel Cat'],
     [
-      'Нимб, крылышки и розовый неон. Милый — но за свой баланс порвёт.',
-      'Halo, tiny wings and pink neon. Cute — until you touch the balance.',
+      'Пастельно-розовый неон и сердечки вокруг. Милый — но за свой баланс порвёт.',
+      'Pastel pink neon and hearts around. Cute — until you touch the balance.',
     ],
   ),
   skin(
@@ -86,8 +86,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(75_000),
     ['Кибер-кот', 'Cyber Cat'],
     [
-      'Электрический синий, светодиоды и взгляд из 2077 года.',
-      'Electric blue, LEDs and a stare straight from 2077.',
+      'Бирюзовый электрический неон на всём костюме и взгляд из 2077 года.',
+      'Turquoise electric neon all over the outfit and a stare from 2077.',
     ],
   ),
   skin(
@@ -97,8 +97,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(400_000),
     ['Крипто-Король', 'Crypto King Cat'],
     [
-      'Золотая корона, золотая аура и ни одной продажи на дне.',
-      'Gold crown, gold aura and not a single sale at the bottom.',
+      'Оранжевый неон цвета биткоина, золотые логотипы и монеты вокруг.',
+      'Bitcoin-orange neon, golden logos and coins all around.',
     ],
   ),
   skin(
@@ -108,8 +108,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(1_000_000),
     ['Кот-самурай', 'Samurai Cat'],
     [
-      'Чёрно-красные доспехи и катана. Путь холдера — путь воина.',
-      'Black and red armour and a katana. The holder’s way is the warrior’s way.',
+      'Алый неон и лепестки сакуры. Путь холдера — путь воина.',
+      'Crimson neon and sakura petals. The holder’s way is the warrior’s way.',
     ],
   ),
   skin(
@@ -119,8 +119,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(2_000_000),
     ['Неоновый Токио', 'Neon Tokyo Cat'],
     [
-      'Наушники, стритвир и розово-фиолетовые огни ночного Токио.',
-      'Headphones, streetwear and the pink-violet lights of Tokyo at night.',
+      'Пурпурно-розовые огни ночного Токио и ноты в воздухе.',
+      'The magenta-pink lights of Tokyo at night and music in the air.',
     ],
   ),
   skin(
@@ -130,8 +130,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(4_000_000),
     ['Тень', 'Shadow Cat'],
     [
-      'Почти невидим в темноте — выдают только светящиеся глаза.',
-      'Nearly invisible in the dark — only the glowing eyes give it away.',
+      'Почти чёрный: приглушённый фиолетовый свет, тёмные логотипы и дымка вокруг.',
+      'Almost black: dim violet light, dark logos and smoke around.',
     ],
   ),
   skin(
@@ -141,8 +141,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(10_000_000),
     ['Галактический кот', 'Galaxy Cat'],
     [
-      'Звёзды, туманности и космический взгляд сквозь графики.',
-      'Stars, nebulae and a cosmic gaze through the charts.',
+      'Индиго и фиолет переливаются снизу вверх, вокруг — звёзды.',
+      'Indigo flowing into violet from boots to ears, with stars around.',
     ],
   ),
   skin(
@@ -152,8 +152,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(25_000_000),
     ['Золотой Босс', 'Golden Boss Cat'],
     [
-      'Огромная корона и золотое сияние. Здесь главный — он.',
-      'A massive crown and a golden glow. This is the boss.',
+      'Золотой неон, золотые логотипы и подошвы. Здесь главный — он.',
+      'Gold neon, golden logos and soles. This is the boss.',
     ],
   ),
   skin(
@@ -163,8 +163,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     coins(50_000_000),
     ['Кот-хакер', 'Hacker Cat'],
     [
-      'Зелёный терминал, бегущий код и root-доступ к рынку.',
-      'A green terminal, running code and root access to the market.',
+      'Зелёный неон терминала и бегущий код вокруг. Root-доступ к рынку.',
+      'Terminal-green neon and running code around. Root access to the market.',
     ],
   ),
   skin(
@@ -173,10 +173,7 @@ export const COSMETICS: readonly CosmeticDef[] = [
     1,
     stars(149),
     ['Бриллиантовый кот', 'Diamond Cat'],
-    [
-      'Чёрное и белое, бриллианты и сине-фиолетовое сияние.',
-      'Black and white, diamonds and a blue-violet glow.',
-    ],
+    ['Ледяной бело-голубой неон и бриллиантовые искры.', 'Icy white-blue neon and diamond sparkles.'],
   ),
   skin(
     'queen',
@@ -185,8 +182,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     stars(249),
     ['Королева', 'Queen Cat'],
     [
-      'Розово-чёрная королева: большая корона, сердечки и особая анимация.',
-      'The pink-and-black queen: a big crown, hearts and a special animation.',
+      'Розово-алый неон, золотые короны на одежде, сердечки и особая анимация.',
+      'Rose-red neon, golden crowns on the outfit, hearts and a special animation.',
     ],
   ),
   skin(
@@ -196,8 +193,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     stars(399),
     ['Легендарная Корона', 'Legendary Crown Cat'],
     [
-      'Тактический чёрный, неоновые акценты, корона, премиальная аура и свои реакции на тап.',
-      'Tactical black, neon accents, a crown, a premium aura and its own tap reactions.',
+      'Неон переливается от синего к розовому, премиальная аура и двойная волна на каждый тап.',
+      'Neon flowing from blue to pink, a premium aura and a double wave on every tap.',
     ],
   ),
   effect(

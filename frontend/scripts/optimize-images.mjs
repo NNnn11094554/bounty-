@@ -1,37 +1,21 @@
-// Готовит изображения персонажа: WebP 512/1024, PNG-фолбэк, иконки и OG-картинку.
-// Оригинал public/assets/character.png используется как есть — только масштабирование и сжатие.
+// Готовит изображения персонажа: слои и скины (scripts/hero), портрет для иконок, WebP-размеры,
+// иконки приложения и сцену для превью ссылок и приветствия бота.
+// Исходник — assets-src/hero.png (кот и кнопка TAP на «шахматке»), всё остальное собирается из него.
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { buildHero, HERO_PORTRAIT } from './hero/build.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const assets = path.join(root, 'public', 'assets');
-const out = path.join(assets, 'generated');
-const source = path.join(assets, 'character.png');
+const out = path.join(root, 'public', 'assets', 'generated');
 mkdirSync(out, { recursive: true });
 
-const SIZE = 1254;
-let input = source;
-if (!existsSync(source)) {
-  // Временная заглушка-круг того же размера, пока не положили character.png (см. README)
-  console.warn('[assets] public/assets/character.png не найден — использую заглушку');
-  input = await sharp({
-    create: { width: SIZE, height: SIZE, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-  })
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="${SIZE}" height="${SIZE}"><circle cx="${SIZE / 2}" cy="${SIZE / 2}" r="${SIZE / 2}" fill="#2a2140"/></svg>`,
-        ),
-      },
-    ])
-    .png()
-    .toBuffer();
-}
-
-const srcMtime = existsSync(source) ? statSync(source).mtimeMs : 0;
-const fresh = (file) => existsSync(file) && statSync(file).mtimeMs >= srcMtime && srcMtime > 0;
+const hero = await buildHero(out);
+// портрет (голова и плечи кота на тёмно-синем фоне) — источник иконок, аватаров и экрана загрузки
+const input = hero.portrait;
+const srcMtime = statSync(HERO_PORTRAIT).mtimeMs;
+const fresh = (file) => existsSync(file) && statSync(file).mtimeMs >= srcMtime;
 
 const jobs = [
   ['character-512.webp', (s) => s.resize(512, 512).webp({ quality: 86, effort: 5 })],
@@ -43,7 +27,7 @@ const jobs = [
   ['favicon-64.png', (s) => s.resize(64, 64).png()],
 ];
 
-let made = 0;
+let made = hero.made;
 for (const [name, transform] of jobs) {
   const file = path.join(out, name);
   if (fresh(file)) continue;
@@ -125,7 +109,7 @@ async function spaceScene(w, h, { cta }) {
         <feColorMatrix type="matrix" values="0 0 0 0 0.62  0 0 0 0 0.71  0 0 0 0 0.92  3 0 0 0 -1.75"/>
       </filter>
       <radialGradient id="halo"><stop offset="0" stop-color="#fff" stop-opacity="0.95"/><stop offset="0.25" stop-color="#cfe0ff" stop-opacity="0.45"/><stop offset="1" stop-color="#8fb0ff" stop-opacity="0"/></radialGradient>
-      <radialGradient id="glow"><stop offset="0.6" stop-color="#ffc93c" stop-opacity="0.35"/><stop offset="1" stop-color="#ffc93c" stop-opacity="0"/></radialGradient>
+      <radialGradient id="glow"><stop offset="0" stop-color="#2f6bff" stop-opacity="0.45"/><stop offset="1" stop-color="#2f6bff" stop-opacity="0"/></radialGradient>
       <linearGradient id="cta" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset="1" stop-color="#ff5f6d"/></linearGradient>
       ${rays}
     </defs>
@@ -135,8 +119,7 @@ async function spaceScene(w, h, { cta }) {
       <rect width="${w}" height="${h}" filter="url(#core)" opacity="0.55"/>
     </g>
     ${stars}${sparkles}
-    <circle cx="${cx}" cy="${cy}" r="${R * 1.22}" fill="url(#glow)"/>
-    <circle cx="${cx}" cy="${cy}" r="${R + 7 * s}" fill="#05060f" stroke="#ffc93c" stroke-width="${Math.round(12 * s)}"/>
+    <circle cx="${cx}" cy="${cy}" r="${R * 1.3}" fill="url(#glow)"/>
     <text x="${tx}" y="${Math.round(h * (cta ? 0.42 : 0.5))}" font-family="${font}" font-size="${Math.round(100 * s)}" font-weight="bold" fill="#ffffff">Meowgul</text>
     <text x="${tx + 4 * s}" y="${Math.round(h * (cta ? 0.52 : 0.6))}" font-family="${font}" font-size="${Math.round(34 * s)}" font-weight="bold" fill="#ffc93c">Tap · Build · Earn PAW</text>
     ${
@@ -146,21 +129,26 @@ async function spaceScene(w, h, { cta }) {
         : ''
     }
   </svg>`;
-  // кот как есть: только масштаб и круглая маска (оригинал уже круглый)
-  const size = R * 2;
-  const cat = await sharp(input)
-    .resize(size, size)
-    .composite([
-      {
-        input: Buffer.from(
-          `<svg width="${size}" height="${size}"><circle cx="${R}" cy="${R}" r="${R}" fill="#fff"/></svg>`,
-        ),
-        blend: 'dest-in',
-      },
-    ])
+  // кот в полный рост и кнопка TAP (слои скина по умолчанию: хвост под телом)
+  const catH = Math.round(h * 0.94);
+  const bodyFile = path.join(out, 'hero', 'black_crown-body.webp');
+  const tailFile = path.join(out, 'hero', 'black_crown-tail.webp');
+  const catImg = await sharp(tailFile)
+    .composite([{ input: bodyFile }])
+    .png()
+    .toBuffer()
+    .then((b) => sharp(b).resize(null, catH).png().toBuffer());
+  const catW = (await sharp(catImg).metadata()).width ?? 0;
+  const tapW = Math.round(h * 0.34);
+  const tapImg = await sharp(path.join(out, 'hero', 'black_crown-tap.webp'))
+    .resize(tapW)
     .png()
     .toBuffer();
-  return sharp(Buffer.from(svg)).composite([{ input: cat, left: cx - R, top: cy - R }]);
+  const catLeft = Math.round(cx - catW * 0.62);
+  return sharp(Buffer.from(svg)).composite([
+    { input: catImg, left: Math.max(0, catLeft), top: h - catH },
+    { input: tapImg, left: Math.round(cx + catW * 0.2), top: Math.round(h * 0.56) },
+  ]);
 }
 
 // Open Graph 1200×630 (превью ссылки на игру)

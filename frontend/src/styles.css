@@ -224,96 +224,282 @@ textarea {
   line-height: 1.2em;
 }
 
-/* Кнопка с котом: кольцо и ореол в цветах скина (--ring-a/--ring-b/--glow задаёт CatVisual) */
-.cat-ring {
-  background: linear-gradient(135deg, var(--ring-a), var(--ring-b));
-  box-shadow:
-    0 0 26px 4px color-mix(in srgb, var(--glow) 65%, transparent),
-    inset 0 0 18px color-mix(in srgb, var(--glow) 45%, transparent);
-  transition: box-shadow 0.4s ease;
-}
-.cat-ring-rainbow {
-  background: conic-gradient(
-    #cd7f32,
-    #c0c7d1,
-    #ffc93c,
-    #7fe3ff,
-    #4f9dff,
-    #a66bff,
-    #ff4fa3,
-    #ff5f3d,
-    #2ed39a,
-    #cd7f32
-  );
-  animation: ring-spin 6s linear infinite;
-  box-shadow: 0 0 32px 6px rgba(255, 201, 60, 0.45);
-}
-@keyframes ring-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.cat-glow {
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--glow) 36%, transparent) 0%,
-    color-mix(in srgb, var(--glow2) 14%, transparent) 42%,
-    transparent 64%
-  );
-}
-.cat-glow,
-.cat-ring {
-  transition:
-    opacity 0.5s ease,
-    box-shadow 0.4s ease;
-}
-.cat-zzz,
-.cat-tired {
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-/* усталый кот: картинка не перекрашивается — только покачивание целиком и приглушённое кольцо */
-/* кот: только тап — без системного меню, выделения, подсветки и жестов браузера */
-.cat-button,
-.cat-button * {
+/* ── Персонаж: кот в полный рост и кнопка TAP ──────────────────────────────── */
+/* тап — только игровое действие: без системного меню, выделения, подсветки и жестов браузера */
+.hero-stage,
+.hero-stage * {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-.cat-hit {
+.hero-hit {
   touch-action: none;
   cursor: pointer;
 }
-
-.cat-button[data-sleepy='true'] .cat-img {
-  animation: cat-doze 3.2s ease-in-out infinite;
+.hero-layer {
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
 }
-.cat-button[data-sleepy='true'] .cat-ring,
-.cat-button[data-sleepy='true'] .cat-glow {
-  opacity: 0.45;
+.hero-thumb .hero-layer {
+  background-size: contain;
+  background-position: center bottom;
 }
-@keyframes cat-doze {
+.hero-bust {
+  background-size: 205% auto;
+  background-position: 62% 1%;
+  background-repeat: no-repeat;
+  background-color: #0e1640;
+}
+/* дыхание и лёгкое покачивание — от ступней, только transform */
+.hero-lean,
+.hero-bounce,
+.hero-idle {
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.hero-idle {
+  animation: hero-breathe 3.6s ease-in-out infinite;
+}
+@keyframes hero-breathe {
   0%,
   100% {
-    transform: rotate(-2.5deg) translateY(1%);
+    transform: scale(1, 1) rotate(0deg);
   }
   50% {
-    transform: rotate(2.5deg) translateY(-1%);
+    transform: scale(1.005, 1.014) rotate(-0.6deg);
   }
 }
-.cat-button[data-sleepy='true'] .cat-zzz {
+.hero-idle.hero-dance {
+  animation: hero-dance 0.32s ease-in-out infinite;
+}
+@keyframes hero-dance {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg) translateY(-1%);
+  }
+}
+/* хвост качается вокруг точки, где уходит за штанину */
+.hero-tail {
+  animation: hero-wag 2.6s ease-in-out infinite;
+}
+@keyframes hero-wag {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(3.5deg);
+  }
+}
+[data-mood='excited'] .hero-tail {
+  animation-duration: 0.9s;
+}
+[data-mood='sleepy'] .hero-tail {
+  animation-duration: 5.5s;
+}
+[data-mood='sleepy'] .hero-idle {
+  animation: hero-snooze 6s ease-in-out infinite;
+}
+@keyframes hero-snooze {
+  0%,
+  100% {
+    transform: scale(1, 0.995) rotate(0.4deg);
+  }
+  50% {
+    transform: scale(1.004, 1.01) rotate(-0.6deg);
+  }
+}
+/* веки: закрываются сверху вниз (моргание, подмигивание, сон) */
+.hero-lid {
+  fill: #15121c;
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+}
+.hero-lash {
+  fill: none;
+  stroke: #6e6788;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+}
+[data-mood='sleepy'] .hero-lid {
+  transform: scaleY(1);
+  transition: transform 0.6s ease;
+}
+[data-mood='sleepy'] .hero-lash {
+  opacity: 0.9;
+  transition: opacity 0.6s ease;
+}
+.hero-stage[data-sleepy='true']:not([data-mood='sleepy']) .hero-lid {
+  transform: scaleY(0.5);
+  transition: transform 0.5s ease;
+}
+/* аура и свет на полу в цвете скина */
+.hero-aura {
+  left: -25%;
+  right: -25%;
+  top: 2%;
+  height: 72%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 38%, transparent),
+    color-mix(in srgb, var(--accent2) 12%, transparent) 55%,
+    transparent
+  );
+  opacity: 0.55;
+}
+.rarity-rare .hero-aura {
+  opacity: 0.8;
+}
+.rarity-epic .hero-aura {
+  animation: aura-pulse 3.2s ease-in-out infinite;
+}
+.rarity-legendary .hero-aura,
+.rarity-mythic .hero-aura {
+  animation: aura-pulse 2.4s ease-in-out infinite;
+}
+@keyframes aura-pulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+.hero-floor {
+  left: 4%;
+  right: 4%;
+  bottom: -3%;
+  height: 8%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    color-mix(in srgb, var(--accent) 12%, transparent) 60%,
+    transparent
+  );
+}
+/* огоньки: наушники и кроссовки */
+.hero-led {
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent2) 85%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 45%, transparent) 38%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  animation: led-pulse 2.2s ease-in-out infinite;
+}
+@keyframes led-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+[data-mood='sleepy'] .hero-led {
+  animation-duration: 4.5s;
+}
+/* частицы скина, поднимающиеся вокруг кота */
+.hero-drift {
+  position: absolute;
+  opacity: 0;
+  animation: hero-drift 3.8s ease-in-out infinite;
+}
+@keyframes hero-drift {
+  0% {
+    transform: translateY(12px) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-46px) scale(1);
+    opacity: 0;
+  }
+}
+/* кнопка TAP: дышащий ореол, светящаяся лапка, вжатие от тапа */
+.tap-press {
+  will-change: transform;
+}
+.tap-halo {
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 45%, transparent),
+    transparent 75%
+  );
+  opacity: 0.55;
+  animation: tap-breathe 2.4s ease-in-out infinite;
+}
+@keyframes tap-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04);
+  }
+}
+.tap-paw {
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent2) 55%, transparent), transparent 65%);
+  mix-blend-mode: screen;
+  animation: led-pulse 1.8s ease-in-out infinite;
+}
+.hero-stage[data-sleepy='true'] .hero-tap {
+  filter: saturate(0.35) brightness(0.8);
+  transition: filter 0.4s ease;
+}
+.hero-stage[data-sleepy='true'] .tap-halo,
+.hero-stage[data-sleepy='true'] .tap-paw {
+  animation: none;
+  opacity: 0.15;
+}
+.hero-stage[data-turbo='true'] .tap-halo {
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 138, 61, 0.85),
+    rgba(255, 95, 109, 0.35) 55%,
+    transparent 75%
+  );
+  animation-duration: 0.9s;
+}
+.hero-stage[data-turbo='true'] .hero-aura {
+  background: radial-gradient(closest-side, rgba(255, 138, 61, 0.5), transparent);
+}
+.hero-zzz,
+.hero-tired {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.hero-stage[data-mood='sleepy'] .hero-zzz {
   opacity: 1;
   animation: zzz 2.4s ease-in-out infinite;
 }
-.cat-button[data-sleepy='true'] .cat-tired {
+.hero-stage[data-sleepy='true'] .hero-tired {
   opacity: 1;
-}
-.cat-button[data-turbo='true'] .cat-ring {
-  box-shadow:
-    0 0 0 4px #ff8a3d,
-    0 0 40px 10px rgba(255, 95, 109, 0.75),
-    inset 0 0 24px rgba(255, 138, 61, 0.6);
 }
 @keyframes zzz {
   0%,
@@ -326,17 +512,10 @@ textarea {
     opacity: 1;
   }
 }
-@keyframes cat-dance {
-  0%,
-  100% {
-    transform: rotate(-3deg);
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
   }
-  50% {
-    transform: rotate(3deg);
-  }
-}
-.cat-dance {
-  animation: cat-dance 0.32s ease-in-out infinite;
 }
 .tap-float {
   position: absolute;
@@ -357,7 +536,7 @@ textarea {
   width: 72px;
   height: 72px;
   border-radius: 9999px;
-  border: 3px solid color-mix(in srgb, var(--glow, #ffc93c) 85%, transparent);
+  border: 3px solid color-mix(in srgb, var(--accent, #ffc93c) 85%, transparent);
   will-change: transform, opacity;
 }
 .tap-coin {
@@ -416,85 +595,6 @@ textarea {
   );
   background-size: 200% 100%;
   animation: skeleton-shine 1.3s linear infinite;
-}
-
-/* ── Живой кот ───────────────────────────────────────────────────────────── */
-/* Ореол по редкости: COMMON — просто, RARE — свечение, EPIC — пульс, LEGENDARY/MYTHIC — вращающаяся аура */
-.rarity-common .cat-aura {
-  opacity: 0.55;
-}
-.rarity-rare .cat-aura {
-  opacity: 0.9;
-}
-.rarity-epic .cat-aura {
-  animation: aura-pulse 3.2s ease-in-out infinite;
-}
-.rarity-legendary .cat-aura,
-.rarity-mythic .cat-aura {
-  animation: aura-pulse 2.4s ease-in-out infinite;
-}
-@keyframes aura-pulse {
-  0%,
-  100% {
-    transform: scale(0.96);
-    opacity: 0.75;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 1;
-  }
-}
-.cat-aura-conic {
-  background: conic-gradient(
-    from 0deg,
-    transparent,
-    var(--glow) 10%,
-    transparent 26%,
-    var(--glow2) 52%,
-    transparent 70%,
-    var(--glow) 88%,
-    transparent
-  );
-  -webkit-mask: radial-gradient(circle, transparent 55%, #000 57%, #000 63%, transparent 69%);
-  mask: radial-gradient(circle, transparent 55%, #000 57%, #000 63%, transparent 69%);
-  animation: ring-spin 9s linear infinite;
-  opacity: 0.7;
-}
-.rarity-mythic .cat-aura-conic {
-  animation-duration: 5s;
-  opacity: 0.95;
-}
-
-/* Дыхание и лёгкое парение — только transform, на видеокарте */
-.cat-idle {
-  animation: cat-float 4.6s ease-in-out infinite;
-}
-@keyframes cat-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(0, -2.2%, 0) scale(1.015);
-  }
-}
-.cat-button[data-mood='sleepy'] .cat-idle {
-  animation: cat-snooze 6.5s ease-in-out infinite;
-}
-@keyframes cat-snooze {
-  0%,
-  100% {
-    transform: translate3d(0, 1.5%, 0) rotate(-1.5deg) scale(0.995);
-  }
-  50% {
-    transform: translate3d(0, 2.5%, 0) rotate(1deg) scale(1.01);
-  }
-}
-.cat-button[data-mood='excited'] .cat-idle {
-  animation-duration: 1.6s;
-}
-.cat-gaze {
-  will-change: transform;
 }
 
 /* Частицы вокруг кота */
@@ -586,11 +686,9 @@ textarea {
   opacity: 0;
 }
 
-/* Облачко эмоции рядом с котом (не на лице) */
+/* Облачко эмоции у головы кота (не на лице); место задаёт сцена */
 .cat-bubble {
   position: absolute;
-  right: -2%;
-  top: 4%;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -619,35 +717,16 @@ textarea {
   line-height: 1;
 }
 
-/* Аксессуары: светодиоды и курсор терминала */
-.cat-acc {
-  transform-origin: 50% 100%;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
-}
-.acc-neonCrown,
-.acc-antenna,
-.acc-headphones {
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--glow) 80%, transparent));
-}
-.acc-led {
-  animation: orbit-twinkle 1.8s ease-in-out infinite;
-}
-.acc-blink {
-  animation: acc-blink 1s steps(1) infinite;
-}
-@keyframes acc-blink {
-  50% {
-    opacity: 0;
-  }
-}
-
-/* Упрощённые анимации: кот неподвижен, без кружащих частиц */
-[data-motion='reduced'] .cat-idle,
-[data-motion='reduced'] .cat-aura,
-[data-motion='reduced'] .cat-aura-conic,
+/* Упрощённые анимации: кот и кнопка неподвижны, без парящих частиц */
+[data-motion='reduced'] .hero-idle,
+[data-motion='reduced'] .hero-tail,
+[data-motion='reduced'] .hero-led,
+[data-motion='reduced'] .hero-aura,
+[data-motion='reduced'] .hero-drift,
+[data-motion='reduced'] .tap-halo,
+[data-motion='reduced'] .tap-paw,
 [data-motion='reduced'] .cat-orbit,
-[data-motion='reduced'] .orbit-pt,
-[data-motion='reduced'] .acc-led {
+[data-motion='reduced'] .orbit-pt {
   animation: none !important;
 }
 

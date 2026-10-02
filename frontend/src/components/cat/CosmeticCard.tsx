@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { EFFECT_PARTICLE, RARITY_COLOR } from '../../game/skins';
 import { useLocale, useT, type MessageKey } from '../../i18n';
 import { CoinIcon, StarIcon } from '../icons';
-import { CatVisual } from './CatVisual';
+import { HeroFigure, HeroThumb, TapPreview } from '../hero/HeroFigure';
 
 /** Рамка по редкости: COMMON — простая, RARE — свечение, EPIC — пульс, LEGENDARY — бегущая полоса, MYTHIC — + блик. */
 export function RarityFrame({
@@ -26,7 +26,10 @@ export function RarityFrame({
   );
 }
 
-/** Картинка предмета: кот в скине или частица эффекта тапа вокруг монетки. */
+/**
+ * Картинка предмета: кот в скине (в сетке — одной картинкой, в окне предмета — живой, с кнопкой TAP
+ * этого скина) или частица эффекта тапа вокруг монетки.
+ */
 export function CosmeticPreview({
   item,
   size,
@@ -37,9 +40,13 @@ export function CosmeticPreview({
   still?: boolean;
 }) {
   if (item.kind === 'skin') {
+    if (still) return <HeroThumb skinId={item.id} height={size} className="cat-still" />;
     return (
-      <div className={`relative ${still ? 'cat-still' : ''}`} style={{ width: size, height: size }}>
-        <CatVisual size={size} skinId={item.id} />
+      <div className="relative flex items-end gap-1" style={{ height: size }}>
+        <HeroFigure skinId={item.id} height={size} />
+        <div className="mb-[12%]">
+          <TapPreview skinId={item.id} size={Math.round(size * 0.42)} />
+        </div>
       </div>
     );
   }
@@ -123,7 +130,7 @@ export function CosmeticCard({ item, owned, equipped, level, onOpen }: Props) {
       <RarityFrame rarity={item.rarity}>
         <div className="flex flex-col items-center px-2 pb-2.5 pt-4">
           <div className={locked ? 'opacity-45' : ''}>
-            <CosmeticPreview item={item} size={item.kind === 'skin' ? 92 : 84} still />
+            <CosmeticPreview item={item} size={item.kind === 'skin' ? 118 : 84} still />
           </div>
           <p className="mt-3 w-full truncate text-center text-[14px] font-extrabold">{item.name[locale]}</p>
           <p

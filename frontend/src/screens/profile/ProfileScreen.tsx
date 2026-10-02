@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { CardIcon } from '../../components/cards/CardIcon';
-import { CatVisual } from '../../components/cat/CatVisual';
+import { HeroBust } from '../../components/hero/HeroFigure';
 import { CupIcon, GearIcon } from '../../components/icons';
 import { LeagueAvatar } from '../../components/LeagueAvatar';
 import { leagueAt } from '../../game/leagues';
@@ -133,9 +133,7 @@ export function ProfileScreen() {
         className="mt-3 flex w-full items-center gap-3 rounded-[22px] border border-[#ff4fd8]/30 bg-gradient-to-br from-[#ff4fd8]/12 to-night-700 p-3 text-left shadow-card"
         data-testid="profile-level"
       >
-        <span className="cat-still relative h-14 w-14 shrink-0">
-          <CatVisual size={56} skinId={player.cosmetics.skin} />
-        </span>
+        <HeroBust skinId={player.cosmetics.skin} size={56} className="shrink-0 rounded-2xl" />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline justify-between gap-2">
             <span className="text-[17px] font-black" data-testid="profile-level-value">

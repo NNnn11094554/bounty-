@@ -1,0 +1,140 @@
+// Сборка персонажа из assets-src/hero.png: вырезка из «шахматки», слои (тело и хвост), скины-перекраски,
+// кнопка TAP каждого скина и квадратный портрет для иконок, аватаров и превью ссылок.
+import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
+import { bbox, cutout, SPLIT_X } from './cutout.mjs';
+import { splitTail, TAIL_PIVOT } from './layers.mjs';
+import { recolor, SKIN_RECOLORS } from './recolor.mjs';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, '..', '..');
+export const HERO_SOURCE = path.join(root, 'assets-src', 'hero.png');
+const LAYOUT = path.join(root, 'src', 'game', 'heroLayout.json');
+export const HERO_PORTRAIT = path.join(root, '.cache', 'hero-portrait.png');
+
+/** высота слоёв главного экрана и превью, ширина кнопки TAP */
+const BODY_H = 1024;
+const THUMB_H = 384;
+const TAP_W = 512;
+
+const webp = (s, q = 86) => s.webp({ quality: q, alphaQuality: 90, effort: 5 });
+
+/** Пора ли пересобирать: исходник или скрипты новее результата. */
+function stale(file) {
+  if (!existsSync(file)) return true;
+  const t = statSync(file).mtimeMs;
+  const deps = [
+    HERO_SOURCE,
+    LAYOUT,
+    ...['build.mjs', 'cutout.mjs', 'layers.mjs', 'recolor.mjs'].map((f) => path.join(here, f)),
+  ];
+  return deps.some((d) => statSync(d).mtimeMs > t);
+}
+
+function crop(rgba, W, box, keep) {
+  const out = Buffer.alloc(box.width * box.height * 4);
+  for (let y = 0; y < box.height; y++) {
+    for (let x = 0; x < box.width; x++) {
+      const sx = box.left + x;
+      if (!keep(sx)) continue;
+      const si = ((box.top + y) * W + sx) * 4;
+      rgba.copy(out, (y * box.width + x) * 4, si, si + 4);
+    }
+  }
+  return out;
+}
+
+const raw = (buf, box) => sharp(buf, { raw: { width: box.width, height: box.height, channels: 4 } });
+
+/**
+ * @param {string} outDir  public/assets/generated
+ * @returns {Promise<{ made: number, portrait: Buffer }>} портрет 1254×1254 — исходник для иконок
+ */
+export async function buildHero(outDir) {
+  const dir = path.join(outDir, 'hero');
+  mkdirSync(dir, { recursive: true });
+  const layout = JSON.parse(readFileSync(LAYOUT, 'utf8'));
+  // портрет нужен только для сборки иконок — кладём в кэш, а не в public (не уходит в деплой)
+  mkdirSync(path.join(root, '.cache'), { recursive: true });
+  const portraitFile = HERO_PORTRAIT;
+  const ids = Object.keys(SKIN_RECOLORS);
+  const files = ids.flatMap((id) =>
+    ['body', 'tail', 'thumb', 'tap'].map((k) => path.join(dir, `${id}-${k}.webp`)),
+  );
+  if (![portraitFile, ...files].some(stale)) return { made: 0, portrait: readFileSync(portraitFile) };
+
+  const { data, info } = await sharp(HERO_SOURCE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width;
+  const H = info.height;
+  const rgba = cutout(data, W, H);
+  const catBox = bbox(rgba, W, H, 0, SPLIT_X);
+  const tapBox = bbox(rgba, W, H, SPLIT_X, W);
+  for (const [name, box] of [
+    ['cat', catBox],
+    ['tap', tapBox],
+  ]) {
+    if (JSON.stringify(box) !== JSON.stringify(layout[name])) {
+      throw new Error(
+        `[hero] рамка ${name} ${JSON.stringify(box)} не совпадает с heroLayout.json — обновите файл`,
+      );
+    }
+  }
+  if (JSON.stringify(TAIL_PIVOT) !== JSON.stringify(layout.tailPivot))
+    throw new Error('[hero] tailPivot ≠ heroLayout.json');
+
+  const { body, tail } = splitTail(rgba, W, H);
+  const bodyCrop = crop(body, W, catBox, (x) => x < SPLIT_X);
+  const tailCrop = crop(tail, W, catBox, (x) => x < SPLIT_X);
+  const tapCrop = crop(rgba, W, tapBox, (x) => x >= SPLIT_X);
+  const bodyW = Math.round((catBox.width * BODY_H) / catBox.height);
+
+  let made = 0;
+  for (const id of ids) {
+    const opts = SKIN_RECOLORS[id];
+    const b = Buffer.from(bodyCrop);
+    const t = Buffer.from(tailCrop);
+    const p = Buffer.from(tapCrop);
+    if (opts) {
+      recolor(b, catBox.width, catBox.height, opts, { x: catBox.left, y: catBox.top }, H);
+      recolor(t, catBox.width, catBox.height, opts, { x: catBox.left, y: catBox.top }, H);
+      recolor(p, tapBox.width, tapBox.height, opts, { x: tapBox.left, y: tapBox.top }, H);
+    }
+    const bodyPng = await raw(b, catBox).png().toBuffer();
+    const tailPng = await raw(t, catBox).png().toBuffer();
+    await webp(sharp(bodyPng).resize(bodyW, BODY_H)).toFile(path.join(dir, `${id}-body.webp`));
+    await webp(sharp(tailPng).resize(bodyW, BODY_H)).toFile(path.join(dir, `${id}-tail.webp`));
+    // превью: хвост под телом, одной картинкой
+    const whole = await sharp(tailPng)
+      .composite([{ input: bodyPng }])
+      .png()
+      .toBuffer();
+    await webp(sharp(whole).resize(null, THUMB_H), 82).toFile(path.join(dir, `${id}-thumb.webp`));
+    await webp(raw(p, tapBox).resize(TAP_W)).toFile(path.join(dir, `${id}-tap.webp`));
+    made += 4;
+  }
+
+  // портрет для иконок, аватаров лиги и превью ссылок: голова и плечи на тёмно-синем фоне
+  const S = 1254;
+  const full = await sharp(rgba, { raw: { width: W, height: H, channels: 4 } })
+    .png()
+    .toBuffer();
+  const bust = await sharp(full)
+    .extract({ left: 222, top: 0, width: 486, height: 486 })
+    .resize(S, S)
+    .png()
+    .toBuffer();
+  const bg = Buffer.from(
+    `<svg width="${S}" height="${S}" xmlns="http://www.w3.org/2000/svg"><defs>
+      <radialGradient id="g" cx="0.5" cy="0.42" r="0.62"><stop offset="0" stop-color="#1f3a9e"/><stop offset="0.55" stop-color="#0e1640"/><stop offset="1" stop-color="#060917"/></radialGradient>
+    </defs><rect width="${S}" height="${S}" fill="url(#g)"/></svg>`,
+  );
+  const portrait = await sharp(bg)
+    .composite([{ input: bust }])
+    .png()
+    .toBuffer();
+  await sharp(portrait).toFile(portraitFile);
+  made++;
+  return { made, portrait };
+}
