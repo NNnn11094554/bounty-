@@ -1,5 +1,6 @@
 import {
   ACHIEVEMENTS,
+  VISIBLE_ACHIEVEMENTS,
   ACHIEVEMENT_METRICS,
   TUTORIALS,
   type ProfileResponse,
@@ -57,7 +58,7 @@ export async function profileRoutes(app: FastifyInstance): Promise<void> {
         combos: progress.combos ?? 0,
         ciphers: progress.ciphers ?? 0,
       },
-      achievements: ACHIEVEMENTS.map((a) => ({ id: a.id, unlockedAt: at.get(a.id) ?? null })),
+      achievements: VISIBLE_ACHIEVEMENTS.map((a) => ({ id: a.id, unlockedAt: at.get(a.id) ?? null })),
       progress: Object.fromEntries(ACHIEVEMENT_METRICS.map((m) => [m, progress[m] ?? 0])),
     };
   });

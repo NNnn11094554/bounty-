@@ -65,6 +65,10 @@ model User {
   /// магазин: пассивный доход ×2 до этого момента (покупка за Telegram Stars)
   incomeBoostUntil DateTime?
 
+  /// коллекция: надетый скин кота и эффект тапа (стартовые есть у всех)
+  equippedSkinId   String @default("black_crown")
+  equippedEffectId String @default("coins")
+
   suspiciousScore Int     @default(0)
   isBanned        Boolean @default(false)
   banReason       String?
@@ -96,10 +100,13 @@ model User {
   events        UserEvent[]
   notifications Notification[]
   purchases     Purchase[]
+  cosmetics     UserCosmetic[]
   invitedAs     Referral?         @relation("Invitee")
   referrals     Referral[]        @relation("Inviter")
 
   @@index([leagueLevel, totalEarned(sort: Desc)])
+  /// место в Airdrop: COUNT игроков с большими очками
+  @@index([totalEarned(sort: Desc)])
   @@index([referrerId])
   @@index([suspiciousScore])
   @@index([createdAt])
@@ -390,6 +397,27 @@ enum PurchaseStatus {
   PENDING
   PAID
   REFUNDED
+}
+
+/// Предмет коллекции игрока (скин или эффект тапа). Стартовые предметы не хранятся — они есть у всех.
+model UserCosmetic {
+  userId     Int
+  cosmeticId String
+  /// coins | stars | admin
+  source     String
+  acquiredAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, cosmeticId])
+}
+
+/// Приглашение до первого входа в игру: друг нажал Start в боте по ссылке ref_<id>, а игру откроет позже
+/// (кнопкой бота, без start_param) — бонус засчитывается при регистрации.
+model PendingReferral {
+  telegramId        BigInt   @id
+  inviterTelegramId BigInt
+  createdAt         DateTime @default(now())
 }
 
 /// Покупка в магазине за Telegram Stars. payload — в счёте, chargeId — от Telegram после оплаты.

@@ -1,9 +1,12 @@
 import { formatDuration, formatInt, type ShopProduct } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { FullEnergyIcon } from '../../components/boostIcons';
+import { Segmented } from '../../components/Segmented';
+import { CosmeticGrid } from '../collection/CollectionScreen';
 import { CoinIcon, StarIcon } from '../../components/icons';
 import { RollingNumber } from '../../components/RollingNumber';
+import { catMood } from '../../game/catMood';
 import { centerOf, confetti } from '../../game/effects';
 import { tapEngine } from '../../game/tapEngine';
 import { useNow } from '../../hooks/useNow';
@@ -63,6 +66,7 @@ function ProductCard({
     const result = await buy(product.id);
     if (result === 'paid') {
       toast.success(t('shop.success'));
+      catMood.emit('purchase');
       haptic.notify('success');
       playSound('reward');
       confetti(centerOf(el), 60);
@@ -109,11 +113,15 @@ function ProductCard({
 }
 
 /** Магазин за Telegram Stars: пакеты монет, полная энергия и доход ×2. */
-export function ShopScreen() {
+type ShopTab = 'skins' | 'boosts' | 'special' | 'cosmetics';
+
+/** Магазин: скины (главное), бусты, особое (монеты) и косметика (эффекты тапа). */
+export function ShopScreen({ onOpenCollection }: { onOpenCollection?: () => void }) {
   const t = useT();
   const { products, status, load } = useShop();
   const player = useGame((s) => s.player);
   const now = useNow(1000);
+  const [tab, setTab] = useState<ShopTab>('skins');
   useEffect(() => {
     void load();
   }, [load]);
@@ -122,7 +130,19 @@ export function ShopScreen() {
   const serverNow = now + (player.serverTime - Date.now());
   const boostLeft = player.incomeBoostUntil ? Math.max(0, player.incomeBoostUntil - serverNow) : 0;
   const coins = products.filter((p) => p.kind === 'coins');
-  const boosters = products.filter((p) => p.kind !== 'coins');
+  const boosters = products.filter((p) => p.kind === 'energy' || p.kind === 'income_boost');
+  const productsReady = products.length > 0;
+
+  const productsState =
+    status === 'error' && !productsReady ? (
+      <p className="mt-10 text-center text-sm font-bold text-white/55">{t('shop.loadError')}</p>
+    ) : !productsReady ? (
+      <div className="flex flex-col gap-2.5">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="skeleton h-[72px] rounded-card" />
+        ))}
+      </div>
+    ) : null;
 
   return (
     <div className="flex h-full flex-col overflow-y-auto px-4 pb-8 pt-4" data-testid="shop">
@@ -131,45 +151,77 @@ export function ShopScreen() {
           <StarIcon size={26} />
           {t('shop.title')}
         </h1>
-        <p className="text-sm font-semibold text-white/55">{t('shop.subtitle')}</p>
-        <div className="mt-2 flex items-center gap-2" data-coin-target>
-          <CoinIcon size={28} />
-          <RollingNumber getValue={() => tapEngine.balanceNow()} className="text-[26px] font-black" />
+        <div className="mt-1 flex items-center gap-2" data-coin-target>
+          <CoinIcon size={26} />
+          <RollingNumber getValue={() => tapEngine.balanceNow()} className="text-[24px] font-black" />
         </div>
       </div>
 
-      {status === 'error' && !products.length ? (
-        <p className="mt-10 text-center text-sm font-bold text-white/55">{t('shop.loadError')}</p>
-      ) : !products.length ? (
-        <div className="mt-6 flex flex-col gap-2.5">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="skeleton h-[72px] rounded-card" />
-          ))}
-        </div>
-      ) : (
-        <>
-          <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('shop.coins')}</h2>
-          <div className="flex flex-col gap-3">
-            {coins.map((p) => (
-              <ProductCard
-                key={p.id}
-                product={p}
-                icon={<CoinStack count={STACK[p.id] ?? 1} />}
-                title={`+${formatInt(p.coins ?? 0)}`}
-                desc={t(`shop.${p.id}` as MessageKey)}
-                extra={
-                  p.bonusPercent ? (
-                    <span className="mt-1 inline-block rounded-full bg-lime/15 px-2 py-0.5 text-[11px] font-extrabold text-lime">
-                      {t('shop.bonus', { percent: p.bonusPercent })}
-                    </span>
-                  ) : undefined
-                }
-              />
-            ))}
-          </div>
-          <p className="mt-2 text-xs font-semibold text-white/40">{t('shop.coinsDesc')}</p>
+      <div className="mb-4 mt-4">
+        <Segmented
+          options={[
+            { value: 'skins', label: t('shop.tab.skins') },
+            { value: 'boosts', label: t('shop.tab.boosts') },
+            { value: 'special', label: t('shop.tab.special') },
+            { value: 'cosmetics', label: t('shop.tab.cosmetics') },
+          ]}
+          value={tab}
+          onChange={setTab}
+          testId="shop-tabs"
+        />
+      </div>
 
-          <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('shop.boosters')}</h2>
+      {tab === 'skins' && (
+        <>
+          <p className="mb-3 text-xs font-semibold text-white/45">{t('shop.skinsHint')}</p>
+          <CosmeticGrid kind="skin" testId="shop-skins" />
+          {onOpenCollection && (
+            <button
+              type="button"
+              onClick={onOpenCollection}
+              className="mt-4 self-center text-sm font-extrabold text-[#ff8fd0]"
+              data-testid="shop-open-collection"
+            >
+              {t('collection.open')} →
+            </button>
+          )}
+        </>
+      )}
+
+      {tab === 'cosmetics' && (
+        <>
+          <p className="mb-3 text-xs font-semibold text-white/45">{t('shop.cosmeticsHint')}</p>
+          <CosmeticGrid kind="effect" testId="shop-effects" />
+        </>
+      )}
+
+      {tab === 'special' &&
+        (productsState ?? (
+          <>
+            <div className="flex flex-col gap-3">
+              {coins.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  icon={<CoinStack count={STACK[p.id] ?? 1} />}
+                  title={`+${formatInt(p.coins ?? 0)}`}
+                  desc={t(`shop.${p.id}` as MessageKey)}
+                  extra={
+                    p.bonusPercent ? (
+                      <span className="mt-1 inline-block rounded-full bg-lime/15 px-2 py-0.5 text-[11px] font-extrabold text-lime">
+                        {t('shop.bonus', { percent: p.bonusPercent })}
+                      </span>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+            <p className="mt-2 text-xs font-semibold text-white/40">{t('shop.coinsDesc')}</p>
+          </>
+        ))}
+
+      {tab === 'boosts' &&
+        (productsState ?? (
           <div className="flex flex-col gap-3">
             {boosters.map((p) => (
               <ProductCard
@@ -191,10 +243,12 @@ export function ShopScreen() {
               />
             ))}
           </div>
-        </>
-      )}
+        ))}
 
-      <p className="mt-6 text-center text-xs font-semibold leading-snug text-white/40">{t('shop.note')}</p>
+      <p className="mt-6 text-center text-xs font-semibold leading-snug text-white/40">
+        {t('shop.subtitle')}
+      </p>
+      <p className="mt-1 text-center text-xs font-semibold leading-snug text-white/40">{t('shop.note')}</p>
       <p className="mt-1 text-center text-xs font-semibold text-white/40">{t('shop.support')}</p>
     </div>
   );

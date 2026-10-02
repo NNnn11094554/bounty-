@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { SHOP_PRODUCT_IDS, type Locale, type ShopProduct, type ShopProductId } from '@meowgul/shared';
+import {
+  cosmeticById,
+  SHOP_PRODUCT_IDS,
+  type Locale,
+  type ShopProduct,
+  type ShopProductId,
+} from '@meowgul/shared';
 import type { Prisma, Purchase, User } from '@prisma/client';
 import { GrammyError } from 'grammy';
 import { botLocale } from '../bot/texts.js';
@@ -9,6 +15,7 @@ import { packCoins, SHOP } from '../game/config/shop.js';
 import { prisma } from '../lib/db.js';
 import { ApiError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
+import { grantCosmetic, ownedCosmetics, revokeCosmetic } from './cosmetics.js';
 import { applyBalanceChanges } from './ledger.js';
 import { payments } from './payments.js';
 import { parseSettings } from './state.js';
@@ -16,14 +23,17 @@ import { syncPassive } from './sync.js';
 import { withUserLock } from './userLock.js';
 
 /** Что выдаётся за покупку (рассчитано при выставлении счёта и хранится в Purchase.grant). */
-type Grant = { coins: number } | { energy: true } | { hours: number };
+type Grant = { coins: number } | { energy: true } | { hours: number } | { cosmetic: string };
 
 /** Неоплаченный счёт действует сутки. */
 const INVOICE_TTL_MS = 24 * 3_600_000;
 /** Не больше стольких неоплаченных счетов за 10 минут — защита от спама. */
 const MAX_PENDING_PER_10_MIN = 10;
 
-export function shopProducts(user: Pick<User, 'profitPerHour'>): ShopProduct[] {
+export function shopProducts(
+  user: Pick<User, 'profitPerHour'>,
+  owned: readonly string[] = [],
+): ShopProduct[] {
   const pph = Number(user.profitPerHour);
   const baseRate = packCoins('coins_small', pph) / SHOP.coins_small.stars;
   return SHOP_PRODUCT_IDS.map((id) => {
@@ -38,6 +48,8 @@ export function shopProducts(user: Pick<User, 'profitPerHour'>): ShopProduct[] {
       bonusPercent:
         coins !== null && id !== 'coins_small' ? Math.round((coins / p.stars / baseRate - 1) * 100) : null,
       popular: p.popular ?? false,
+      cosmeticId: p.cosmeticId ?? null,
+      owned: p.cosmeticId ? owned.includes(p.cosmeticId) : false,
     };
   });
 }
@@ -46,11 +58,18 @@ function grantFor(id: ShopProductId, user: User): Grant {
   const p = SHOP[id];
   if (p.kind === 'coins') return { coins: packCoins(id, Number(user.profitPerHour)) };
   if (p.kind === 'energy') return { energy: true };
+  if (p.kind === 'cosmetic') return { cosmetic: p.cosmeticId! };
   return { hours: p.hours ?? 24 };
 }
 
 const fmt = (n: number, locale: Locale) =>
   new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(n);
+
+/** Счёт за предмет коллекции: название и описание из каталога. */
+function cosmeticText(id: string): Record<Locale, () => [string, string]> {
+  const item = cosmeticById(id)!;
+  return { ru: () => [item.name.ru, item.desc.ru], en: () => [item.name.en, item.desc.en] };
+}
 
 const INVOICE_TEXT: Record<ShopProductId, Record<Locale, (g: Grant) => [string, string]>> = {
   coins_small: {
@@ -82,6 +101,10 @@ const INVOICE_TEXT: Record<ShopProductId, Record<Locale, (g: Grant) => [string, 
       `Your cards’ passive income doubles for ${'hours' in g ? g.hours : 24} h. Stacks with an active boost`,
     ],
   },
+  skin_diamond: cosmeticText('diamond'),
+  skin_queen: cosmeticText('queen'),
+  skin_legendary_crown: cosmeticText('legendary_crown'),
+  effect_matrix: cosmeticText('matrix'),
 };
 
 function playerLocale(user: User): Locale {
@@ -97,6 +120,10 @@ export async function createInvoice(
     where: { userId: user.id, status: 'PENDING', createdAt: { gt: new Date(Date.now() - 10 * 60_000) } },
   });
   if (recent >= MAX_PENDING_PER_10_MIN) throw new ApiError('RATE_LIMITED', 'Too many unpaid invoices');
+  const cosmeticId = SHOP[productId].cosmeticId;
+  if (cosmeticId && (await ownedCosmetics(prisma, user.id)).includes(cosmeticId)) {
+    throw new ApiError('CONFLICT', 'Already owned');
+  }
   const grant = grantFor(productId, user);
   const purchase = await prisma.purchase.create({
     data: {
@@ -197,6 +224,9 @@ export async function fulfillPayment(
           where: { id: user.id },
           data: { energy: maxEnergy(user.energyLimitLevel), energyUpdatedAt: now },
         });
+      } else if ('cosmetic' in grant) {
+        // премиальный скин или эффект — в коллекцию и сразу надеть
+        await grantCosmetic(tx, user, grant.cosmetic, 'stars');
       } else {
         const from = user.incomeBoostUntil && user.incomeBoostUntil > now ? user.incomeBoostUntil : now;
         await tx.user.update({
@@ -250,6 +280,8 @@ export async function refundPurchase(purchaseId: number): Promise<Purchase> {
           {},
           now,
         );
+      } else if ('cosmetic' in grant) {
+        await revokeCosmetic(tx, user, grant.cosmetic);
       } else if ('hours' in grant && user.incomeBoostUntil) {
         const until = user.incomeBoostUntil.getTime() - grant.hours * 3_600_000;
         await tx.user.update({

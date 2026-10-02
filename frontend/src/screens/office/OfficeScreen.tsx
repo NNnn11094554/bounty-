@@ -1,4 +1,4 @@
-import { headquartersById, hqColors, hqIcon } from '@meowgul/shared';
+import { headquartersById, hqColors, hqIcon, playerLevel } from '@meowgul/shared';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
@@ -6,11 +6,13 @@ import { CardIcon } from '../../components/cards/CardIcon';
 import { CatButton, type TapHandler } from '../../components/CatButton';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
-import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon, StarIcon } from '../../components/icons';
+import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
+import { EarnNavIcon, MineNavIcon } from '../../components/navIcons';
 import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
 import { onFrame } from '../../game/frameLoop';
+import { accessoryOverhang } from '../../game/skins';
 import { leagueAt, leagueProgress, LEAGUE_COUNT } from '../../game/leagues';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT } from '../../i18n';
@@ -21,7 +23,9 @@ interface Props {
   onOpenLeagues?: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
-  onOpenShop?: () => void;
+  /** быстрые кнопки главной: карточки Mine и задания Earn */
+  onOpenMine?: () => void;
+  onOpenEarn?: () => void;
   /** плашки дня (шифр и т.п.) между лигой и котом */
   dailyBanner?: ReactNode;
   /** заменить обработчик нажатий (режим ввода шифра) */
@@ -46,13 +50,51 @@ function useBoxSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-/** Главный экран «Офис»: статистика, баланс, лига, кнопка с котом, энергия и бусты. */
+/** Быстрая кнопка главной: иконка и подпись, точка — есть что забрать. */
+function QuickAction({
+  label,
+  onClick,
+  testId,
+  tour,
+  badge,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  testId: string;
+  tour?: string;
+  badge?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.92 }}
+      onClick={onClick}
+      className="relative flex h-[50px] w-[58px] flex-col items-center justify-center gap-0.5 rounded-2xl border border-line bg-night-700/80 shadow-card"
+      data-testid={testId}
+      data-tour={tour}
+    >
+      {children}
+      <span className="max-w-full truncate px-1 text-[10.5px] font-extrabold text-white/80">{label}</span>
+      {badge && (
+        <span
+          className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-night-700 bg-coral-to"
+          data-testid={`${testId}-badge`}
+        />
+      )}
+    </motion.button>
+  );
+}
+
+/** Главный экран: игрок и уровень, баланс, лига, живой кот, энергия и быстрые кнопки (Mine, Earn, бусты). */
 export function OfficeScreen({
   onOpenBoosts,
   onOpenLeagues,
   onOpenProfile,
-  onOpenShop,
   onOpenSettings,
+  onOpenMine,
+  onOpenEarn,
   dailyBanner,
   onCatPress,
   catOverlay,
@@ -62,6 +104,7 @@ export function OfficeScreen({
   const locale = useLocale();
   const player = useGame((s) => s.player);
   const config = useGame((s) => s.config);
+  const dailyReady = player?.daily.claimedToday === false;
   const [catBox, catSize] = useBoxSize<HTMLDivElement>();
   const progressRef = useRef<HTMLDivElement>(null);
   const pawRef = useRef<HTMLDivElement>(null);
@@ -101,7 +144,12 @@ export function OfficeScreen({
   if (!player || !league || !config) return null;
   // минимальный размер кота; в режиме шифра на низких экранах — чуть меньше, чтобы поместилась строка Морзе
   const minCat = catOverlay ? 100 : 120;
-  const catDiameter = Math.max(minCat, Math.floor(Math.min(catSize.width * 0.74, catSize.height * 0.94)));
+  // аксессуар скина (корона, нимб…) выступает над кругом: оставляем ему место, чтобы не налезал на блок выше
+  const overhang = accessoryOverhang(player.cosmetics.skin);
+  const catDiameter = Math.max(
+    minCat,
+    Math.floor(Math.min(catSize.width * 0.74, (catSize.height * 0.94) / (1 + overhang))),
+  );
   const leagueColor = league.color === 'rainbow' ? '#ffc93c' : league.color;
 
   return (
@@ -124,8 +172,15 @@ export function OfficeScreen({
         >
           <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-[15px] font-extrabold" data-testid="player-name">
-              {player.profile.firstName}
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate text-[15px] font-extrabold" data-testid="player-name">
+                {player.profile.firstName}
+              </span>
+              <LiveText
+                getText={() => t('level.short', { level: playerLevel(tapEngine.totalEarnedNow()).level })}
+                className="shrink-0 rounded-full bg-gradient-to-r from-[#ff4fd8] to-[#7a5cff] px-1.5 py-px text-[10px] font-black text-white"
+                testId="player-level"
+              />
             </span>
             <span className="block truncate text-xs font-bold text-white/50" data-testid="player-hq">
               {hq ? t('office.ceoAt', { hq: hq.name[locale] }) : t('office.ceo')}
@@ -134,18 +189,6 @@ export function OfficeScreen({
           {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
         </motion.button>
         {header}
-        {onOpenShop && (
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.88 }}
-            onClick={onOpenShop}
-            aria-label={t('office.shop')}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-gold/40 bg-night-700/80 shadow-card"
-            data-testid="open-shop"
-          >
-            <StarIcon size={22} />
-          </motion.button>
-        )}
         {onOpenSettings && (
           <motion.button
             type="button"
@@ -222,20 +265,24 @@ export function OfficeScreen({
         >
           {catOverlay ?? <HappyHourChip />}
           {catSize.width > 0 && (
-            <CatButton
-              size={catDiameter}
-              ringColor={league.color}
-              handler={handler}
-              locale={locale}
-              sleepyLabel={t('office.tired')}
-              onPress={onCatPress}
-            />
+            <div style={{ paddingTop: Math.round(catDiameter * overhang) }}>
+              <CatButton
+                size={catDiameter}
+                ringColor={league.color}
+                handler={handler}
+                locale={locale}
+                sleepyLabel={t('office.tired')}
+                skinId={player.cosmetics.skin}
+                effectId={player.cosmetics.effect}
+                onPress={onCatPress}
+              />
+            </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between pb-3">
+        <div className="flex items-center justify-between gap-2 pb-3">
           <div
-            className="flex items-center gap-1.5 text-[15px] font-extrabold"
+            className="flex min-w-0 items-center gap-1.5 text-[15px] font-extrabold"
             data-testid="energy"
             data-tour="energy"
           >
@@ -246,19 +293,28 @@ export function OfficeScreen({
               testId="energy-value"
             />
           </div>
-          {onOpenBoosts && (
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.92 }}
-              onClick={onOpenBoosts}
-              className="flex items-center gap-1.5 rounded-2xl px-2 py-1 text-[15px] font-extrabold"
-              data-testid="open-boosts"
-              data-tour="boosts"
-            >
-              <RocketIcon size={24} />
-              {t('office.boost')}
-            </motion.button>
-          )}
+          <div className="flex shrink-0 gap-1.5" data-tour="quick">
+            {onOpenMine && (
+              <QuickAction label={t('nav.mine')} onClick={onOpenMine} testId="open-mine">
+                <MineNavIcon active size={24} />
+              </QuickAction>
+            )}
+            {onOpenEarn && (
+              <QuickAction label={t('nav.earn')} onClick={onOpenEarn} testId="open-earn" badge={dailyReady}>
+                <EarnNavIcon active size={24} />
+              </QuickAction>
+            )}
+            {onOpenBoosts && (
+              <QuickAction
+                label={t('office.boost')}
+                onClick={onOpenBoosts}
+                testId="open-boosts"
+                tour="boosts"
+              >
+                <RocketIcon size={24} />
+              </QuickAction>
+            )}
+          </div>
         </div>
         <GoldenCoin />
       </section>

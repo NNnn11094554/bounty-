@@ -101,6 +101,8 @@ export interface PlayerState {
   turboUntil: number | null;
   /** до какого момента пассивный доход ×INCOME_BOOST_MULTIPLIER (покупка в магазине), null — нет */
   incomeBoostUntil: number | null;
+  /** надетые предметы коллекции: скин кота и эффект тапа */
+  cosmetics: { skin: string; effect: string };
   totalTaps: number;
   boosts: BoostsState;
   daily: DailyRewardState;
@@ -213,10 +215,14 @@ export interface FriendEntry {
   photoUrl: string | null;
   isPremium: boolean;
   leagueLevel: number;
+  /** уровень игрока (1…50) */
+  level: number;
   balance: number;
   /** сколько получил я за этого друга */
   bonus: number;
   joinedAt: number;
+  /** заходил в игру за последние 10 минут */
+  online: boolean;
 }
 
 export interface FriendsResponse {

@@ -1,7 +1,13 @@
 import { createHash, generateKeyPairSync, sign, type KeyObject } from 'node:crypto';
 import { beginCell, storeStateInit, type Address, type StateInit } from '@ton/core';
 import { WalletContractV4, WalletContractV5R1 } from '@ton/ton';
-import type { ApiErrorBody, StateResponse, TasksResponse, TonProofPayloadResponse } from '@meowgul/shared';
+import {
+  TON_WALLET_ENABLED,
+  type ApiErrorBody,
+  type StateResponse,
+  type TasksResponse,
+  type TonProofPayloadResponse,
+} from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../src/lib/db.js';
@@ -124,14 +130,21 @@ describe('TON wallet', () => {
     const stored = await prisma.user.findUniqueOrThrow({ where: { telegramId: 13001n } });
     expect(stored.walletAddress).toBe(wallet.address.toRawString());
 
-    const tasks = (await c.get('/api/tasks')).json<TasksResponse>();
-    expect(tasks.tasks.find((t) => t.id === 'connect_wallet')?.status).toBe('done');
+    const walletTask = async () =>
+      (await c.get('/api/tasks')).json<TasksResponse>().tasks.find((t) => t.id === 'connect_wallet');
+    if (TON_WALLET_ENABLED) expect((await walletTask())?.status).toBe('done');
+    else {
+      // кошелёк скрыт флагом: задания нет в списке, но сервер его отмечает
+      expect(await walletTask()).toBeUndefined();
+      expect(await prisma.userTask.findFirst({ where: { taskId: 'connect_wallet' } })).toMatchObject({
+        status: 'DONE',
+      });
+    }
 
     // отключение — задание снова не выполнено, адрес свободен
     const off = (await c.del('/api/wallet')).json<StateResponse>();
     expect(off.state.wallet).toBeNull();
-    const after = (await c.get('/api/tasks')).json<TasksResponse>();
-    expect(after.tasks.find((t) => t.id === 'connect_wallet')?.status).toBe('new');
+    if (TON_WALLET_ENABLED) expect((await walletTask())?.status).toBe('new');
   });
 
   it('accepts a v5 wallet too', async () => {

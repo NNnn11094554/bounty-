@@ -3,7 +3,7 @@ import type { UserFromGetMe } from 'grammy/types';
 import { env } from '../env.js';
 import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
-import { parseReferral } from '../services/referrals.js';
+import { rememberPendingReferral } from '../services/referrals.js';
 import { checkPreCheckout, fulfillPayment } from '../services/shop.js';
 import { BOT_TEXTS, botLocale } from './texts.js';
 
@@ -13,13 +13,14 @@ export function miniAppLink(startParam?: string): string {
   return startParam ? `${base}?startapp=${encodeURIComponent(startParam)}` : base;
 }
 
-/** Кнопки под приветствием: «Играть» (Mini App) и «Подписаться на канал». */
-export function playKeyboard(locale: 'ru' | 'en', startParam?: string): InlineKeyboard {
+/**
+ * Кнопки под приветствием: «Играть» (Mini App) и «Подписаться на канал». Приглашение по ссылке ref_<id>
+ * запоминается сервером (PendingReferral), поэтому кнопка всегда web_app — она работает и без /newapp.
+ */
+export function playKeyboard(locale: 'ru' | 'en'): InlineKeyboard {
   const t = BOT_TEXTS[locale];
   const kb = new InlineKeyboard();
-  // Mini App, открытый кнопкой web_app, не получает start_param — для приглашения нужна прямая ссылка
-  if (startParam) kb.url(t.play, miniAppLink(startParam));
-  else kb.webApp(t.play, env.WEBAPP_URL);
+  kb.webApp(t.play, env.WEBAPP_URL);
   if (env.CHANNEL_URL) kb.row().url(t.channel, env.CHANNEL_URL);
   return kb;
 }
@@ -28,11 +29,11 @@ const WELCOME_IMAGE = () => `${env.WEBAPP_URL.replace(/\/$/, '')}/assets/generat
 /** file_id картинки после первой отправки — дальше Telegram не скачивает её заново */
 let welcomePhotoId: string | null = null;
 
-async function sendWelcome(ctx: Context, startParam: string | undefined): Promise<void> {
+async function sendWelcome(ctx: Context): Promise<void> {
   const locale = botLocale(ctx.from?.language_code);
   const t = BOT_TEXTS[locale];
   const caption = t.welcome(ctx.from?.first_name ?? 'CEO');
-  const reply_markup = playKeyboard(locale, startParam);
+  const reply_markup = playKeyboard(locale);
   try {
     const msg = await ctx.replyWithPhoto(welcomePhotoId ?? WELCOME_IMAGE(), {
       caption,
@@ -52,15 +53,20 @@ export function createBot(token: string = env.BOT_TOKEN, botInfo?: UserFromGetMe
 
   bot.command('start', async (ctx) => {
     const payload = ctx.match.trim();
-    const startParam = parseReferral(payload) !== null ? payload : undefined;
-    // игрок написал боту — уведомления ему разрешены (если он есть в игре)
     if (ctx.from) {
+      // игрок написал боту — уведомления ему разрешены (если он есть в игре)
       await prisma.user.updateMany({
         where: { telegramId: BigInt(ctx.from.id) },
         data: { allowsWriteToPm: true },
       });
+      // пришёл по приглашению и ещё не играл — бонус засчитается при первом входе в игру
+      if (payload) {
+        await rememberPendingReferral(BigInt(ctx.from.id), payload).catch((err: unknown) =>
+          logger.warn({ err }, 'pending referral failed'),
+        );
+      }
     }
-    await sendWelcome(ctx, startParam);
+    await sendWelcome(ctx);
   });
 
   // оплата Stars: Telegram спрашивает, можно ли принять платёж (ответить нужно за 10 секунд)

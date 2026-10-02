@@ -1,10 +1,13 @@
 import {
-  ACHIEVEMENTS,
+  VISIBLE_ACHIEVEMENTS,
   ACHIEVEMENT_GROUPS,
+  cosmeticById,
   formatInt,
   formatShort,
   headquartersById,
   hqIcon,
+  MAX_LEVEL,
+  playerLevel,
   type Achievement,
   type ProfileStats,
 } from '@meowgul/shared';
@@ -12,9 +15,12 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { CardIcon } from '../../components/cards/CardIcon';
+import { CatVisual } from '../../components/cat/CatVisual';
 import { CupIcon, GearIcon } from '../../components/icons';
 import { LeagueAvatar } from '../../components/LeagueAvatar';
 import { leagueAt } from '../../game/leagues';
+import { tapEngine } from '../../game/tapEngine';
+import { useNow } from '../../hooks/useNow';
 import { useLocale, useT, type MessageKey } from '../../i18n';
 import { useGame } from '../../store/game';
 import { useNav } from '../../store/nav';
@@ -39,7 +45,9 @@ export function ProfileScreen() {
   const player = useGame((s) => s.player);
   const config = useGame((s) => s.config);
   const push = useNav((s) => s.push);
+  const setTab = useNav((s) => s.setTab);
   const { data, status, load } = useProfile();
+  useNow(2000); // уровень растёт от тапов и дохода
   const unlockedCount = player?.achievements.unlocked ?? 0;
   const [open, setOpen] = useState<Achievement | null>(null);
 
@@ -55,6 +63,8 @@ export function ProfileScreen() {
 
   if (!player || !config) return null;
   const league = leagueAt(config.leagues, player.leagueLevel);
+  const level = playerLevel(tapEngine.totalEarnedNow());
+  const skin = cosmeticById(player.cosmetics.skin);
   const hq = headquartersById(player.profile.hqId);
   const total = player.achievements.total;
   const since = new Date(player.profile.createdAt).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', {
@@ -116,6 +126,40 @@ export function ProfileScreen() {
         </div>
       </section>
 
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setTab('collection')}
+        className="mt-3 flex w-full items-center gap-3 rounded-[22px] border border-[#ff4fd8]/30 bg-gradient-to-br from-[#ff4fd8]/12 to-night-700 p-3 text-left shadow-card"
+        data-testid="profile-level"
+      >
+        <span className="cat-still relative h-14 w-14 shrink-0">
+          <CatVisual size={56} skinId={player.cosmetics.skin} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-[17px] font-black" data-testid="profile-level-value">
+              {t('profile.level', { level: level.level })}
+            </span>
+            <span className="truncate text-xs font-bold text-white/50">{skin?.name[locale]}</span>
+          </span>
+          <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-white/10">
+            <span
+              className="block h-full rounded-full bg-gradient-to-r from-[#ff4fd8] to-[#7a5cff]"
+              style={{ width: `${Math.round(level.progress * 100)}%` }}
+            />
+          </span>
+          <span className="mt-1 block text-xs font-bold text-white/50">
+            {level.level >= MAX_LEVEL
+              ? t('profile.maxLevel')
+              : t('profile.nextLevel', {
+                  level: level.level + 1,
+                  value: formatShort(Math.max(0, level.span - level.current), locale),
+                })}
+          </span>
+        </span>
+      </motion.button>
+
       <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('profile.stats')}</h2>
       <div className="grid grid-cols-2 gap-2" data-testid="profile-stats">
         {STATS.map((s, i) => (
@@ -162,7 +206,7 @@ export function ProfileScreen() {
         </button>
       ) : (
         ACHIEVEMENT_GROUPS.map((group) => {
-          const items = ACHIEVEMENTS.filter((a) => a.group === group);
+          const items = VISIBLE_ACHIEVEMENTS.filter((a) => a.group === group);
           return (
             <section key={group} className="mt-4">
               <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-white/45">

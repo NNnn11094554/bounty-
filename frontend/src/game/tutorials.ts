@@ -1,4 +1,4 @@
-import type { TutorialId } from '@meowgul/shared';
+import { TON_WALLET_ENABLED, type TutorialId } from '@meowgul/shared';
 import type { MessageKey } from '../i18n';
 
 export interface TutorialStep {
@@ -12,7 +12,7 @@ export const TUTORIAL_STEPS: Record<TutorialId, TutorialStep[]> = {
   office: [
     { target: 'cat', text: 'tour.office.cat' },
     { target: 'energy', text: 'tour.office.energy' },
-    { target: 'boosts', text: 'tour.office.boosts' },
+    { target: 'quick', text: 'tour.office.quick' },
     { target: 'league', text: 'tour.office.league' },
     { target: 'profile', text: 'tour.office.profile' },
   ],
@@ -29,7 +29,9 @@ export const TUTORIAL_STEPS: Record<TutorialId, TutorialStep[]> = {
     { target: 'daily', text: 'tour.earn.daily' },
     { target: 'tasks', text: 'tour.earn.tasks' },
   ],
-  airdrop: [{ target: 'wallet', text: 'tour.airdrop.wallet' }],
+  airdrop: TON_WALLET_ENABLED
+    ? [{ target: 'wallet', text: 'tour.airdrop.wallet' }]
+    : [{ target: 'points', text: 'tour.airdrop.points' }],
   boosts: [
     { target: 'free-boosts', text: 'tour.boosts.free' },
     { target: 'paid-boosts', text: 'tour.boosts.paid' },

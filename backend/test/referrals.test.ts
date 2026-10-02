@@ -6,6 +6,7 @@ import { prisma } from '../src/lib/db.js';
 import { applyBalanceChanges } from '../src/services/ledger.js';
 import { leagueBonus, parseReferral, referralLink } from '../src/services/referrals.js';
 import { withUserLock } from '../src/services/userLock.js';
+import { createBot } from '../src/bot/bot.js';
 import { authHeader, client, createApp, resetDb, tgUser } from './helpers.js';
 
 describe('referrals', () => {
@@ -39,7 +40,7 @@ describe('referrals', () => {
     expect(parseReferral('ref_12a')).toBeNull();
     expect(parseReferral('promo')).toBeNull();
     expect(parseReferral(null)).toBeNull();
-    expect(referralLink(42n)).toMatch(/^https:\/\/t\.me\/[\w]+\/[\w]+\?startapp=ref_42$/);
+    expect(referralLink(42n)).toMatch(/^https:\/\/t\.me\/[\w]+\?start=ref_42$/);
     expect(leagueBonus([1, 2], false)).toBe(50_000);
     expect(leagueBonus([1], true)).toBe(40_000);
   });
@@ -127,7 +128,7 @@ describe('referrals', () => {
     const c = client(app, tgUser(11051));
     const res = (await c.get('/api/friends')).json<FriendsResponse>();
     expect(res.total).toBe(3);
-    expect(res.link).toContain('startapp=ref_11051');
+    expect(res.link).toContain('?start=ref_11051');
     expect(res.friends.map((f) => f.name)).toEqual(['Cat11062', 'Cat11061', 'Cat11060']);
     expect(res.friends[2]).toMatchObject({ isPremium: true, leagueLevel: 2 });
     expect(res.friends[2]!.bonus).toBe(25_000 + 2 * (REFERRAL.leagues[1]! + REFERRAL.leagues[2]!));
@@ -137,6 +138,56 @@ describe('referrals', () => {
 
     const empty = (await c.get(`/api/friends?after=${res.friends[2]!.id}`)).json<FriendsResponse>();
     expect(empty.friends).toEqual([]);
+  });
+
+  it('invite via the bot: /start ref_<id> → first login without start_param → friend is listed', async () => {
+    const calls: Array<{ method: string; payload: Record<string, unknown> }> = [];
+    const bot = createBot('1:test', {
+      id: 1,
+      is_bot: true,
+      first_name: 'M',
+      username: 'meowgul_bot',
+    } as never);
+    bot.api.config.use(async (_prev, method, payload) => {
+      calls.push({ method, payload: payload as Record<string, unknown> });
+      return { ok: true, result: { message_id: 1, date: 0, chat: { id: 1, type: 'private' } } } as never;
+    });
+    const start = (id: number, text: string) =>
+      bot.handleUpdate({
+        update_id: Math.floor(Math.random() * 1e9),
+        message: {
+          message_id: 1,
+          date: Math.floor(Date.now() / 1000),
+          chat: { id, type: 'private', first_name: 'Друг' },
+          from: { id, is_bot: false, first_name: 'Друг', language_code: 'ru' },
+          text,
+          entities: [{ type: 'bot_command', offset: 0, length: 6 }],
+        },
+      });
+    await login(11201);
+    await start(11202, '/start ref_11201');
+    // повторный Start по чужой ссылке не перебивает первое приглашение, себя пригласить нельзя
+    await start(11202, '/start ref_11299');
+    await start(11201, '/start ref_11201');
+    expect(await prisma.pendingReferral.findMany()).toMatchObject([
+      { telegramId: 11202n, inviterTelegramId: 11201n },
+    ]);
+    // кнопка «Играть» — web_app: работает без регистрации Mini App в BotFather
+    expect(JSON.stringify(calls[0]!.payload.reply_markup)).toContain('web_app');
+
+    const res = await login(11202); // игру открыли кнопкой бота — без start_param
+    expect(res.referral).toEqual({ inviterName: 'Cat11201', bonus: 5_000 });
+    expect(await prisma.pendingReferral.count()).toBe(0);
+    await login(11202); // повторный вход — без повторного бонуса
+    expect(await prisma.referral.count()).toBe(1);
+
+    const friends = (await client(app, tgUser(11201)).get('/api/friends')).json<FriendsResponse>();
+    expect(friends.total).toBe(1);
+    expect(friends.friends[0]).toMatchObject({ name: 'Cat11202', level: 2, online: true, bonus: 25_000 });
+
+    // уже игравшему игроку Start по ссылке ничего не даёт
+    await start(11201, '/start ref_11202');
+    expect(await prisma.pendingReferral.count()).toBe(0);
   });
 
   it('pages friends 50 at a time', async () => {

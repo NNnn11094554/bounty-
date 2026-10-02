@@ -1,4 +1,5 @@
 import type {
+  AirdropResponse,
   AuthResponse,
   BoostType,
   CardUpgradeResponse,
@@ -18,6 +19,8 @@ import type {
   TonProofPayloadResponse,
   WalletConnectRequest,
   InvoiceResponse,
+  CollectionActionResponse,
+  CollectionResponse,
   PurchaseStatusResponse,
   ShopProductId,
   ShopResponse,
@@ -25,6 +28,12 @@ import type {
 import { api } from './client';
 
 export const endpoints = {
+  airdrop: () => api<AirdropResponse>('/api/airdrop'),
+  collection: () => api<CollectionResponse>('/api/collection'),
+  buyCosmetic: (id: string) =>
+    api<CollectionActionResponse>(`/api/collection/${encodeURIComponent(id)}/buy`, { method: 'POST' }),
+  equipCosmetic: (id: string) =>
+    api<CollectionActionResponse>(`/api/collection/${encodeURIComponent(id)}/equip`, { method: 'POST' }),
   shop: () => api<ShopResponse>('/api/shop'),
   createInvoice: (productId: ShopProductId) =>
     api<InvoiceResponse>('/api/shop/invoice', { method: 'POST', body: { productId } }),

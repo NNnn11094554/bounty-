@@ -7,9 +7,13 @@ export const SHOP_PRODUCT_IDS = [
   'coins_large',
   'energy_refill',
   'income_x2',
+  'skin_diamond',
+  'skin_queen',
+  'skin_legendary_crown',
+  'effect_matrix',
 ] as const;
 export type ShopProductId = (typeof SHOP_PRODUCT_IDS)[number];
-export type ShopProductKind = 'coins' | 'energy' | 'income_boost';
+export type ShopProductKind = 'coins' | 'energy' | 'income_boost' | 'cosmetic';
 
 /** Во сколько раз растёт пассивный доход, пока действует буст из магазина. */
 export const INCOME_BOOST_MULTIPLIER = 2;
@@ -30,6 +34,10 @@ export interface ShopProduct {
   /** насколько пакет выгоднее самого маленького, % */
   bonusPercent: number | null;
   popular: boolean;
+  /** премиальный предмет коллекции (скин или эффект тапа) */
+  cosmeticId: string | null;
+  /** предмет коллекции уже куплен */
+  owned: boolean;
 }
 
 export interface ShopResponse {

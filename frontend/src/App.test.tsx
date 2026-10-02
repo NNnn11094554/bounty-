@@ -34,6 +34,7 @@ const state = {
   tapSeq: 0,
   turboUntil: null,
   incomeBoostUntil: null,
+  cosmetics: { skin: 'black_crown', effect: 'coins' },
   totalTaps: 0,
   boosts: {
     fullEnergy: { left: 6, perDay: 6, cooldownUntil: null, cooldownSec: 3600 },

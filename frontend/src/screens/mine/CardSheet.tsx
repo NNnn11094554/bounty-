@@ -141,7 +141,7 @@ function CardSheetBody({ card, onClose }: { card: CardView; onClose: () => void 
           className="h-12"
           onClick={() => {
             onClose();
-            useNav.getState().setTab('earn');
+            useNav.getState().push('earn');
           }}
           data-testid="card-to-tasks"
         >

@@ -9,3 +9,7 @@ export * from './achievements.js';
 export * from './tutorials.js';
 export * from './admin.js';
 export * from './shop.js';
+export * from './progression.js';
+export * from './cosmetics.js';
+export * from './features.js';
+export * from './airdrop.js';

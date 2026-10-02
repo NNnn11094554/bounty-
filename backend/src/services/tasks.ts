@@ -1,5 +1,5 @@
 import type { Task, User, UserTask } from '@prisma/client';
-import { TASK_ICONS, type TaskIcon, type TaskView } from '@meowgul/shared';
+import { TON_WALLET_ENABLED, TASK_ICONS, type TaskIcon, type TaskView } from '@meowgul/shared';
 import { env } from '../env.js';
 import { builtInTasks } from '../game/config/tasks.js';
 import { prisma } from '../lib/db.js';
@@ -77,7 +77,9 @@ export async function listTasks(user: User, now: Date): Promise<TaskView[]> {
   ]);
   const byTask = new Map(progress.map((p) => [p.taskId, p]));
   const walletConnected = Boolean(user.walletAddress);
-  return tasks.map((t) => taskView(t, byTask.get(t.id) ?? null, { friends, now, walletConnected }));
+  return tasks
+    .filter((t) => TON_WALLET_ENABLED || t.type !== 'CONNECT_WALLET') // кошелёк временно скрыт
+    .map((t) => taskView(t, byTask.get(t.id) ?? null, { friends, now, walletConnected }));
 }
 
 export async function friendsCount(db: Tx | typeof prisma, userId: number): Promise<number> {

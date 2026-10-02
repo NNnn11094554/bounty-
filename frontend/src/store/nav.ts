@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { getWebApp } from '../telegram/webapp';
 
-export type Tab = 'office' | 'mine' | 'friends' | 'earn' | 'airdrop';
-export type SubScreen = 'boosts' | 'leagues' | 'settings' | 'profile' | 'shop';
+/** Нижнее меню: Главная, Друзья, Магазин, Airdrop, Коллекция, Профиль. */
+export type Tab = 'office' | 'friends' | 'shop' | 'airdrop' | 'collection' | 'profile';
+/** Экраны поверх вкладки: Mine и Earn открываются быстрыми кнопками на главной. */
+export type SubScreen = 'mine' | 'earn' | 'boosts' | 'leagues' | 'settings';
 
 interface NavStore {
   tab: Tab;

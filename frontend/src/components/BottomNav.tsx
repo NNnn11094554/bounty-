@@ -6,7 +6,14 @@ import { playSound } from '../lib/sound';
 import { useNav, type Tab } from '../store/nav';
 import { haptic } from '../telegram/webapp';
 import { useGame } from '../store/game';
-import { AirdropNavIcon, EarnNavIcon, FriendsNavIcon, MineNavIcon, OfficeNavIcon } from './navIcons';
+import {
+  AirdropNavIcon,
+  CollectionNavIcon,
+  FriendsNavIcon,
+  OfficeNavIcon,
+  ProfileNavIcon,
+  ShopNavIcon,
+} from './navIcons';
 
 interface TabDef {
   id: Tab;
@@ -16,10 +23,15 @@ interface TabDef {
 
 const NAV_TABS: readonly TabDef[] = [
   { id: 'office', label: 'nav.office', icon: (active) => <OfficeNavIcon active={active} /> },
-  { id: 'mine', label: 'nav.mine', icon: (active) => <MineNavIcon active={active} /> },
   { id: 'friends', label: 'nav.friends', icon: (active) => <FriendsNavIcon active={active} /> },
-  { id: 'earn', label: 'nav.earn', icon: (active) => <EarnNavIcon active={active} /> },
+  { id: 'shop', label: 'nav.shop', icon: (active) => <ShopNavIcon active={active} /> },
   { id: 'airdrop', label: 'nav.airdrop', icon: (active) => <AirdropNavIcon active={active} /> },
+  {
+    id: 'collection',
+    label: 'nav.collection',
+    icon: (active) => <CollectionNavIcon active={active} />,
+  },
+  { id: 'profile', label: 'nav.profile', icon: (active) => <ProfileNavIcon active={active} /> },
 ];
 
 /** Нижнее меню: подсветка переезжает между вкладками, активная иконка подпрыгивает. */
@@ -27,12 +39,12 @@ export function BottomNav() {
   const t = useT();
   const tab = useNav((s) => s.tab);
   const setTab = useNav((s) => s.setTab);
-  // точка на вкладке — есть что забрать
+  // точка на «Главной» — ежедневная награда ждёт в Earn (быстрая кнопка на главной)
   const dailyReady = useGame((s) => s.player?.daily.claimedToday === false);
-  const badges: Partial<Record<Tab, boolean>> = { earn: dailyReady };
+  const badges: Partial<Record<Tab, boolean>> = { office: dailyReady && tab !== 'office' };
   return (
     <nav
-      className="relative z-30 mx-3 mb-2 mt-1 grid auto-cols-fr grid-flow-col gap-1 rounded-[24px] border border-line bg-night-700 p-1.5 shadow-card"
+      className="relative z-30 mx-2 mb-2 mt-1 grid auto-cols-fr grid-flow-col gap-0.5 rounded-[24px] border border-line bg-night-700 p-1 shadow-card"
       data-testid="bottom-nav"
     >
       {NAV_TABS.map((item) => {
@@ -72,7 +84,7 @@ export function BottomNav() {
               )}
             </motion.span>
             <span
-              className={`relative text-[11px] font-extrabold ${active ? 'text-white' : 'text-white/55'}`}
+              className={`relative max-w-full truncate text-[10px] font-extrabold tracking-[-0.02em] ${active ? 'text-white' : 'text-white/55'}`}
             >
               {t(item.label)}
             </span>

@@ -1,3 +1,4 @@
+import { catMood } from './game/catMood';
 import { formatInt } from '@meowgul/shared';
 import { ApiError, onGlobalApiError, setInitData } from './api/client';
 import { endpoints } from './api/endpoints';
@@ -102,6 +103,8 @@ export async function boot(): Promise<void> {
     tapEngine.start(res.config.tap.syncIntervalMs);
     store.applyAuth(res);
     if (res.referral) {
+      // кот радуется новому другу, когда появится на экране
+      window.setTimeout(() => catMood.emit('friend'), 2500);
       toast.reward(
         translate(store.locale, 'friends.welcome', {
           name: res.referral.inviterName,

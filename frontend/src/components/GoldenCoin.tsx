@@ -8,6 +8,7 @@ import { tapEngine } from '../game/tapEngine';
 import { useT } from '../i18n';
 import { playSound } from '../lib/sound';
 import { useEvents } from '../store/events';
+import { catMood } from '../game/catMood';
 import { toast } from '../store/toasts';
 import { haptic } from '../telegram/webapp';
 import { CoinIcon } from './icons';
@@ -92,6 +93,7 @@ function Runner({ coin, width, height }: { coin: GoldenCoinEvent; width: number;
     haptic.notify('success');
     flyCoins(point, 16);
     toast.reward(t('event.coin.caught', { reward: formatInt(res.reward) }));
+    catMood.emit('rare');
     window.setTimeout(() => clear(coin.id), 900);
   };
 
