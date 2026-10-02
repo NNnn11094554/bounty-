@@ -13,12 +13,16 @@ export function getBot(): Bot {
   return instance;
 }
 
-/** Секрет вебхука: из WEBHOOK_SECRET или производный от токена (Telegram передаёт его в заголовке). */
+/**
+ * Секрет вебхука (Telegram передаёт его в заголовке): производный от WEBHOOK_SECRET или токена.
+ * Telegram принимает в secret_token только A-Z, a-z, 0-9, _ и -, а WEBHOOK_SECRET может быть любым
+ * (generateValue на Render — base64 с «/», «+», «=»), поэтому отдаём hex.
+ */
 export function webhookSecret(): string {
-  return (
-    env.WEBHOOK_SECRET ??
-    createHmac('sha256', 'meowgul-webhook').update(env.BOT_TOKEN).digest('hex').slice(0, 48)
-  );
+  return createHmac('sha256', 'meowgul-webhook')
+    .update(env.WEBHOOK_SECRET ?? env.BOT_TOKEN)
+    .digest('hex')
+    .slice(0, 48);
 }
 
 /** Команды, описание «Что умеет этот бот?» и кнопка меню, открывающая игру. */

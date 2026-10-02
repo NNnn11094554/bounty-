@@ -235,7 +235,8 @@ Legendary +195K, Master +400K, Grandmaster +800K, Lord +2M; за Premium-дру�
   Тексты на русском и английском — по языку Telegram (`backend/src/bot/texts.ts`).
 - При запуске бот сам ставит команды, описание «Что умеет этот бот?» и кнопку меню **Play**.
 - В production — вебхук `API_URL/api/bot/webhook`. Telegram передаёт секрет в заголовке
-  `X-Telegram-Bot-Api-Secret-Token`: это `WEBHOOK_SECRET` или значение, производное от токена.
+  `X-Telegram-Bot-Api-Secret-Token`: hex-значение, производное от `WEBHOOK_SECRET` (или от токена, если он не
+  задан) — Telegram принимает в секрете только латиницу, цифры, `_` и `-`.
   В разработке — long polling. Если Telegram недоступен, бот повторяет попытку каждые 30 секунд, игра при
   этом работает.
 
