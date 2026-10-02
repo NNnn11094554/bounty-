@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { setPlayer } from './db';
 
+// темп быстрого живого игрока (~15 тапов/с): сервер срезает всё, что быстрее 20 тапов/с с прошлой
+// синхронизации, а клики Playwright без пауз идут под 60/с — часть тапов честно отбрасывается антифродом
+const HUMAN_TAP = { delay: 50 };
+
 test.describe('Office', () => {
   test('tapping earns coins, spends energy and survives a reload', async ({ page }) => {
     await page.goto('/?uid=700000201&name=Тапер');
@@ -83,7 +87,11 @@ test.describe('Office', () => {
 
     const box = (await page.getByTestId('cat-hit').boundingBox())!;
     for (let i = 0; i < 100; i++) {
-      await page.mouse.click(box.x + box.width / 2 + (i % 7) * 5, box.y + box.height / 2 - (i % 5) * 5);
+      await page.mouse.click(
+        box.x + box.width / 2 + (i % 7) * 5,
+        box.y + box.height / 2 - (i % 5) * 5,
+        HUMAN_TAP,
+      );
     }
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '100');
     await expect(page.getByTestId('energy-value')).toHaveText(/^9[0-9]{2} \/ 1000$/);
@@ -140,6 +148,7 @@ test.describe('Office', () => {
       await page.mouse.click(
         hit.x + hit.width * (0.3 + (i % 5) * 0.1),
         hit.y + hit.height * (0.2 + (i % 4) * 0.18),
+        HUMAN_TAP,
       );
     }
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '50');
