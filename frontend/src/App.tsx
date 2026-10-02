@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { boot } from './boot';
 import { EffectsLayer } from './components/EffectsLayer';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { PawBackground } from './components/PawBackground';
+import { SpaceBackground } from './components/SpaceBackground';
 import { Toaster } from './components/Toaster';
 import { useT } from './i18n';
 import { GameShell } from './screens/GameShell';
@@ -126,7 +126,7 @@ function Root() {
 export function App() {
   return (
     <ErrorBoundary>
-      <PawBackground />
+      <SpaceBackground />
       <Root />
       <EffectsLayer />
       <Toaster />

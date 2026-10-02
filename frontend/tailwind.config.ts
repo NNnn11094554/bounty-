@@ -31,7 +31,6 @@ export default {
         button: '0 8px 20px rgba(255,95,109,0.35), inset 0 1px 0 rgba(255,255,255,0.35)',
       },
       backgroundImage: {
-        app: 'linear-gradient(180deg, #14101f 0%, #1d1530 100%)',
         cta: 'linear-gradient(135deg, #ff8a3d 0%, #ff5f6d 100%)',
         progress: 'linear-gradient(90deg, #2ed3c6 0%, #ff8a3d 100%)',
       },

@@ -91,10 +91,10 @@ export function setupWebApp(): void {
     app.expand();
     if (supports('7.7')) app.disableVerticalSwipes?.();
     if (supports('6.1')) {
-      app.setHeaderColor?.('#14101f');
-      app.setBackgroundColor?.('#14101f');
+      app.setHeaderColor?.('#02030a');
+      app.setBackgroundColor?.('#02030a');
     }
-    if (supports('7.10')) app.setBottomBarColor?.('#14101f');
+    if (supports('7.10')) app.setBottomBarColor?.('#02030a');
     applySafeArea(app);
     app.onEvent('safeAreaChanged', () => applySafeArea(app));
     app.onEvent('contentSafeAreaChanged', () => applySafeArea(app));

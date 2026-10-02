@@ -6,6 +6,8 @@ const dir = process.env.SCREENSHOTS;
 test.skip(!dir, 'только при SCREENSHOTS=<папка>');
 
 test('capture main screens', async ({ page }) => {
+  // много снимков подряд — больше времени, чем обычному сценарию
+  test.setTimeout(240_000);
   const uid = 700000901;
   await page.goto(`/?uid=${uid}&name=Мурка`);
   await expect(page.getByTestId('office')).toBeVisible();

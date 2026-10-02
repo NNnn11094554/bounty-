@@ -159,7 +159,7 @@ export function Onboarding() {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="pt-safe pb-safe fixed inset-0 z-40 flex flex-col bg-app"
+          className="pt-safe pb-safe bg-space fixed inset-0 z-40 flex flex-col"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.04 }}
           transition={{ duration: 0.3 }}

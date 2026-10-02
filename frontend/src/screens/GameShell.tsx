@@ -118,7 +118,7 @@ export function GameShell() {
           {top && (
             <motion.div
               key={top}
-              className="absolute inset-0 z-20 bg-app"
+              className="bg-space absolute inset-0 z-20"
               data-subscreen={top}
               initial={{ opacity: 0, x: slide }}
               animate={{ opacity: 1, x: 0 }}
