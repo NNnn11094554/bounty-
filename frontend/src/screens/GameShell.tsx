@@ -6,6 +6,7 @@ import { BottomNav } from '../components/BottomNav';
 import { ComboCelebration } from '../components/ComboCelebration';
 import { LeagueUpScene } from '../components/LeagueUpScene';
 import { OfflineIncomeSheet } from '../components/OfflineIncomeSheet';
+import { TabTutorial } from '../components/TabTutorial';
 import { useBackHandler } from '../hooks/useBackHandler';
 import { useDayRollover } from '../hooks/useDayRollover';
 import { useNav, type SubScreen, type Tab } from '../store/nav';
@@ -136,6 +137,7 @@ export function GameShell() {
       <LeagueUpScene />
       <ComboCelebration />
       <AchievementPopup />
+      <TabTutorial screen={top ?? tab} />
     </div>
   );
 }

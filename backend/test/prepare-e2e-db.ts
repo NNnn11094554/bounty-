@@ -21,5 +21,12 @@ if (tables.length) {
     `TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`,
   );
 }
+// счастливый час по реальному времени и случайная золотая монета сделали бы сценарии непредсказуемыми
+await prisma.appSetting.createMany({
+  data: [
+    { key: 'happyHour', value: { auto: false, override: null } },
+    { key: 'goldenCoin', value: { enabled: false } },
+  ],
+});
 await prisma.$disconnect();
 console.warn(`e2e: база ${dbName} готова`);

@@ -14,6 +14,8 @@ import { nextResetAt } from '../game/dayKey.js';
 import { dailyRewardStatus } from '../game/daily.js';
 import { currentEnergy } from '../game/energy.js';
 import { toCoins } from '../lib/money.js';
+import { nextHappyHour } from './events.js';
+import { cachedAppSettings } from './settings.js';
 import { friendlyAddress } from './tonProof.js';
 
 export function parseSettings(raw: unknown): PlayerSettings {
@@ -77,6 +79,7 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
     daily: dailyState(user, now),
+    events: { happyHour: nextHappyHour(cachedAppSettings(), now) },
     achievements: {
       unlocked: user.achievementIds.filter((id) => achievementById(id)).length,
       total: ACHIEVEMENTS.length,

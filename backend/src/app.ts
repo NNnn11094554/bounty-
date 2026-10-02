@@ -15,6 +15,7 @@ import { botRoutes } from './routes/bot.js';
 import { boostRoutes } from './routes/boosts.js';
 import { cardRoutes } from './routes/cards.js';
 import { dailyRoutes } from './routes/daily.js';
+import { eventRoutes } from './routes/events.js';
 import { dailyGameRoutes } from './routes/dailyGames.js';
 import { devRoutes } from './routes/dev.js';
 import { friendRoutes } from './routes/friends.js';
@@ -128,6 +129,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(walletRoutes);
   await app.register(hqRoutes);
   await app.register(profileRoutes);
+  await app.register(eventRoutes);
   await app.register(botRoutes);
   await app.register(adminTaskRoutes);
   await app.register(adminDailyRoutes);

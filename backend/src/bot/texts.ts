@@ -15,6 +15,8 @@ export const BOT_TEXTS = {
     friendJoined: (name: string, bonus: string) =>
       `🎉 ${name} присоединился по твоей ссылке! +${bonus} монет уже на балансе.`,
     dailyCombo: '🧩 Новое комбо дня и шифр уже ждут! Собери комбо — получи +5 000 000 монет.',
+    happyHour: (multiplier: number, endsAt: number) =>
+      `🍀 Счастливый час! Целый час каждый тап приносит ×${multiplier} монет${endsAt ? ` — до ${new Date(endsAt).toISOString().slice(11, 16)} UTC` : ''}. Скорее к коту!`,
   },
   en: {
     description:
@@ -29,6 +31,8 @@ export const BOT_TEXTS = {
     friendJoined: (name: string, bonus: string) =>
       `🎉 ${name} joined with your link! +${bonus} coins are already yours.`,
     dailyCombo: '🧩 A new daily combo and cipher are waiting! Collect the combo to get +5,000,000 coins.',
+    happyHour: (multiplier: number, endsAt: number) =>
+      `🍀 Happy hour! For a whole hour every tap brings ×${multiplier} coins${endsAt ? ` — until ${new Date(endsAt).toISOString().slice(11, 16)} UTC` : ''}. Hurry to the cat!`,
   },
 } as const;
 

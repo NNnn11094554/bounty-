@@ -109,6 +109,8 @@ export interface PlayerState {
     /** полученные, но ещё не показанные игроку (всплывающее уведомление) */
     fresh: string[];
   };
+  /** мини-события: ближайший (или идущий) счастливый час */
+  events: { happyHour: HappyHourInfo | null };
   /** подключённый кошелёк TON (адрес в user-friendly формате) */
   wallet: { address: string; connectedAt: number } | null;
   /** время сервера, на которое рассчитано состояние (мс) */
@@ -148,6 +150,28 @@ export interface TapResponse {
   accepted: number;
   /** пачка с таким номером уже обработана — ничего не начислено */
   duplicate: boolean;
+  /** после этой пачки по экрану пробежит золотая монета */
+  goldenCoin: GoldenCoinEvent | null;
+}
+
+/** «Счастливый час»: ×multiplier к тапам с startsAt до endsAt (мс). */
+export interface HappyHourInfo {
+  startsAt: number;
+  endsAt: number;
+  multiplier: number;
+}
+
+/** Золотая монета: бежит по экрану с appearsAt до expiresAt (мс), поймать — +reward. */
+export interface GoldenCoinEvent {
+  id: string;
+  appearsAt: number;
+  expiresAt: number;
+  reward: number;
+}
+
+export interface GoldenCoinClaimResponse {
+  state: PlayerState;
+  reward: number;
 }
 
 export interface LeagueInfo {

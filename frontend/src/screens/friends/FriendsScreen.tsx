@@ -172,7 +172,7 @@ export function FriendsScreen() {
           <p className="mt-1 text-[15px] font-semibold text-white/60">{t('friends.subtitle')}</p>
         </div>
 
-        <div className="mt-5 flex flex-col gap-2.5">
+        <div className="mt-5 flex flex-col gap-2.5" data-tour="bonuses">
           <GiftRow amount={data?.bonuses.regular ?? 5000} />
           <GiftRow premium amount={data?.bonuses.premium ?? 25000} />
         </div>
@@ -276,7 +276,7 @@ export function FriendsScreen() {
       </PullToRefresh>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-night-900 via-night-900/90 to-transparent px-4 pb-3 pt-8">
-        <div className="pointer-events-auto flex gap-2.5">
+        <div className="pointer-events-auto flex gap-2.5" data-tour="invite">
           <Button
             className="h-14 flex-1 text-base"
             onClick={invite}

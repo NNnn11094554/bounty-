@@ -199,7 +199,7 @@ export function BoostsScreen() {
       </div>
 
       <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('boosts.free')}</h2>
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2.5" data-tour="free-boosts">
         {(['fullEnergy', 'turbo'] as const).map((kind) => {
           const Icon2 = ICON[kind];
           const v = view(kind);
@@ -223,7 +223,7 @@ export function BoostsScreen() {
       </div>
 
       <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('boosts.paid')}</h2>
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5" data-tour="paid-boosts">
         {(['multitap', 'energyLimit'] as const).map((kind) => {
           const Icon2 = ICON[kind];
           const paid = b[kind];

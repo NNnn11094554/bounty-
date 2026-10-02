@@ -43,6 +43,7 @@ const state = {
   daily: { day: 1, claimedToday: false, streakBroken: false, streak: 0 },
   wallet: null,
   achievements: { unlocked: 0, total: 60, fresh: [] },
+  events: { happyHour: null },
   serverTime: Date.now(),
   nextResetAt: Date.now() + 1000,
 } satisfies PlayerState;

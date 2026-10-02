@@ -6,6 +6,8 @@ import { maxEnergy } from '../game/config/game.js';
 import { dayKey } from '../game/dayKey.js';
 import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
+import { nextHappyHour } from './events.js';
+import { getAppSettings } from './settings.js';
 import { parseSettings } from './state.js';
 import { TelegramSendError, telegram, type TelegramGateway } from './telegram.js';
 import type { Tx } from './userLock.js';
@@ -14,7 +16,7 @@ import type { Tx } from './userLock.js';
  * Уведомления бота (только с согласия): очередь в таблице Notification, не больше 2 в игровой день
  * на игрока и не быстрее 25 сообщений в секунду (лимит Telegram — 30).
  */
-export type NotificationKind = 'energy_full' | 'friend_joined' | 'daily_combo';
+export type NotificationKind = 'energy_full' | 'friend_joined' | 'daily_combo' | 'happy_hour';
 
 export const NOTIFY = {
   perDay: 2,
@@ -55,6 +57,11 @@ function render(kind: string, payload: Prisma.JsonValue, user: User): string | n
       return t.friendJoined(String(data.name ?? '🐾'), formatInt(Number(data.bonus ?? 0)));
     case 'daily_combo':
       return t.dailyCombo;
+    case 'happy_hour':
+      return t.happyHour(
+        Number(data.multiplier ?? 2),
+        Number(data.endsAt ? Date.parse(String(data.endsAt)) : 0),
+      );
     default:
       return null;
   }
@@ -170,19 +177,21 @@ export async function scanEnergyReminders(now: Date = new Date(), batch = 500): 
   return queued;
 }
 
-const COMBO_ANNOUNCED_KEY = 'notify.comboDay';
-
-/** «Новое комбо дня» — раз в игровой день активным игрокам с согласием. */
-export async function announceDailyCombo(now: Date = new Date()): Promise<number> {
-  const today = dayKey(now);
-  // атомарно «забираем» день: при нескольких процессах рассылку сделает только один
-  await prisma.appSetting.createMany({
-    data: [{ key: COMBO_ANNOUNCED_KEY, value: '' }],
-    skipDuplicates: true,
-  });
+/**
+ * Объявление всем недавно активным игрокам с согласием — один раз на marker (день, начало события).
+ * Ключ «забирается» атомарно: при нескольких процессах рассылку сделает только один.
+ */
+async function announceOnce(
+  key: string,
+  marker: string,
+  kind: NotificationKind,
+  payload: Prisma.InputJsonValue,
+  now: Date,
+): Promise<number> {
+  await prisma.appSetting.createMany({ data: [{ key, value: '' }], skipDuplicates: true });
   const claimed = await prisma.appSetting.updateMany({
-    where: { key: COMBO_ANNOUNCED_KEY, NOT: { value: { equals: today } } },
-    data: { value: today },
+    where: { key, NOT: { value: { equals: marker } } },
+    data: { value: marker },
   });
   if (claimed.count === 0) return 0;
   const since = new Date(now.getTime() - NOTIFY.comboAudienceDays * 86_400_000);
@@ -200,16 +209,36 @@ export async function announceDailyCombo(now: Date = new Date()): Promise<number
     const audience = users.filter((u) => parseSettings(u.settings).notifications);
     if (audience.length) {
       await prisma.notification.createMany({
-        data: audience.map((u) => ({ userId: u.id, kind: 'daily_combo', payload: { dayKey: today } })),
+        data: audience.map((u) => ({ userId: u.id, kind, payload })),
       });
       total += audience.length;
     }
   }
-  logger.info({ dayKey: today, total }, 'daily combo announced');
+  logger.info({ kind, marker, total }, 'announcement queued');
   return total;
 }
 
-/** Фоновая работа очереди: отправка раз в секунду, напоминания об энергии и комбо — раз в минуту. */
+/** «Новое комбо дня» — раз в игровой день. */
+export async function announceDailyCombo(now: Date = new Date()): Promise<number> {
+  const today = dayKey(now);
+  return announceOnce('notify.comboDay', today, 'daily_combo', { dayKey: today }, now);
+}
+
+/** «Счастливый час начался» — когда начинается очередной счастливый час. */
+export async function announceHappyHour(now: Date = new Date()): Promise<number> {
+  const hh = nextHappyHour(await getAppSettings(), now);
+  if (!hh || hh.startsAt > now.getTime()) return 0;
+  const startsAt = new Date(hh.startsAt).toISOString();
+  return announceOnce(
+    'notify.happyHour',
+    startsAt,
+    'happy_hour',
+    { startsAt, endsAt: new Date(hh.endsAt).toISOString(), multiplier: hh.multiplier },
+    now,
+  );
+}
+
+/** Фоновая работа очереди: отправка раз в секунду; напоминания и объявления — раз в минуту. */
 export function startNotificationWorker(gateway: TelegramGateway = telegram()): () => void {
   let stopped = false;
   let pausedUntil = 0;
@@ -223,6 +252,7 @@ export function startNotificationWorker(gateway: TelegramGateway = telegram()): 
         lastScan = Date.now();
         await scanEnergyReminders();
         await announceDailyCombo();
+        await announceHappyHour();
       }
       const res = await processNotificationQueue(gateway);
       if (res.retryAfterSec > 0) pausedUntil = Date.now() + res.retryAfterSec * 1000;

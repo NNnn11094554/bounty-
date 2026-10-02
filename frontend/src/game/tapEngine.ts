@@ -1,4 +1,4 @@
-import type { PlayerState, TapResponse } from '@meowgul/shared';
+import type { GoldenCoinEvent, PlayerState, TapResponse } from '@meowgul/shared';
 import { api, ApiError } from '../api/client';
 
 /**
@@ -31,6 +31,8 @@ export class TapEngine {
 
   /** результат синхронизации: для индикатора связи */
   onSync: ((ok: boolean, err?: unknown) => void) | null = null;
+  /** сервер выпустил золотую монету */
+  onGoldenCoin: ((coin: GoldenCoinEvent) => void) | null = null;
 
   constructor(private readonly send: (seq: number, taps: number) => Promise<TapResponse> = defaultSend) {}
 
@@ -113,11 +115,19 @@ export class TapEngine {
     return s.totalEarned + (this.balanceNow(now) - s.balance);
   }
 
-  /** Монет за один тап сейчас (с Turbo). */
+  /** Множитель счастливого часа сейчас (1 — обычное время). */
+  happyHourMultiplier(): number {
+    const hh = this.snapshot?.events.happyHour;
+    if (!hh) return 1;
+    const now = this.serverNow();
+    return hh.startsAt <= now && now < hh.endsAt ? hh.multiplier : 1;
+  }
+
+  /** Монет за один тап сейчас (с Turbo и счастливым часом). */
   tapReward(): number {
     const s = this.snapshot;
     if (!s) return 0;
-    return s.tapValue * (this.turboActive() ? turboMultiplier : 1);
+    return s.tapValue * (this.turboActive() ? turboMultiplier : 1) * this.happyHourMultiplier();
   }
 
   /**
@@ -174,6 +184,7 @@ export class TapEngine {
       if (this.inflight?.seq === batch.seq) this.inflight = null;
       this.applyServerState(res.state);
       this.onSync?.(true);
+      if (res.goldenCoin) this.onGoldenCoin?.(res.goldenCoin);
     } catch (err) {
       this.onSync?.(false, err);
       if (err instanceof ApiError) {

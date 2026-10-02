@@ -68,6 +68,7 @@ export function ComboPanel() {
     <div
       className="mx-4 mt-3 flex items-center gap-3 rounded-[20px] border border-line bg-night-700/90 px-3 py-2.5 shadow-card"
       data-testid="combo"
+      data-tour="combo"
     >
       <div className="min-w-0 flex-1">
         <p className="whitespace-nowrap text-[15px] font-black">{t('combo.title')}</p>

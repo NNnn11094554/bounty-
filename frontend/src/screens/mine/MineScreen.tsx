@@ -111,7 +111,7 @@ export function MineScreen() {
 
   return (
     <div className="flex h-full flex-col" data-testid="mine">
-      <div className="pt-3">
+      <div className="pt-3" data-tour="income">
         <PlayerStats testIdPrefix="mine-" />
       </div>
       <div
@@ -150,7 +150,11 @@ export function MineScreen() {
         )}
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-y-auto px-4 pb-4" data-testid="mine-list">
+      <div
+        className="mt-3 min-h-0 flex-1 overflow-y-auto px-4 pb-4"
+        data-testid="mine-list"
+        data-tour="cards"
+      >
         {status === 'error' && cards.length === 0 ? (
           <div className="flex flex-col items-center gap-3 pt-10 text-center">
             <p className="text-[15px] font-bold text-white/70">{t('mine.error')}</p>

@@ -5,8 +5,10 @@ import { GAME, tapValue } from '../game/config/game.js';
 import { currentEnergy } from '../game/energy.js';
 import { accruePassive } from '../game/passive.js';
 import { evaluateTaps } from '../game/tap.js';
+import { happyHourMultiplier, maybeSpawnGoldenCoin } from '../services/events.js';
 import { applyBalanceChanges } from '../services/ledger.js';
 import { requirePlayer } from '../services/player.js';
+import { getAppSettings } from '../services/settings.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
@@ -28,12 +30,18 @@ export async function tapRoutes(app: FastifyInstance): Promise<void> {
     async (request): Promise<TapResponse> => {
       const body = TapBody.parse(request.body);
       const player = await requirePlayer(request);
+      const settings = await getAppSettings();
       return withUserLock(player.id, async (tx, user) => {
         const now = new Date();
         if (body.seq <= user.lastTapSeq) {
           // повтор уже обработанной пачки (сеть оборвалась после ответа или подделка) — ничего не начисляем
           const synced = await syncPassive(tx, user, now);
-          return { state: buildPlayerState(synced.user, now), accepted: 0, duplicate: true };
+          return {
+            state: buildPlayerState(synced.user, now),
+            accepted: 0,
+            duplicate: true,
+            goldenCoin: null,
+          };
         }
         const energy = currentEnergy(user, now);
         const turboActive = Boolean(user.turboUntil && user.turboUntil > now);
@@ -44,7 +52,7 @@ export async function tapRoutes(app: FastifyInstance): Promise<void> {
           sinceLastSyncMs: now.getTime() - user.lastTapAt.getTime(),
           turboActive,
           turboMultiplier: GAME.turbo.multiplier,
-          eventMultiplier: 1,
+          eventMultiplier: happyHourMultiplier(settings, now),
         });
         if (result.suspicious) {
           request.log.warn(
@@ -76,7 +84,14 @@ export async function tapRoutes(app: FastifyInstance): Promise<void> {
           },
           now,
         );
-        return { state: buildPlayerState(updated, now), accepted: result.accepted, duplicate: false };
+        const goldenCoin =
+          result.accepted > 0 ? await maybeSpawnGoldenCoin(tx, updated, now, settings) : null;
+        return {
+          state: buildPlayerState(updated, now),
+          accepted: result.accepted,
+          duplicate: false,
+          goldenCoin,
+        };
       });
     },
   );

@@ -4,6 +4,7 @@ import { endpoints } from './api/endpoints';
 import { setTurboMultiplier, tapEngine } from './game/tapEngine';
 import { resolveLocale, translate } from './i18n';
 import { applyClientSettings } from './lib/clientSettings';
+import { useEvents } from './store/events';
 import { useGame } from './store/game';
 import { toast, useToasts } from './store/toasts';
 import { getWebApp, setupWebApp } from './telegram/webapp';
@@ -51,6 +52,7 @@ function wireEngine(): void {
   if (engineWired) return;
   engineWired = true;
   tapEngine.subscribe((state) => useGame.getState().applyState(state));
+  tapEngine.onGoldenCoin = (coin) => useEvents.getState().showGoldenCoin(coin);
   tapEngine.onSync = (ok, err) => {
     const store = useGame.getState();
     const toasts = useToasts.getState();

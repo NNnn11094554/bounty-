@@ -7,6 +7,7 @@ import type {
   DailyClaimResponse,
   DailyGamesResponse,
   FriendsResponse,
+  GoldenCoinClaimResponse,
   LeaderboardResponse,
   PlayerSettings,
   ProfileResponse,
@@ -49,6 +50,8 @@ export const endpoints = {
   tutorialSeen: (id: string) =>
     api<StateResponse>(`/api/tutorials/${encodeURIComponent(id)}/seen`, { method: 'POST', silent: true }),
   deleteAccount: () => api<{ ok: true }>('/api/account/delete', { method: 'POST', body: { confirm: true } }),
+  claimGoldenCoin: (id: string) =>
+    api<GoldenCoinClaimResponse>(`/api/events/${encodeURIComponent(id)}/claim`, { method: 'POST' }),
   devInitData: (params: Record<string, string>) =>
     api<{ initData: string }>(`/api/dev/init-data?${new URLSearchParams(params).toString()}`, {
       silent: true,

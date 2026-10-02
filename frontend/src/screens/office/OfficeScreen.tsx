@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CatButton, type TapHandler } from '../../components/CatButton';
+import { GoldenCoin } from '../../components/GoldenCoin';
+import { HappyHourChip } from '../../components/HappyHourChip';
 import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
 import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
@@ -116,6 +118,7 @@ export function OfficeScreen({
           aria-label={t('office.profile')}
           className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
           data-testid="open-profile"
+          data-tour="profile"
         >
           <Avatar name={player.profile.firstName} photoUrl={player.profile.photoUrl} size={38} />
           <span className="min-w-0 flex-1 leading-tight">
@@ -162,7 +165,7 @@ export function OfficeScreen({
           animate={catOverlay ? { height: 0, opacity: 0 } : { height: 'auto', opacity: 1 }}
           transition={{ duration: 0.25 }}
         >
-          <div className="mt-3 short:mt-1.5">
+          <div className="mt-3 short:mt-1.5" data-tour="league">
             <div className="flex items-center justify-between text-sm font-extrabold">
               <button
                 type="button"
@@ -200,9 +203,10 @@ export function OfficeScreen({
 
         <div
           ref={catBox}
+          data-tour="cat"
           className={`relative flex min-h-0 flex-1 items-center justify-center pb-4 ${catOverlay ? 'pt-12 short:pt-11' : 'pt-4 short:pt-2'}`}
         >
-          {catOverlay}
+          {catOverlay ?? <HappyHourChip />}
           {catSize.width > 0 && (
             <CatButton
               size={catDiameter}
@@ -216,7 +220,11 @@ export function OfficeScreen({
         </div>
 
         <div className="flex items-center justify-between pb-3">
-          <div className="flex items-center gap-1.5 text-[15px] font-extrabold" data-testid="energy">
+          <div
+            className="flex items-center gap-1.5 text-[15px] font-extrabold"
+            data-testid="energy"
+            data-tour="energy"
+          >
             <BoltIcon size={22} />
             <LiveText
               getText={() => `${tapEngine.energyNow()} / ${tapEngine.state?.maxEnergy ?? 0}`}
@@ -231,12 +239,14 @@ export function OfficeScreen({
               onClick={onOpenBoosts}
               className="flex items-center gap-1.5 rounded-2xl px-2 py-1 text-[15px] font-extrabold"
               data-testid="open-boosts"
+              data-tour="boosts"
             >
               <RocketIcon size={24} />
               {t('office.boost')}
             </motion.button>
           )}
         </div>
+        <GoldenCoin />
       </section>
     </div>
   );

@@ -166,7 +166,7 @@ export function EarnScreen() {
         </section>
       )}
 
-      <section className="mt-6">
+      <section className="mt-6" data-tour="daily">
         <h2 className="mb-2 text-[15px] font-extrabold">{t('earn.daily')}</h2>
         {daily && (
           <Row
@@ -201,7 +201,7 @@ export function EarnScreen() {
         )}
       </section>
 
-      <section className="mt-6">
+      <section className="mt-6" data-tour="tasks">
         <h2 className="mb-2 text-[15px] font-extrabold">{t('earn.list')}</h2>
         {status === 'error' && tasks.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">

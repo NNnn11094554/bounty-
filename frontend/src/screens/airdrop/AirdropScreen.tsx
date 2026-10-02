@@ -136,7 +136,11 @@ function WalletCard() {
   };
 
   return (
-    <div className="rounded-[22px] border border-line bg-night-700 p-3 shadow-card" data-testid="wallet-card">
+    <div
+      className="rounded-[22px] border border-line bg-night-700 p-3 shadow-card"
+      data-testid="wallet-card"
+      data-tour="wallet"
+    >
       <div className="flex items-center gap-3">
         <CardIcon icon="wallet/none/3" size={52} />
         <div className="min-w-0 flex-1">
