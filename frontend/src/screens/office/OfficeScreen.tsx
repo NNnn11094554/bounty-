@@ -269,7 +269,7 @@ export function OfficeScreen({
         <div
           ref={catBox}
           data-tour="cat"
-          className={`relative flex min-h-0 flex-1 items-center justify-center pb-2 ${catOverlay ? 'pt-12 short:pt-11' : 'pt-2 short:pt-1'}`}
+          className={`relative flex min-h-0 flex-1 items-center justify-center ${catOverlay ? 'pb-2 pt-12 short:pt-11' : ''}`}
         >
           {catOverlay ?? <HappyHourChip />}
           {catSize.width > 0 && (

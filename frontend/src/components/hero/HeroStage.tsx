@@ -134,6 +134,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
 
     // ── физика реакций: кадры идут, только пока пружины не успокоились ──
     const motion = new CatMotion();
+    let yawNow = 0;
+    let pitchNow = 0;
     let raf = 0;
     let last = 0;
     const apply = () => {
@@ -143,6 +145,13 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       tailEl.style.transform = t.tail;
       earEl.style.transform = t.ear;
       footEl.style.transform = t.foot;
+      // объём: угол поворота — переменными, по ним CSS двигает перспективу, глубину слоёв, свет и тень
+      if (t.yaw !== yawNow || t.pitch !== pitchNow) {
+        yawNow = t.yaw;
+        pitchNow = t.pitch;
+        root.style.setProperty('--yaw', yawNow.toFixed(3));
+        root.style.setProperty('--pitch', pitchNow.toFixed(3));
+      }
     };
     const frame = (now: number) => {
       raf = 0;
@@ -452,16 +461,24 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     // ── взгляд: голова чуть поворачивается к пальцу/курсору, через 2,6 с — обратно ──
     let gazeTimer = 0;
     let glancing = false;
+    /** рамка самого кота на экране (зона тапа шире — с запасом для пальца) */
+    const catRectNow = () => {
+      const r = root.getBoundingClientRect();
+      const c = layoutRef.current.cat;
+      return { left: r.left + c.left, top: r.top + c.top, width: c.width, height: c.height };
+    };
     const lookAt = (clientX: number, clientY: number) => {
       if (reduced() || mood === 'sleepy') return;
-      const rect = hit.getBoundingClientRect();
+      const rect = catRectNow();
       const dx = Math.max(-1, Math.min(1, (clientX - (rect.left + rect.width / 2)) / (rect.width * 1.2)));
       const dy = Math.max(-1, Math.min(1, (clientY - (rect.top + rect.height * 0.25)) / rect.height));
       motion.lookAt(dx * 2.6 + dy * 0.8, dx * 1.2);
+      motion.orbitTo(dx * 6, dy * -1.2);
       kick();
       window.clearTimeout(gazeTimer);
       gazeTimer = window.setTimeout(() => {
         motion.lookAt(0, 0);
+        motion.orbitTo(0, 0);
         kick();
       }, 2600);
     };
@@ -515,7 +532,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       e.preventDefault();
       e.stopPropagation();
       const rootRect = root.getBoundingClientRect();
-      const catRect = hit.getBoundingClientRect();
+      const catRect = catRectNow();
       const x = e.clientX - rootRect.left;
       const y = e.clientY - rootRect.top;
       const side = Math.max(-1, Math.min(1, ((e.clientX - catRect.left) / catRect.width - 0.5) * 2));
@@ -684,6 +701,22 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       );
     };
     scheduleEar();
+    // в покое кот медленно поворачивается то чуть в одну, то в другую сторону — живой объём
+    let orbitTimer = 0;
+    const scheduleOrbit = () => {
+      orbitTimer = window.setTimeout(
+        () => {
+          if (!document.hidden && !reduced() && performance.now() - lastActivity > 2_600) {
+            if (mood === 'sleepy') motion.orbitTo(0, -1.2);
+            else motion.orbitTo((Math.random() * 2 - 1) * 4.5, Math.random() * 1.6 - 0.4);
+            kick();
+          }
+          scheduleOrbit();
+        },
+        3_200 + Math.random() * 3_400,
+      );
+    };
+    scheduleOrbit();
     const scheduleIdle = () => {
       idleTimer = window.setTimeout(runIdle, IDLE_MIN_MS + Math.random() * IDLE_SPREAD_MS);
     };
@@ -753,6 +786,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       offMood();
       window.clearTimeout(idleTimer);
       window.clearTimeout(earTimer);
+      window.clearTimeout(orbitTimer);
       pending.forEach((id) => window.clearTimeout(id));
       window.clearTimeout(blinkTimer);
       window.clearTimeout(moodTimer);
@@ -823,16 +857,16 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         </div>
       )}
       <div ref={fxRef} className="pointer-events-none absolute inset-0 overflow-visible" />
-      {/* зона тапа — силуэт кота целиком, от ушей до кроссовок */}
+      {/* зона тапа — кот целиком с запасом по бокам, чтобы палец попадал и у самого края */}
       <div
         ref={hitRef}
         className="hero-hit absolute"
         style={{
-          left: L.cat.left + L.cat.width * 0.06,
-          top: L.cat.top,
-          width: L.cat.width * 0.88,
-          height: L.cat.height,
-          borderRadius: '46% 46% 24% 24% / 30% 30% 12% 12%',
+          left: L.hit.left,
+          top: 0,
+          width: L.hit.width,
+          height,
+          borderRadius: 28,
         }}
         data-hit="cat"
         role="button"
