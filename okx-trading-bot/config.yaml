@@ -1,0 +1,61 @@
+# Торговые параметры. Секреты (ключи, токены) и режим DEMO/LIVE — только в .env!
+
+exchange:
+  symbols: [BTC-USDT-SWAP, ETH-USDT-SWAP]   # только USDT-M perpetual swaps
+  timeframe: 15m                # формат OKX: 1m 5m 15m 30m 1H 4H 1D
+  leverage: 3
+  margin_mode: isolated         # isolated | cross
+  trigger_price_type: last      # по какой цене срабатывают SL/TP: last | mark | index
+  candles_history: 600          # сколько свечей грузить для индикаторов (EMA200 нужен запас)
+  hostname: www.okx.com         # для аккаунтов EEA/US может понадобиться другой домен OKX
+  request_timeout_sec: 15
+
+strategy:
+  name: ema_cross               # файл bot/strategies/ema_cross.py
+  params:
+    ema_fast: 9
+    ema_slow: 21
+    ema_trend: 200
+    rsi_period: 14
+    rsi_long_max: 70            # лонг только если RSI < 70
+    rsi_short_min: 30           # шорт только если RSI > 30
+    atr_period: 14
+    sl_atr: 1.5                 # стоп-лосс = 1.5 * ATR от входа
+    tp_atr: 3.0                 # тейк-профит = 3 * ATR (R:R 1:2)
+    trailing_activation_atr: 1.0  # трейлинг включается после +1 ATR
+    trailing_distance_atr: 1.0    # и держит стоп на 1 ATR от лучшей цены (при включении = безубыток)
+
+risk:
+  risk_per_trade_pct: 1.0       # риск на сделку, % от equity
+  max_open_positions: 2
+  daily_loss_limit_pct: 5.0     # при -5% за день новые сделки не открываются до следующего дня
+  max_margin_usage_pct: 90      # не занимать под одну позицию больше 90% свободной маржи
+  taker_fee_pct: 0.05           # учитывается в размере позиции
+  close_on_opposite_signal: false
+  day_reset_timezone: UTC       # когда начинается новый «день» для дневного лимита
+
+trading:
+  loop_interval_sec: 5          # как часто проверять цены для трейлинга
+  reconcile_interval_sec: 30    # как часто сверять позиции и SL/TP с биржей
+  candle_close_delay_sec: 3     # пауза после закрытия свечи перед запросом
+  signal_max_delay_sec: 120     # сигнал старше этого не исполняется (например, после долгого простоя)
+  trailing_min_step_atr: 0.1    # двигать стоп не чаще, чем на 0.1 ATR
+  price_stale_sec: 15           # если WebSocket молчит дольше — цена через REST
+  watchdog_timeout_sec: 600     # цикл завис дольше — процесс перезапускается
+
+backtest:
+  months: 6
+  initial_balance: 1000
+  taker_fee_pct: 0.05           # OKX VIP0 taker для свопов
+  slippage_pct: 0.02
+  funding_rate_8h_pct: 0.01
+  reports_dir: reports
+  cache_dir: data/history
+
+logging:
+  level: INFO
+  file: logs/bot.log
+  max_bytes: 10485760           # 10 МБ на файл
+  backup_count: 10
+
+database_path: data/bot.db

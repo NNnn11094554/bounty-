@@ -1,0 +1,401 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --league: #ffc93c;
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-space font-sans text-white antialiased;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button {
+  @apply select-none outline-none;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Космос: туманности и мелкие звёзды одним CSS (без картинок) — подложка всех экранов.
+ * Живой слой (дрейф, мерцание, планета, падающие звёзды) — компонент SpaceBackground.
+ */
+.bg-space {
+  background-color: #02030a;
+  background-image:
+    var(--space-sky, none),
+    radial-gradient(1px 1px at 23px 41px, rgba(255, 255, 255, 0.8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 87px 13px, rgba(214, 226, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 141px 97px, rgba(255, 255, 255, 0.75) 50%, transparent 51%),
+    radial-gradient(0.8px 0.8px at 59px 152px, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1px 1px at 178px 171px, rgba(190, 210, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(ellipse 120% 35% at 30% 60%, rgba(70, 95, 150, 0.22), transparent 70%),
+    linear-gradient(180deg, #02030a 0%, #040612 55%, #02030a 100%);
+  background-size:
+    cover,
+    200px 200px,
+    200px 200px,
+    200px 200px,
+    200px 200px,
+    200px 200px,
+    100% 100%,
+    100% 100%;
+  background-position: center;
+  background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+.twinkle {
+  animation: twinkle 3.6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* звёздное поле медленно плывёт туда-обратно */
+@keyframes space-drift {
+  0% {
+    transform: translate3d(-18px, -10px, 0);
+  }
+  100% {
+    transform: translate3d(18px, 12px, 0);
+  }
+}
+.space-drift {
+  animation: space-drift 90s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes space-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) rotate(-3deg);
+  }
+}
+.space-float {
+  animation: space-float 22s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* падающая звезда: светлый хвост летит по диагонали и гаснет */
+@keyframes shooting-star {
+  0% {
+    opacity: 0;
+    transform: rotate(-35deg) translate3d(0, 0, 0) scaleX(0.3);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-35deg) translate3d(-260px, 0, 0) scaleX(1);
+  }
+}
+.shooting-star {
+  position: absolute;
+  width: 110px;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0));
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  transform-origin: left center;
+  animation: shooting-star 1.1s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@keyframes paw-float {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translate3d(12px, -26px, 0) rotate(calc(var(--r, 0deg) + 12deg));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(var(--r, 0deg));
+  }
+}
+.paw-float {
+  animation: paw-float 30s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes loader-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.loader-bar {
+  animation: loader-slide 1.2s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+.breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.pt-safe {
+  padding-top: max(var(--tg-safe-top, 0px), var(--safe-top));
+}
+.pb-safe {
+  padding-bottom: max(var(--tg-safe-bottom, 0px), var(--safe-bottom));
+}
+
+/* Табло баланса */
+.roll {
+  display: inline-flex;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.roll-cell {
+  display: inline-block;
+  height: 1.2em;
+  overflow: hidden;
+  position: relative;
+  vertical-align: bottom;
+}
+.roll-col {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+.roll-col > span {
+  height: 1.2em;
+  line-height: 1.2em;
+  text-align: center;
+}
+.roll-sep {
+  display: inline-block;
+  width: 0.28em;
+  line-height: 1.2em;
+}
+
+/* Кнопка с котом */
+.cat-ring {
+  box-shadow:
+    0 0 0 4px var(--ring),
+    0 0 26px 4px color-mix(in srgb, var(--ring) 70%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--ring) 45%, transparent);
+  transition: box-shadow 0.4s ease;
+}
+.cat-ring-rainbow {
+  background: conic-gradient(
+    #cd7f32,
+    #c0c7d1,
+    #ffc93c,
+    #7fe3ff,
+    #4f9dff,
+    #a66bff,
+    #ff4fa3,
+    #ff5f3d,
+    #2ed39a,
+    #cd7f32
+  );
+  animation: ring-spin 6s linear infinite;
+  box-shadow: 0 0 32px 6px rgba(255, 201, 60, 0.45);
+}
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cat-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--ring) 38%, transparent) 0%, transparent 62%);
+}
+.cat-glow,
+.cat-ring {
+  transition:
+    opacity 0.5s ease,
+    box-shadow 0.4s ease;
+}
+.cat-zzz,
+.cat-tired {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+/* усталый кот: картинка не перекрашивается — только покачивание целиком и приглушённое кольцо */
+.cat-button[data-sleepy='true'] .cat-img {
+  animation: cat-doze 3.2s ease-in-out infinite;
+}
+.cat-button[data-sleepy='true'] .cat-ring,
+.cat-button[data-sleepy='true'] .cat-glow {
+  opacity: 0.45;
+}
+@keyframes cat-doze {
+  0%,
+  100% {
+    transform: rotate(-2.5deg) translateY(1%);
+  }
+  50% {
+    transform: rotate(2.5deg) translateY(-1%);
+  }
+}
+.cat-button[data-sleepy='true'] .cat-zzz {
+  opacity: 1;
+  animation: zzz 2.4s ease-in-out infinite;
+}
+.cat-button[data-sleepy='true'] .cat-tired {
+  opacity: 1;
+}
+.cat-button[data-turbo='true'] .cat-ring {
+  box-shadow:
+    0 0 0 4px #ff8a3d,
+    0 0 40px 10px rgba(255, 95, 109, 0.75),
+    inset 0 0 24px rgba(255, 138, 61, 0.6);
+}
+@keyframes zzz {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+@keyframes cat-dance {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+.cat-dance {
+  animation: cat-dance 0.32s ease-in-out infinite;
+}
+.tap-float {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 900;
+  font-size: 34px;
+  color: #fff;
+  -webkit-text-stroke: 1.5px rgba(20, 16, 31, 0.85);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  will-change: transform, opacity;
+  white-space: nowrap;
+}
+.tap-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+  border: 3px solid rgba(255, 201, 60, 0.85);
+  will-change: transform, opacity;
+}
+.tap-coin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, #fff3b8, #ffc93c 45%, #d98f0b);
+  box-shadow: inset 0 0 0 2px #e8a317;
+  will-change: transform, opacity;
+}
+
+/* Плавная дуга с тёплым оранжевым свечением сверху главного экрана */
+.office-arc {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 24, 46, 0.6) 0%,
+    rgba(10, 14, 30, 0.2) 55%,
+    rgba(2, 3, 10, 0) 100%
+  );
+  box-shadow:
+    0 -2px 0 0 rgba(255, 170, 90, 0.85),
+    0 -14px 40px -6px rgba(255, 138, 61, 0.45);
+}
+
+.fly-coin {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, #fff3b8, #ffc93c 45%, #d98f0b);
+  box-shadow:
+    inset 0 0 0 2px #e8a317,
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  will-change: transform, opacity;
+}
+
+@keyframes skeleton-shine {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.05) 30%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.05) 70%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shine 1.3s linear infinite;
+}

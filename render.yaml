@@ -1,0 +1,91 @@
+# Render Blueprint: API (Node), игра (Static Site) и PostgreSQL.
+# Создание: Render → New → Blueprint → этот репозиторий. Значения с `sync: false` Render спросит при создании.
+# Пошаговая инструкция — README, раздел «Деплой на Render».
+services:
+  # ── API + бот (вебхук на API_URL/api/bot/webhook ставится при старте) ──
+  - type: web
+    name: meowgul-api
+    runtime: node
+    # free засыпает без запросов (первый ответ через ~50 с, бот молчит) — для реальных игроков нужен starter
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --include=dev && npm run build -w backend && npm run db:deploy -w backend
+    startCommand: npm run start -w backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: meowgul-db
+          property: connectionString
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: MINIAPP_SHORT_NAME
+        value: app
+      # адрес Static Site (https://meowgul-web.onrender.com или свой домен)
+      - key: WEBAPP_URL
+        sync: false
+      # API_URL можно не задавать: на Render берётся RENDER_EXTERNAL_URL сервиса
+      - key: ADMIN_TELEGRAM_IDS
+        sync: false
+      - key: CHANNEL_ID
+        sync: false
+      - key: CHANNEL_URL
+        sync: false
+      - key: DAILY_RESET_UTC_HOUR
+        value: '16'
+      - key: BOT_ENABLED
+        value: 'true'
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: LOG_LEVEL
+        value: info
+
+  # ── Игра (Mini App) ──
+  - type: web
+    name: meowgul-web
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build -w frontend
+    staticPublishPath: frontend/dist
+    autoDeploy: true
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      # адрес API: https://meowgul-api.onrender.com
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_BOT_USERNAME
+        sync: false
+      - key: VITE_MINIAPP_SHORT_NAME
+        value: app
+    routes:
+      # клиентская навигация (/admin и т.п.) — существующие файлы отдаются как есть
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      # файлы сборки с хешем в имени — кешируются навсегда
+      - path: /build/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+
+databases:
+  - name: meowgul-db
+    databaseName: meowgul
+    user: meowgul
+    # free удаляется через 30 дней — для игры с игроками нужен платный план
+    plan: free
+    region: frankfurt
