@@ -24,7 +24,7 @@ function devParams(): Record<string, string> {
   return params;
 }
 
-async function obtainInitData(): Promise<string | null> {
+export async function obtainInitData(): Promise<string | null> {
   const app = getWebApp();
   if (app?.initData) return app.initData;
   if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {

@@ -6,6 +6,7 @@ import { maxEnergy } from '../game/config/game.js';
 import { dayKey } from '../game/dayKey.js';
 import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
+import { processBroadcasts } from './broadcasts.js';
 import { nextHappyHour } from './events.js';
 import { getAppSettings } from './settings.js';
 import { parseSettings } from './state.js';
@@ -238,7 +239,10 @@ export async function announceHappyHour(now: Date = new Date()): Promise<number>
   );
 }
 
-/** Фоновая работа очереди: отправка раз в секунду; напоминания и объявления — раз в минуту. */
+/**
+ * Фоновая работа очереди: раз в секунду — уведомления, затем рассылка из админки в пределах того же
+ * лимита 25 сообщений в секунду; напоминания и объявления — раз в минуту.
+ */
 export function startNotificationWorker(gateway: TelegramGateway = telegram()): () => void {
   let stopped = false;
   let pausedUntil = 0;
@@ -255,7 +259,13 @@ export function startNotificationWorker(gateway: TelegramGateway = telegram()): 
         await announceHappyHour();
       }
       const res = await processNotificationQueue(gateway);
-      if (res.retryAfterSec > 0) pausedUntil = Date.now() + res.retryAfterSec * 1000;
+      // остаток лимита секунды — рассылке из админки
+      const bc =
+        res.retryAfterSec > 0
+          ? null
+          : await processBroadcasts(gateway, NOTIFY.perSecond - res.sent - res.failed);
+      const retry = Math.max(res.retryAfterSec, bc?.retryAfterSec ?? 0);
+      if (retry > 0) pausedUntil = Date.now() + retry * 1000;
     } catch (err) {
       logger.error({ err }, 'notification worker failed');
     } finally {

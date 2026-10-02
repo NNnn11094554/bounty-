@@ -180,6 +180,18 @@ export function SettingsScreen() {
         </motion.button>
       </Group>
 
+      {player.profile.isAdmin && (
+        <Group title="Admin">
+          <a
+            href="/admin"
+            className="block px-4 py-4 text-[15px] font-extrabold text-gold"
+            data-testid="settings-admin"
+          >
+            {t('settings.admin')} →
+          </a>
+        </Group>
+      )}
+
       <Group title={t('settings.account')}>
         <button
           type="button"

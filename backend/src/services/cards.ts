@@ -76,7 +76,7 @@ export function cardConfigToRow(c: CardConfig): Prisma.CardCreateManyInput {
   };
 }
 
-function fromRow(row: Card): CatalogCard {
+export function cardFromRow(row: Card): CatalogCard {
   return {
     id: row.id,
     category: row.category,
@@ -127,7 +127,7 @@ export function invalidateCatalog(): void {
 export async function getCatalog(): Promise<CatalogCard[]> {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.cards;
   const rows = await prisma.card.findMany({ orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }] });
-  const cards = rows.map(fromRow);
+  const cards = rows.map(cardFromRow);
   cache = { at: Date.now(), cards, byId: new Map(cards.map((c) => [c.id, c])) };
   return cards;
 }

@@ -303,6 +303,7 @@ export const ru = {
   'settings.delete.wait': 'Удалить навсегда ({n})',
   'settings.delete.cancel': 'Оставить аккаунт',
   'settings.version': 'Версия {v}',
+  'settings.admin': 'Админ-панель',
   'event.happyHour': 'Счастливый час ×{x}',
   'event.coin.label': 'Золотая монета',
   'event.coin.caught': 'Золотая монета поймана: +{reward}!',

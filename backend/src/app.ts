@@ -8,7 +8,12 @@ import { registerAuthHooks } from './auth/hooks.js';
 import { env } from './env.js';
 import { ApiError } from './lib/errors.js';
 import { loggerOptions } from './lib/logger.js';
+import { adminBroadcastRoutes } from './routes/admin/broadcasts.js';
+import { adminCardRoutes } from './routes/admin/cards.js';
 import { adminDailyRoutes } from './routes/admin/daily.js';
+import { adminPlayerRoutes } from './routes/admin/players.js';
+import { adminSettingsRoutes } from './routes/admin/settings.js';
+import { adminStatsRoutes } from './routes/admin/stats.js';
 import { adminTaskRoutes } from './routes/admin/tasks.js';
 import { authRoutes } from './routes/auth.js';
 import { botRoutes } from './routes/bot.js';
@@ -133,6 +138,11 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(botRoutes);
   await app.register(adminTaskRoutes);
   await app.register(adminDailyRoutes);
+  await app.register(adminStatsRoutes);
+  await app.register(adminCardRoutes);
+  await app.register(adminPlayerRoutes);
+  await app.register(adminBroadcastRoutes);
+  await app.register(adminSettingsRoutes);
   await app.register(devRoutes);
 
   return app;

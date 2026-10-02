@@ -7,3 +7,4 @@ export * from './daily.js';
 export * from './hq.js';
 export * from './achievements.js';
 export * from './tutorials.js';
+export * from './admin.js';

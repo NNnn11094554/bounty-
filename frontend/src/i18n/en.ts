@@ -302,6 +302,7 @@ export const en: Record<MessageKey, string> = {
   'settings.delete.wait': 'Delete forever ({n})',
   'settings.delete.cancel': 'Keep my account',
   'settings.version': 'Version {v}',
+  'settings.admin': 'Admin panel',
   'event.happyHour': 'Happy hour ×{x}',
   'event.coin.label': 'Golden coin',
   'event.coin.caught': 'Golden coin caught: +{reward}!',

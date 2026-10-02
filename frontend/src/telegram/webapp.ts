@@ -52,6 +52,7 @@ export interface TelegramWebApp {
   openLink(url: string, options?: { try_instant_view?: boolean }): void;
   openTelegramLink(url: string): void;
   onEvent(event: string, cb: () => void): void;
+  showConfirm?(message: string, callback: (ok: boolean) => void): void;
   offEvent(event: string, cb: () => void): void;
   HapticFeedback: {
     impactOccurred(style: HapticStyle): void;

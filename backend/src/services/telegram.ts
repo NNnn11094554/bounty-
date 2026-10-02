@@ -15,8 +15,13 @@ export interface MessageButton {
 export interface TelegramGateway {
   /** Подписан ли пользователь на канал. Ошибка — проверить сейчас нельзя (бот не админ, сеть). */
   channelMembership(channelId: string, telegramId: number): Promise<MembershipStatus>;
-  /** Отправить сообщение; ошибки — TelegramSendError. */
-  sendMessage(chatId: number, text: string, button?: MessageButton): Promise<void>;
+  /** Отправить сообщение (с картинкой — фото с подписью); ошибки — TelegramSendError. */
+  sendMessage(
+    chatId: number,
+    text: string,
+    button?: MessageButton,
+    opts?: { imageUrl?: string },
+  ): Promise<void>;
 }
 
 /** Ошибка отправки: blocked — пользователь заблокировал бота, retryAfter — превышен лимит Telegram. */
@@ -61,7 +66,12 @@ class BotApiGateway implements TelegramGateway {
     }
   }
 
-  async sendMessage(chatId: number, text: string, button?: MessageButton): Promise<void> {
+  async sendMessage(
+    chatId: number,
+    text: string,
+    button?: MessageButton,
+    opts: { imageUrl?: string } = {},
+  ): Promise<void> {
     const reply_markup = button
       ? {
           inline_keyboard: [
@@ -74,7 +84,12 @@ class BotApiGateway implements TelegramGateway {
         }
       : undefined;
     try {
-      await this.api.sendMessage(chatId, text, { reply_markup, link_preview_options: { is_disabled: true } });
+      if (opts.imageUrl) await this.api.sendPhoto(chatId, opts.imageUrl, { caption: text, reply_markup });
+      else
+        await this.api.sendMessage(chatId, text, {
+          reply_markup,
+          link_preview_options: { is_disabled: true },
+        });
     } catch (err) {
       if (err instanceof GrammyError) {
         if (err.error_code === 403) throw new TelegramSendError(err.description, 'blocked');
