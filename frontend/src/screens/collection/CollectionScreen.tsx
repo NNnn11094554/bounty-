@@ -21,12 +21,14 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
   const equip = useCollection((s) => s.equip);
   const busy = useCollection((s) => s.busy);
   const equipped = useGame((s) => s.player?.cosmetics);
+  const league = useGame((s) => s.player?.leagueLevel ?? 0);
   const [open, setOpen] = useState<CosmeticDef | null>(null);
   useNow(2000); // уровень растёт от тапов — карточки обновляются
   const level = playerLevel(tapEngine.totalEarnedNow()).level;
+  // новая лига открывает скин-награду: владение считает сервер — список обновляется
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, league]);
   const items = COSMETICS.filter((c) => c.kind === kind);
   const onEquip = async (id: string) => {
     const result = await equip(id);
@@ -71,6 +73,7 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
             owned={owned.includes(item.id)}
             equipped={equipped?.skin === item.id || equipped?.effect === item.id}
             level={level}
+            league={league}
             onOpen={setOpen}
             onEquip={(item) => void onEquip(item.id)}
             busy={busy}

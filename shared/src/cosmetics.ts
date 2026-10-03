@@ -16,8 +16,10 @@ export interface CosmeticDef {
   rarity: Rarity;
   /** с какого уровня игрока можно получить (1 — сразу) */
   unlockLevel: number;
-  /** null — бесплатно (стартовый предмет) */
+  /** null — бесплатно: есть у всех сразу или (с unlockLeague) выдаётся за лигу */
   price: CosmeticPrice;
+  /** выдаётся бесплатно, когда игрок доходит до этой лиги (номер лиги: 1 — вторая) */
+  unlockLeague?: number;
   name: Record<Locale, string>;
   desc: Record<Locale, string>;
 }
@@ -76,16 +78,21 @@ const effect = (
 ): CosmeticDef => ({ ...skin(id, rarity, unlockLevel, price, name, desc), kind: 'effect' });
 const coins = (amount: number): CosmeticPrice => ({ currency: 'coins', amount });
 const stars = (amount: number): CosmeticPrice => ({ currency: 'stars', amount });
+/** скин-награда за лигу: бесплатно, выдаётся сам, когда игрок доходит до лиги */
+const leagueSkin = (
+  id: string,
+  rarity: Rarity,
+  league: number,
+  name: [string, string],
+  desc: [string, string],
+): CosmeticDef => ({ ...skin(id, rarity, 1, null, name, desc), unlockLeague: league });
 
-/**
- * Каталог коллекции. Скины уровней покупаются за монеты после достижения уровня, премиальные — за
- * Telegram Stars. Цены, уровни и тексты меняются здесь — сервер и клиент берут их отсюда.
- */
 /**
  * Каталог коллекции. Скины — разные персонажи (свой костюм, силуэт, сцена и анимация; оформление —
  * frontend/src/game/skins.ts). Редкость — только внешний вид: на доход, тапы и награды скины не влияют.
- * Скины уровней покупаются за монеты после достижения уровня, премиальные — за Telegram Stars.
- * Цены, уровни и тексты меняются здесь — сервер и клиент берут их отсюда.
+ * Скины: первые 3 — бесплатно у всех, следующие 3 — награда за лиги (Silver, Gold, Platinum), остальные —
+ * за Telegram Stars. Эффекты тапа: открываются с уровнем и покупаются за монеты, премиальный — за Stars.
+ * Цены, лиги, уровни и тексты меняются здесь — сервер и клиент берут их отсюда.
  */
 export const COSMETICS: readonly CosmeticDef[] = [
   skin(
@@ -102,8 +109,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'desert_nomad',
     'EPIC',
-    3,
-    coins(10_000),
+    1,
+    null,
     ['Пустынный Странник', 'Desert Nomad'],
     [
       'Очки-гогглы, шарф от песка и походное снаряжение. Ветер гонит дюны к старой крепости.',
@@ -113,41 +120,38 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'sakura_blossom',
     'EPIC',
-    5,
-    coins(75_000),
+    1,
+    null,
     ['Цветок Сакуры', 'Sakura Blossom'],
     [
       'Розовое кимоно, нимб и цветы в волосах. Вокруг — сад и кружащиеся лепестки.',
       'A pink kimono, a halo and flowers in the hair. A garden and swirling petals all around.',
     ],
   ),
-  skin(
+  leagueSkin(
     'astro_cat',
     'EPIC',
-    8,
-    coins(400_000),
+    1,
     ['Астрокот', 'Astro Cat'],
     [
       'Скафандр, шлем с антенной и Земля за спиной. Невесомость ему к лицу.',
       'A spacesuit, a helmet with an antenna and Earth behind. Zero gravity suits him.',
     ],
   ),
-  skin(
+  leagueSkin(
     'mecha',
     'EPIC',
-    10,
-    coins(1_000_000),
+    2,
     ['Меха', 'Mecha'],
     [
       'Боевая броня с голубыми реакторами и крыльями-лезвиями. Город будущего в огнях.',
       'Battle armour with blue reactors and blade wings. A future city in lights.',
     ],
   ),
-  skin(
+  leagueSkin(
     'crystal_prince',
     'EPIC',
-    12,
-    coins(2_500_000),
+    3,
     ['Кристальный Принц', 'Crystal Prince'],
     [
       'Корона из кристаллов и мантия с аметистами. Кристаллический лес мерцает фиолетовым.',
@@ -157,8 +161,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'forest_spirit',
     'LEGENDARY',
-    14,
-    coins(8_000_000),
+    1,
+    stars(199),
     ['Лесной Дух', 'Forest Spirit'],
     [
       'Рога из веток, мох и листья на плаще. Светлячки и лучи сквозь листву древнего леса.',
@@ -168,8 +172,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'ocean_guardian',
     'LEGENDARY',
-    16,
-    coins(20_000_000),
+    1,
+    stars(199),
     ['Страж Океана', 'Ocean Guardian'],
     [
       'Трезубец, чешуйчатая броня и шерсть цвета волны. Пузырьки и свет из глубины.',
@@ -179,8 +183,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'inferno',
     'LEGENDARY',
-    19,
-    coins(60_000_000),
+    1,
+    stars(249),
     ['Инферно', 'Inferno'],
     [
       'Огненный хвост, броня в раскалённых трещинах и искры вокруг. Всё вокруг горит.',
@@ -190,8 +194,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'toxic',
     'LEGENDARY',
-    22,
-    coins(150_000_000),
+    1,
+    stars(249),
     ['Токсик', 'Toxic'],
     [
       'Противогаз, кислотно-зелёные пятна и пар. Лаборатория, где что-то пошло не так.',
@@ -201,8 +205,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'stealth_assassin',
     'LEGENDARY',
-    25,
-    coins(600_000_000),
+    1,
+    stars(299),
     ['Тайный Ассасин', 'Stealth Assassin'],
     [
       'Капюшон, маска и клинок с алым отсветом. Ночной храм и падающие лепестки.',
@@ -212,8 +216,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'dark_reaper',
     'LEGENDARY',
-    28,
-    coins(2_000_000_000),
+    1,
+    stars(299),
     ['Тёмный Жнец', 'Dark Reaper'],
     [
       'Коса с фиолетовым пламенем и рваный плащ. Луна над старым кладбищем.',
@@ -223,8 +227,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'arctic_king',
     'MYTHIC',
-    31,
-    coins(6_000_000_000),
+    1,
+    stars(349),
     ['Арктический Король', 'Arctic King'],
     [
       'Ледяная корона, меховая мантия и посох из льда. Снег над замком на вершине.',
@@ -234,8 +238,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'vampire_lord',
     'MYTHIC',
-    35,
-    coins(20_000_000_000),
+    1,
+    stars(399),
     ['Лорд Вампиров', 'Vampire Lord'],
     [
       'Алые глаза, крылья и плащ с высоким воротником. Кровавая луна над замком.',
@@ -245,8 +249,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'lunar_witch',
     'MYTHIC',
-    40,
-    coins(60_000_000_000),
+    1,
+    stars(449),
     ['Лунная Ведьма', 'Lunar Witch'],
     [
       'Широкополая шляпа, посох с лунным камнем и фиолетовые чары. Полная луна над шпилями.',
@@ -256,8 +260,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'royal_emperor',
     'MYTHIC',
-    45,
-    coins(200_000_000_000),
+    1,
+    stars(499),
     ['Император', 'Royal Emperor'],
     [
       'Золотая корона, алая мантия и золотые драконы за троном. Здесь главный — он.',
@@ -372,9 +376,24 @@ export function knownEquipped(skin: string, effect: string): { skin: string; eff
   };
 }
 
-/** Стартовые предметы есть у всех. */
-export function isDefaultCosmetic(id: string): boolean {
-  return id === DEFAULT_SKIN_ID || id === DEFAULT_EFFECT_ID;
+/** Бесплатный предмет без условий — есть у всех с самого начала. */
+export function isFreeCosmetic(item: CosmeticDef): boolean {
+  return item.price === null && item.unlockLeague === undefined && item.unlockLevel <= 1;
+}
+
+/**
+ * Предметы, которые есть у игрока без покупки: бесплатные (у всех) и награды за уже достигнутые лиги.
+ * Порядок — как в каталоге.
+ */
+export function progressCosmetics(leagueLevel: number): string[] {
+  return COSMETICS.filter(
+    (c) => isFreeCosmetic(c) || (c.unlockLeague !== undefined && leagueLevel >= c.unlockLeague),
+  ).map((c) => c.id);
+}
+
+/** Скины-награды, которые выдаёт переход в эту лигу (обычно один). */
+export function leagueRewardSkins(league: number): CosmeticDef[] {
+  return COSMETICS.filter((c) => c.unlockLeague === league);
 }
 
 export interface CollectionResponse {

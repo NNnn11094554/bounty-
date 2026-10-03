@@ -3,9 +3,9 @@ import {
   cosmeticById,
   DEFAULT_EFFECT_ID,
   DEFAULT_SKIN_ID,
-  isDefaultCosmetic,
   knownEquipped,
   playerLevel,
+  progressCosmetics,
   resolveCosmeticId,
   type CollectionResponse,
   type CosmeticDef,
@@ -21,20 +21,18 @@ import type { Tx } from './userLock.js';
 type Db = Tx | typeof prisma;
 
 /**
- * Предметы игрока: стартовые + купленные (только существующие в каталоге). В режиме разработчика — весь
- * каталог (для проверки; в базе ничего не выдаётся).
+ * Предметы игрока: бесплатные (у всех), награды за достигнутые лиги (выдаются сами — по лиге, без записи в
+ * базе) и купленные (только существующие в каталоге). В режиме разработчика — весь каталог (для проверки;
+ * в базе ничего не выдаётся).
  */
 export async function ownedCosmetics(
   db: Db,
-  user: Pick<User, 'id' | 'telegramId' | 'settings'>,
+  user: Pick<User, 'id' | 'telegramId' | 'settings' | 'leagueLevel'>,
 ): Promise<string[]> {
   if (devModeOn(user)) return COSMETICS.map((c) => c.id);
   const rows = await db.userCosmetic.findMany({ where: { userId: user.id }, select: { cosmeticId: true } });
-  return [
-    DEFAULT_SKIN_ID,
-    DEFAULT_EFFECT_ID,
-    ...rows.map((r) => r.cosmeticId).filter((id) => cosmeticById(id)),
-  ];
+  const bought = rows.map((r) => r.cosmeticId).filter((id) => cosmeticById(id));
+  return [...new Set([...progressCosmetics(user.leagueLevel), ...bought])];
 }
 
 export function collectionOf(
@@ -114,11 +112,11 @@ export async function revokeCosmetic(tx: Tx, user: User, revokedId: string): Pro
   });
 }
 
-/** Надеть свой предмет (скин или эффект тапа). */
+/** Надеть свой предмет (скин или эффект тапа): бесплатный, награду за лигу или купленный. */
 export async function equipCosmetic(tx: Tx, user: User, id: string): Promise<User> {
   const item = requireCosmetic(id);
   const owned =
-    isDefaultCosmetic(id) ||
+    progressCosmetics(user.leagueLevel).includes(id) ||
     devModeOn(user) ||
     (await tx.userCosmetic.findUnique({ where: { userId_cosmeticId: { userId: user.id, cosmeticId: id } } }));
   if (!owned) throw new ApiError('LOCKED', 'Item is not owned');

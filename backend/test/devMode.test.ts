@@ -17,6 +17,9 @@ import { client, createApp, resetDb, tgUser } from './helpers.js';
 // ADMIN_TELEGRAM_IDS из test/setup.ts — админ один, DEVELOPER_TELEGRAM_ID не задан → режим у него
 const ADMIN_ID = 999000999;
 
+/** что есть у всех без покупки: 3 бесплатных персонажа и эффект «монетки» */
+const FREE_FOR_ALL = ['neon_punk', 'desert_nomad', 'sakura_blossom', 'coins'];
+
 describe('developer mode (one account only)', () => {
   let app: FastifyInstance;
   beforeAll(async () => {
@@ -53,7 +56,7 @@ describe('developer mode (one account only)', () => {
     try {
       expect((await c.get('/api/state')).json<StateResponse>().state.profile.isDeveloper).toBe(false);
       expect(code(await c.patch('/api/settings', { devMode: true }))).toBe('FORBIDDEN');
-      expect((await c.get('/api/collection')).json<CollectionResponse>().owned).toHaveLength(2);
+      expect((await c.get('/api/collection')).json<CollectionResponse>().owned).toEqual(FREE_FOR_ALL);
     } finally {
       env.developerId = saved;
     }
@@ -67,7 +70,7 @@ describe('developer mode (one account only)', () => {
     expect(code(res)).toBe('FORBIDDEN');
     // и старые флаги в базе без прав админа ничего не дают
     await prisma.user.update({ where: { telegramId: 18001n }, data: { settings: { devMode: true } } });
-    expect((await c.get('/api/collection')).json<CollectionResponse>().owned).toHaveLength(2);
+    expect((await c.get('/api/collection')).json<CollectionResponse>().owned).toEqual(FREE_FOR_ALL);
     expect(code(await c.post('/api/collection/galaxy_emperor/equip'))).toBe('LOCKED');
   });
 
@@ -85,7 +88,7 @@ describe('developer mode (one account only)', () => {
     // выключил — снова только своё; надетый не свой показывается как стартовый
     await c.patch('/api/settings', { devMode: false });
     const after = (await c.get('/api/collection')).json<CollectionResponse>();
-    expect(after.owned).toHaveLength(2);
+    expect(after.owned).toEqual(FREE_FOR_ALL);
     expect(code(await c.post('/api/collection/royal_emperor/equip'))).toBe('LOCKED');
   });
 
