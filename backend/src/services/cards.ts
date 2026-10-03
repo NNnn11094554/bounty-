@@ -1,19 +1,25 @@
 import type { Card, Prisma, User, UserCard } from '@prisma/client';
-import type { CardLock, CardView } from '@meowgul/shared';
+import { isCardRarity, type CardLock, type CardView } from '@meowgul/shared';
 import { env } from '../env.js';
 import {
   CARDS,
   LIMITED_ROTATION,
   cardLevelCost,
   cardLevelProfit,
+  cardTotalCost,
   cardTotalProfit,
   type CardCondition,
   type CardConfig,
 } from '../game/config/cards.js';
 import { LEAGUES } from '../game/config/leagues.js';
+import { LEGACY_CARD_IDS } from '../game/config/legacyCards.js';
+import { dayKey } from '../game/dayKey.js';
 import { prisma } from '../lib/db.js';
+import { logger } from '../lib/logger.js';
+import { applyBalanceChanges } from './ledger.js';
 import { devModeOn } from './state.js';
-import type { Tx } from './userLock.js';
+import { syncPassive } from './sync.js';
+import { withUserLock, type Tx } from './userLock.js';
 
 /** Карточка каталога: экономика из БД (правится в админке), числа — обычные number. */
 export interface CatalogCard extends CardConfig {
@@ -65,6 +71,7 @@ export function cardConfigToRow(c: CardConfig): Prisma.CardCreateManyInput {
     descRu: c.descRu,
     descEn: c.descEn,
     icon: c.icon,
+    rarity: c.rarity,
     baseCost: BigInt(c.baseCost),
     baseProfit: BigInt(c.baseProfit),
     costMultiplier: c.costMultiplier,
@@ -72,6 +79,7 @@ export function cardConfigToRow(c: CardConfig): Prisma.CardCreateManyInput {
     maxLevel: c.maxLevel,
     cooldownSec: c.cooldownSec,
     ...conditionToRow(c.condition),
+    starsPrice: c.starsPrice,
     isLimited: c.isLimited,
     sortOrder: c.sortOrder,
   };
@@ -86,6 +94,7 @@ export function cardFromRow(row: Card): CatalogCard {
     descRu: row.descRu,
     descEn: row.descEn,
     icon: row.icon,
+    rarity: isCardRarity(row.rarity) ? row.rarity : 'common',
     baseCost: Number(row.baseCost),
     baseProfit: Number(row.baseProfit),
     costMultiplier: row.costMultiplier.toNumber(),
@@ -93,6 +102,7 @@ export function cardFromRow(row: Card): CatalogCard {
     maxLevel: row.maxLevel,
     cooldownSec: row.cooldownSec,
     condition: conditionFromRow(row.conditionType, row.conditionValue),
+    starsPrice: row.starsPrice !== null && row.starsPrice > 0 ? row.starsPrice : null,
     isLimited: row.isLimited,
     sortOrder: row.sortOrder,
     availableFrom: row.availableFrom,
@@ -126,15 +136,70 @@ export async function seedCards(opts: { force?: boolean } = {}): Promise<number>
  * карточки в БД из конфига и пересчитывает доход в час всех игроков по купленным уровням.
  * 2 — потолок дохода MAX_LEVEL_PROFIT и долгая окупаемость дорогих тиров.
  * 3 — экономика под долгую игру: плавная кривая окупаемости от часов до лет (см. TIERS в cards.ts).
+ * 4 — крипто-активы вместо карточек: старые карточки удаляются, потраченные на них монеты возвращаются.
  */
-export const CARDS_ECONOMY_VERSION = 3;
+export const CARDS_ECONOMY_VERSION = 4;
 const ECONOMY_KEY = 'cardsEconomyVersion';
+
+/**
+ * Убрать карточки первой экономики (LEGACY_CARD_IDS): каждому владельцу — доход по ним до этой минуты
+ * (как при любой операции) и все монеты, потраченные на их уровни, обратно на баланс (не в «всего
+ * заработано» — лига от возврата не растёт). Затем карточки удаляются, а комбо сегодняшнего и будущих
+ * дней, где они были, выбирается заново. Повторный запуск ничего не делает.
+ */
+export async function retireLegacyCards(now = new Date()): Promise<{ users: number; refunded: number }> {
+  const rows = await prisma.card.findMany({ where: { id: { in: [...LEGACY_CARD_IDS] } } });
+  if (rows.length === 0) return { users: 0, refunded: 0 };
+  const legacy = new Map(rows.map((r) => [r.id, cardFromRow(r)]));
+  const ids = [...legacy.keys()];
+  const owners = await prisma.userCard.findMany({
+    where: { cardId: { in: ids }, level: { gt: 0 } },
+    distinct: ['userId'],
+    select: { userId: true },
+  });
+  let refunded = 0;
+  for (const { userId } of owners) {
+    refunded += await withUserLock(
+      userId,
+      async (tx, locked) => {
+        const { user } = await syncPassive(tx, locked, now);
+        const owned = await tx.userCard.findMany({ where: { userId, cardId: { in: ids } } });
+        const coins = owned.reduce((sum, uc) => sum + cardTotalCost(legacy.get(uc.cardId)!, uc.level), 0);
+        const profit = owned.reduce((sum, uc) => sum + cardTotalProfit(legacy.get(uc.cardId)!, uc.level), 0);
+        await tx.userCard.deleteMany({ where: { userId, cardId: { in: ids } } });
+        const left = user.profitPerHour - BigInt(profit);
+        await applyBalanceChanges(
+          tx,
+          user,
+          coins > 0
+            ? [{ type: 'cards_refund', amount: coins, earned: false, meta: { cards: owned.length } }]
+            : [],
+          { profitPerHour: left > 0n ? left : 0n },
+          now,
+        );
+        return coins;
+      },
+      { allowBanned: true },
+    );
+  }
+  await prisma.card.deleteMany({ where: { id: { in: ids } } });
+  const stale = await prisma.dailyCombo.findMany({
+    where: { dayKey: { gte: dayKey(now) }, cardIds: { hasSome: ids } },
+    select: { dayKey: true },
+  });
+  if (stale.length > 0)
+    await prisma.dailyCombo.deleteMany({ where: { dayKey: { in: stale.map((c) => c.dayKey) } } });
+  invalidateCatalog();
+  logger.info({ users: owners.length, refunded, cards: ids.length }, 'legacy cards retired');
+  return { users: owners.length, refunded };
+}
 
 export async function syncCardEconomy(): Promise<{ users: number } | null> {
   const saved = await prisma.appSetting.findUnique({ where: { key: ECONOMY_KEY } });
   const current = typeof saved?.value === 'number' ? saved.value : 1;
   if (current >= CARDS_ECONOMY_VERSION) return null;
   await seedCards({ force: true });
+  if (current < 4) await retireLegacyCards();
   const catalog = new Map((await getCatalog()).map((c) => [c.id, c]));
   const owned = await prisma.userCard.findMany({ select: { userId: true, cardId: true, level: true } });
   const totals = new Map<number, number>();
@@ -282,6 +347,14 @@ async function taskTitles(ids: string[]): Promise<Map<string, { ru: string; en: 
   return new Map(tasks.map((t) => [t.id, { ru: t.titleRu, en: t.titleEn }]));
 }
 
+/**
+ * Актив открывается только за Stars: у него есть цена в Stars и он ещё не куплен.
+ * В режиме разработчика первый уровень покупается за монеты, как у бесплатных.
+ */
+export function needsStars(card: CatalogCard, progress: PlayerProgress): boolean {
+  return card.starsPrice !== null && !progress.devMode && (progress.levels.get(card.id) ?? 0) === 0;
+}
+
 /** Невыполненное условие открытия карточки (null — открыта). Условие проверяется только до первой покупки. */
 export function cardLock(
   card: CatalogCard,
@@ -338,8 +411,10 @@ export function cardView(
     name: { ru: card.nameRu, en: card.nameEn },
     description: { ru: card.descRu, en: card.descEn },
     icon: card.icon,
+    rarity: card.rarity,
     level,
     maxLevel: card.maxLevel,
+    starsPrice: needsStars(card, progress) ? card.starsPrice : null,
     profitPerHour: cardTotalProfit(card, level),
     nextProfit: isMax ? null : cardLevelProfit(card, next),
     nextPrice: isMax ? null : cardLevelCost(card, next),
@@ -406,4 +481,55 @@ export async function runCardUpgradeHooks(
   now: Date,
 ): Promise<void> {
   for (const hook of upgradeHooks) await hook(tx, user, card, level, now);
+}
+
+/**
+ * Выдать 1-й уровень актива, оплаченного в Stars (в транзакции под блокировкой игрока).
+ * Актив уже открыт или удалён из каталога — ничего не делает и возвращает null.
+ */
+export async function grantAssetUnlock(tx: Tx, user: User, cardId: string, now: Date): Promise<User | null> {
+  const card = await getCatalogCard(cardId);
+  if (!card) return null;
+  const existing = await tx.userCard.findUnique({ where: { userId_cardId: { userId: user.id, cardId } } });
+  if (existing && existing.level > 0) return null;
+  const cooldownUntil = card.cooldownSec > 0 ? new Date(now.getTime() + card.cooldownSec * 1000) : null;
+  await tx.userCard.upsert({
+    where: { userId_cardId: { userId: user.id, cardId } },
+    create: { userId: user.id, cardId, level: 1, lastUpgradeAt: now, cooldownUntil },
+    update: { level: 1, lastUpgradeAt: now, cooldownUntil },
+  });
+  const updated = await applyBalanceChanges(
+    tx,
+    user,
+    [],
+    { profitPerHour: { increment: BigInt(cardLevelProfit(card, 1)) } },
+    now,
+  );
+  await runCardUpgradeHooks(tx, updated, card, 1, now);
+  return updated;
+}
+
+/**
+ * Возврат Stars за актив: актив забирается вместе с его доходом, а монеты, потраченные на его уровни
+ * со 2-го, возвращаются на баланс (не в «всего заработано»).
+ */
+export async function revokeAssetUnlock(tx: Tx, user: User, cardId: string, now: Date): Promise<User> {
+  const [row, owned] = await Promise.all([
+    tx.card.findUnique({ where: { id: cardId } }),
+    tx.userCard.findUnique({ where: { userId_cardId: { userId: user.id, cardId } } }),
+  ]);
+  if (!row || !owned || owned.level <= 0) return user;
+  const card = cardFromRow(row);
+  const coins = cardTotalCost(card, owned.level) - cardLevelCost(card, 1);
+  const left = user.profitPerHour - BigInt(cardTotalProfit(card, owned.level));
+  await tx.userCard.delete({ where: { userId_cardId: { userId: user.id, cardId } } });
+  return applyBalanceChanges(
+    tx,
+    user,
+    coins > 0
+      ? [{ type: 'cards_refund', amount: coins, earned: false, meta: { cardId, level: owned.level } }]
+      : [],
+    { profitPerHour: left > 0n ? left : 0n },
+    now,
+  );
 }

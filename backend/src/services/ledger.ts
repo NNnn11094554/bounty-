@@ -23,6 +23,7 @@ export type TxType =
   | 'start_bonus'
   | 'shop_purchase'
   | 'shop_refund'
+  | 'cards_refund'
   | 'cosmetic_purchase'
   | 'admin_adjustment';
 

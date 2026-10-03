@@ -1,4 +1,4 @@
-import { CARD_GLYPHS, parseCardIcon } from '@meowgul/shared';
+import { CARD_GLYPHS, TICKER_RE, parseCardIcon } from '@meowgul/shared';
 import {
   MAX_LEVEL_PRICE,
   MAX_LEVEL_PROFIT,
@@ -19,13 +19,15 @@ export function levelPayback(card: CardConfig, level: number): number {
 }
 
 /**
- * Правила экономики карточек (их же проверяют тесты):
+ * Правила экономики активов (их же проверяют тесты):
  *  - costMultiplier 1,1–2,2, profitMultiplier 1,05–1,25;
  *  - окупаемость 1-го уровня 3–300 ч (дорогие тиры окупаются дольше), последнего — до 80 000 ч и не
  *    меньше чем в 15 раз дольше первого; растёт с каждым уровнем (без «стен» и без провалов);
  *  - прирост дохода за уровень ≤ MAX_LEVEL_PROFIT;
  *  - цена любого уровня ≤ MAX_LEVEL_PRICE;
- *  - уникальные id и иконки, условия ссылаются на существующие карточки и не образуют циклов.
+ *  - уникальные id и иконки (у монет — тикеры), условия ссылаются на существующие активы и не образуют циклов;
+ *  - цена в Stars — целое 1–10 000; бесплатные активы не дороже платных, а цены в Stars идут в том же
+ *    порядке, что и цены 1-го уровня в монетах (дороже в монетах — не дешевле в Stars).
  */
 export function checkCardsBalance(cards: readonly CardConfig[]): BalanceReport {
   const errors: string[] = [];
@@ -39,12 +41,33 @@ export function checkCardsBalance(cards: readonly CardConfig[]): BalanceReport {
     const other = icons.get(key);
     if (other) errors.push(`${card.id}: такая же иконка, как у ${other} (${key})`);
     icons.set(key, card.id);
-    const glyph = card.icon.split('/')[0];
+    const [glyph, mark] = card.icon.split('/');
     if (!(CARD_GLYPHS as readonly string[]).includes(glyph ?? ''))
       errors.push(`${card.id}: неизвестный рисунок ${glyph}`);
-    if (parseCardIcon(card.icon).badge === 'none' && card.icon.split('/')[1] !== 'none') {
+    if (glyph === 'token') {
+      if (!TICKER_RE.test(mark ?? '')) errors.push(`${card.id}: тикер монеты должен быть 2–6 букв A–Z/цифр`);
+    } else if (parseCardIcon(card.icon).badge === 'none' && mark !== 'none') {
       errors.push(`${card.id}: неизвестный значок в ${card.icon}`);
     }
+  }
+
+  // цены в Stars: от дешёвого к дорогому, бесплатные — самые дешёвые
+  const byCost = [...cards].sort((a, b) => a.baseCost - b.baseCost);
+  let maxFreeCost = -Infinity;
+  for (const card of byCost) if (card.starsPrice === null) maxFreeCost = Math.max(maxFreeCost, card.baseCost);
+  let prevStars = 0;
+  let prevCost = 0;
+  for (const card of byCost) {
+    const stars = card.starsPrice;
+    if (stars === null) continue;
+    if (!Number.isInteger(stars) || stars < 1 || stars > 10_000)
+      errors.push(`${card.id}: цена в Stars должна быть целым числом 1–10 000`);
+    if (card.baseCost < maxFreeCost)
+      errors.push(`${card.id}: платный актив дешевле бесплатного — бесплатными должны быть самые дешёвые`);
+    if (stars < prevStars && card.baseCost > prevCost)
+      errors.push(`${card.id}: дороже в монетах, но дешевле в Stars (${stars} < ${prevStars})`);
+    prevStars = Math.max(prevStars, stars);
+    prevCost = card.baseCost;
   }
 
   for (const card of cards) {

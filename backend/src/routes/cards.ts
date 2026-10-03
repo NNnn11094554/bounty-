@@ -1,4 +1,4 @@
-import type { CardUpgradeResponse, CardsResponse } from '@meowgul/shared';
+import type { CardUpgradeResponse, CardsResponse, InvoiceResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { cardLevelCost, cardLevelProfit } from '../game/config/cards.js';
@@ -11,12 +11,14 @@ import {
   getCatalogCard,
   limitedWindow,
   loadProgress,
+  needsStars,
   runCardUpgradeHooks,
   visibleCards,
 } from '../services/cards.js';
 import { registerComboCard } from '../services/dailyGames.js';
 import { applyBalanceChanges } from '../services/ledger.js';
 import { requirePlayer } from '../services/player.js';
+import { createAssetInvoice } from '../services/shop.js';
 import { buildPlayerState } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
@@ -31,6 +33,14 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
     const [catalog, progress] = await Promise.all([getCatalog(), loadProgress(prisma, user)]);
     const cards = await buildCardViews(visibleCards(catalog, progress, now), progress, now);
     return { cards, serverTime: now.getTime() };
+  });
+
+  /** Счёт в Stars за открытие платного актива; оплату выдаёт бот, статус — GET /api/shop/purchases/:id. */
+  app.post('/api/cards/:id/invoice', async (request): Promise<InvoiceResponse> => {
+    const { id } = Params.parse(request.params);
+    const player = await requirePlayer(request);
+    const { purchase, link } = await createAssetInvoice(player, id);
+    return { purchaseId: purchase.id, link };
   });
 
   app.post('/api/cards/:id/upgrade', async (request): Promise<CardUpgradeResponse> => {
@@ -61,6 +71,13 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       }
       const lock = cardLock(card, progress, new Map(catalog.map((c) => [c.id, c])));
       if (lock) throw new ApiError('LOCKED', 'Card is locked', { reason: 'condition', lock });
+      // первый уровень платного актива — только через счёт в Stars (POST /api/cards/:id/invoice)
+      if (needsStars(card, progress)) {
+        throw new ApiError('LOCKED', 'Unlock this asset with Stars first', {
+          reason: 'stars',
+          stars: card.starsPrice,
+        });
+      }
       const cooldown = progress.cooldowns.get(card.id);
       if (cooldown && cooldown > now) {
         throw new ApiError('COOLDOWN', 'Card is on cooldown', { until: cooldown.getTime() });

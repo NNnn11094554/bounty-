@@ -3,7 +3,9 @@ import {
   CARD_GLYPHS,
   CARD_ICON_BADGES,
   CARD_PALETTES,
+  CARD_RARITIES,
   CARD_TEXT_BADGES,
+  TICKER_RE,
   type AdminCard,
   type AdminCardInput,
   type CardPreviewResponse,
@@ -27,18 +29,22 @@ import { requireAdmin } from '../../services/player.js';
 const ID_RE = /^[a-z0-9_]{2,40}$/;
 const BADGES = [...CARD_ICON_BADGES, ...CARD_TEXT_BADGES] as readonly string[];
 
-/** Иконка "glyph/badge/palette" из каталога рисунков — без произвольных картинок и логотипов. */
+/**
+ * Иконка "glyph/badge/palette" из каталога рисунков или монета "token/ТИКЕР/palette" — без произвольных
+ * картинок и логотипов.
+ */
 const IconSchema = z.string().refine((icon) => {
   const [glyph, badge, palette] = icon.split('/');
   const p = Number(palette);
+  const mark = glyph === 'token' ? TICKER_RE.test(badge ?? '') : BADGES.includes(badge ?? '');
   return (
     (CARD_GLYPHS as readonly string[]).includes(glyph ?? '') &&
-    BADGES.includes(badge ?? '') &&
+    mark &&
     Number.isInteger(p) &&
     p >= 0 &&
     p < CARD_PALETTES.length
   );
-}, 'Icon: glyph/badge/palette from the catalog');
+}, 'Icon: glyph/badge/palette from the catalog or token/TICKER/palette');
 
 const ConditionSchema = z
   .discriminatedUnion('type', [
@@ -68,6 +74,8 @@ const CardInput = z
     descRu: z.string().trim().max(200),
     descEn: z.string().trim().max(200),
     icon: IconSchema,
+    rarity: z.enum(CARD_RARITIES),
+    starsPrice: z.number().int().min(1).max(10_000).nullable(),
     baseCost: z.number().int().min(1).max(1_000_000_000_000),
     baseProfit: z.number().int().min(1).max(1_000_000_000_000),
     costMultiplier: z.number().min(1.01).max(5),
@@ -107,6 +115,8 @@ function toAdmin(card: CatalogCard, owners: number): AdminCard {
     descRu: card.descRu,
     descEn: card.descEn,
     icon: card.icon,
+    rarity: card.rarity,
+    starsPrice: card.starsPrice,
     baseCost: card.baseCost,
     baseProfit: card.baseProfit,
     costMultiplier: card.costMultiplier,
@@ -132,6 +142,8 @@ function toRow(id: string, c: AdminCardInput) {
     descRu: c.descRu,
     descEn: c.descEn,
     icon: c.icon,
+    rarity: c.rarity,
+    starsPrice: c.starsPrice,
     baseCost: BigInt(c.baseCost),
     baseProfit: BigInt(c.baseProfit),
     costMultiplier: c.costMultiplier,

@@ -1,9 +1,9 @@
 /**
- * Проверка баланса карточек: npm run balance-check
- * Печатает окупаемость (цена уровня / прирост прибыли в час) по всем карточкам до 25 уровня
- * и проверяет правила экономики. Код выхода 1 — есть нарушения.
- *   --full    — таблица по каждой карточке (иначе — сводка по тирам и ключевые уровни)
- *   --card=ID — подробная таблица одной карточки
+ * Проверка баланса крипто-активов: npm run balance-check
+ * Печатает окупаемость (цена уровня / прирост прибыли в час) по всем активам до 25 уровня, цену открытия
+ * (монеты или Stars) и проверяет правила экономики. Код выхода 1 — есть нарушения.
+ *   --full    — таблица по каждому активу (иначе — ключевые уровни)
+ *   --card=ID — подробная таблица одного актива
  */
 import { formatShort } from '@meowgul/shared';
 import { CARDS, cardLevelCost, cardLevelProfit, type CardConfig } from '../game/config/cards.js';
@@ -33,7 +33,10 @@ function pad(text: string, width: number): string {
 }
 
 function printCard(card: CardConfig): void {
-  console.log(`\n${card.id} — ${card.nameRu} (${card.category}, maxLevel ${card.maxLevel})`);
+  const unlock = card.starsPrice === null ? 'за монеты' : `за ${card.starsPrice} Stars`;
+  console.log(
+    `\n${card.id} — ${card.nameRu} (${card.category}, ${card.rarity}, maxLevel ${card.maxLevel}, ${unlock})`,
+  );
   console.log(`  ${pad('ур.', 4)}${pad('цена', 12)}${pad('+прибыль/ч', 12)}окупаемость`);
   for (let level = 1; level <= card.maxLevel; level++) {
     console.log(
@@ -57,13 +60,20 @@ function main(): void {
   }
 
   const full = process.argv.includes('--full');
-  console.log(`Карточек: ${CARDS.length} (лимитированных: ${CARDS.filter((c) => c.isLimited).length})`);
+  const free = CARDS.filter((c) => c.starsPrice === null).length;
+  console.log(
+    `Активов: ${CARDS.length} (лимитированных: ${CARDS.filter((c) => c.isLimited).length}, ` +
+      `за монеты: ${free}, за Stars: ${CARDS.length - free})`,
+  );
   console.log('Окупаемость уровня = цена уровня / прирост прибыли в час, часы.\n');
-  console.log(pad('карточка', 22) + pad('цена 1', 9) + LEVELS.map((l) => pad(`ур.${l}`, 9)).join(''));
-  for (const card of CARDS) {
+  console.log(
+    pad('актив', 20) + pad('цена 1', 9) + pad('Stars', 7) + LEVELS.map((l) => pad(`ур.${l}`, 9)).join(''),
+  );
+  for (const card of [...CARDS].sort((a, b) => a.baseCost - b.baseCost)) {
     console.log(
-      pad(card.id, 22) +
+      pad(card.id, 20) +
         pad(formatShort(card.baseCost, 'ru'), 9) +
+        pad(card.starsPrice === null ? '—' : String(card.starsPrice), 7) +
         LEVELS.map((l) => pad(hours(payback(card, l)), 9)).join(''),
     );
     if (full) printCard(card);

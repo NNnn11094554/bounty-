@@ -2,6 +2,7 @@ import {
   TON_WALLET_ENABLED,
   type AdminTask,
   type ApiErrorBody,
+  type CardsResponse,
   type TaskCheckResponse,
   type TaskStartResponse,
   type TasksResponse,
@@ -118,9 +119,9 @@ describe('Earn tasks', () => {
     const txs = await prisma.transaction.findMany({ where: { userId: user.id, type: 'task_reward' } });
     expect(txs).toHaveLength(1);
 
-    // задание открывает карточку с условием «подписка на канал»
-    await prisma.user.update({ where: { id: user.id }, data: { balance: 1_000_000 } });
-    expect((await c.post('/api/cards/sp_yarn/upgrade')).statusCode).toBe(200);
+    // задание открывает актив с условием «подписка на канал»
+    const cards = (await c.get('/api/cards')).json<CardsResponse>().cards;
+    expect(cards.find((x) => x.id === 'ldo')?.lock).toBeNull();
   });
 
   it('link tasks can be checked 30 seconds after opening', async () => {

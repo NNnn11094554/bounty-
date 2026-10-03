@@ -97,12 +97,14 @@ describe('developer mode (one account only)', () => {
     for (const card of list.cards) {
       expect(card.lock).toBeNull();
       expect(card.available).toBe(true);
+      // активы за Stars разработчик открывает за монеты, без оплаты
+      expect(card.starsPrice).toBeNull();
     }
-    // карточка с условием и карточка с откатом — подряд, без ожидания
-    expect((await c.post('/api/cards/mk_margin20/upgrade')).statusCode).toBe(200);
-    const first = (await c.post('/api/cards/mk_insurance_fund/upgrade')).json<CardUpgradeResponse>();
-    expect(first.cards.find((x) => x.id === 'mk_insurance_fund')?.cooldownUntil).toBeNull();
-    expect((await c.post('/api/cards/mk_insurance_fund/upgrade')).statusCode).toBe(200);
+    // актив с условием (и за Stars) и актив с откатом — подряд, без ожидания
+    expect((await c.post('/api/cards/shib/upgrade')).statusCode).toBe(200);
+    const first = (await c.post('/api/cards/apt/upgrade')).json<CardUpgradeResponse>();
+    expect(first.cards.find((x) => x.id === 'apt')?.cooldownUntil).toBeNull();
+    expect((await c.post('/api/cards/apt/upgrade')).statusCode).toBe(200);
     // лимитированные — в любое время
     const limited = CARDS.find((x) => x.isLimited)!;
     expect((await c.post(`/api/cards/${limited.id}/upgrade`)).statusCode).toBe(200);
@@ -112,6 +114,6 @@ describe('developer mode (one account only)', () => {
 
     // без режима условия снова действуют
     await c.patch('/api/settings', { devMode: false });
-    expect(code(await c.post('/api/cards/sp_laser/upgrade'))).toBe('LOCKED');
+    expect(code(await c.post('/api/cards/atom/upgrade'))).toBe('LOCKED');
   });
 });

@@ -1,9 +1,17 @@
-import type { AuthResponse, InvoiceResponse, PurchaseStatusResponse, ShopResponse } from '@meowgul/shared';
+import type {
+  ApiErrorBody,
+  AuthResponse,
+  CardsResponse,
+  InvoiceResponse,
+  PurchaseStatusResponse,
+  ShopResponse,
+} from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import type { Transformer } from 'grammy';
 import type { UserFromGetMe } from 'grammy/types';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createBot } from '../src/bot/bot.js';
+import { CARDS, cardLevelCost, cardLevelProfit } from '../src/game/config/cards.js';
 import { accruePassive } from '../src/game/passive.js';
 import { prisma } from '../src/lib/db.js';
 import { setPaymentsGateway, type StarsInvoice } from '../src/services/payments.js';
@@ -228,5 +236,66 @@ describe('shop (Telegram Stars)', () => {
     const inv = (await c.post('/api/shop/invoice', { productId: 'coins_small' })).json<InvoiceResponse>();
     const { c: other } = await newPlayer(16006);
     expect((await other.get(`/api/shop/purchases/${inv.purchaseId}`)).statusCode).toBe(404);
+  });
+
+  it('asset for Stars: invoice → pre-checkout → level 1 and its income; refund takes it back', async () => {
+    const pay = fakePayments();
+    const card = CARDS.find((x) => x.id === 'uni')!; // открывается за Stars, условие — Chainlink 3-го уровня
+    const { c } = await newPlayer(16007);
+    const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 16007n } });
+    const invoice = (id: string) => c.post(`/api/cards/${id}/invoice`);
+
+    // бесплатный актив за Stars не продаётся, условие не выполнено — тоже
+    expect((await invoice('doge')).json<ApiErrorBody>().error.code).toBe('CONFLICT');
+    const locked = await invoice('uni');
+    expect(locked.statusCode).toBe(409);
+    expect(locked.json<ApiErrorBody>().error).toMatchObject({
+      code: 'LOCKED',
+      details: { reason: 'condition' },
+    });
+    expect((await invoice('no_such_asset')).statusCode).toBe(404);
+
+    await prisma.userCard.create({ data: { userId: user.id, cardId: 'link', level: 3 } });
+    const res = await invoice('uni');
+    expect(res.statusCode).toBe(200);
+    const inv = res.json<InvoiceResponse>();
+    expect(pay.invoices.at(-1)).toMatchObject({ stars: card.starsPrice, title: 'Актив Uniswap' });
+    expect(pay.invoices.at(-1)!.description).toContain('не криптовалюта');
+    const purchase = await prisma.purchase.findUniqueOrThrow({ where: { id: inv.purchaseId } });
+    expect(purchase).toMatchObject({ productId: 'asset_uni', stars: card.starsPrice, status: 'PENDING' });
+
+    const calls: ApiCall[] = [];
+    const bot = createBot('1:test', BOT_INFO);
+    bot.api.config.use(recorder(calls));
+    await bot.handleUpdate(preCheckout(16007, purchase.payload, card.starsPrice!));
+    expect(calls.filter((x) => x.method === 'answerPreCheckoutQuery').at(-1)!.payload.ok).toBe(true);
+    // второй счёт за тот же актив, пока первый не оплачен — можно выставить
+    const second = (await invoice('uni')).json<InvoiceResponse>();
+    await bot.handleUpdate(successfulPayment(16007, purchase.payload, card.starsPrice!, 'charge-asset'));
+    await bot.handleUpdate(successfulPayment(16007, purchase.payload, card.starsPrice!, 'charge-asset'));
+
+    const paid = (await c.get(`/api/shop/purchases/${inv.purchaseId}`)).json<PurchaseStatusResponse>();
+    expect(paid.status).toBe('paid');
+    expect(paid.state!.profitPerHour).toBe(cardLevelProfit(card, 1));
+    const view = (await c.get('/api/cards')).json<CardsResponse>().cards.find((x) => x.id === 'uni')!;
+    expect(view).toMatchObject({ level: 1, starsPrice: null, nextPrice: cardLevelCost(card, 2) });
+    // актив уже открыт: второй счёт не пройдёт проверку перед оплатой, новый не выставится
+    const secondPurchase = await prisma.purchase.findUniqueOrThrow({ where: { id: second.purchaseId } });
+    await bot.handleUpdate(preCheckout(16007, secondPurchase.payload, card.starsPrice!));
+    expect(calls.filter((x) => x.method === 'answerPreCheckoutQuery').at(-1)!.payload.ok).toBe(false);
+    expect((await invoice('uni')).json<ApiErrorBody>().error.code).toBe('CONFLICT');
+
+    // 2-й уровень — за монеты; возврат Stars забирает актив и возвращает монеты за его уровни
+    await prisma.user.update({ where: { id: user.id }, data: { balance: cardLevelCost(card, 2) } });
+    expect((await c.post('/api/cards/uni/upgrade')).statusCode).toBe(200);
+    const admin = client(app, tgUser(999000999));
+    await admin.post('/api/auth');
+    expect((await admin.post(`/api/admin/purchases/${purchase.id}/refund`)).statusCode).toBe(200);
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(Number(after.profitPerHour)).toBe(0);
+    expect(after.balance.toNumber()).toBeGreaterThanOrEqual(cardLevelCost(card, 2));
+    expect(
+      await prisma.userCard.findUnique({ where: { userId_cardId: { userId: user.id, cardId: 'uni' } } }),
+    ).toBeNull();
   });
 });

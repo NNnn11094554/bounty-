@@ -22,12 +22,16 @@ function shuffle<T>(items: T[]): T[] {
   return a;
 }
 
-/** Карточки, из которых можно составить комбо: в продаже, не лимитированные, доступные без друзей и лиг. */
+/**
+ * Активы, из которых можно составить комбо: в продаже, не лимитированные, открываются за монеты (комбо
+ * доступно каждому без покупок за Stars) и без условий на друзей и лиги.
+ */
 export function comboCandidates(catalog: readonly CatalogCard[]): CatalogCard[] {
   return catalog.filter(
     (c) =>
       c.isActive &&
       !c.isLimited &&
+      c.starsPrice === null &&
       c.baseCost <= COMBO_MAX_BASE_COST &&
       (c.condition === null || c.condition.type === 'card'),
   );
