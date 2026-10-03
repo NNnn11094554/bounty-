@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { maxEnergy, tapValue } from '../src/game/config/game.js';
-import { leagueForTotal } from '../src/game/config/leagues.js';
+import { LEAGUES, leagueForTotal } from '../src/game/config/leagues.js';
 import { dayKey, nextResetAt, previousDayKey } from '../src/game/dayKey.js';
 import { currentEnergy } from '../src/game/energy.js';
 import { accruePassive } from '../src/game/passive.js';
@@ -124,8 +124,12 @@ describe('leagues and day keys', () => {
     expect(leagueForTotal(0)).toBe(0);
     expect(leagueForTotal(4_999)).toBe(0);
     expect(leagueForTotal(5_000)).toBe(1);
-    expect(leagueForTotal(1_000_000)).toBe(4);
-    expect(leagueForTotal(5_000_000_000)).toBe(9);
+    expect(leagueForTotal(LEAGUES[4]!.threshold)).toBe(4);
+    expect(leagueForTotal(LEAGUES[4]!.threshold - 1)).toBe(3);
+    expect(leagueForTotal(LEAGUES[9]!.threshold - 1)).toBe(8);
+    expect(leagueForTotal(LEAGUES[9]!.threshold)).toBe(9);
+    // высшая лига — долгая цель: ~3 месяца плотной игры
+    expect(LEAGUES[9]!.threshold).toBe(200_000_000_000);
   });
   it('resets the game day at 16:00 UTC', () => {
     expect(dayKey(new Date('2026-10-01T15:59:59Z'), 16)).toBe('2026-09-30');

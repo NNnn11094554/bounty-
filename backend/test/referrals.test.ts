@@ -1,6 +1,7 @@
 import type { AuthResponse, FriendsResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { LEAGUES } from '../src/game/config/leagues.js';
 import { REFERRAL } from '../src/game/config/rewards.js';
 import { prisma } from '../src/lib/db.js';
 import { applyBalanceChanges } from '../src/services/ledger.js';
@@ -66,8 +67,8 @@ describe('referrals', () => {
     await login(11011);
     const res = await login(11012, { ref: 'ref_11011', premium: true });
     expect(res.referral?.bonus).toBe(25_000);
-    expect(res.state.leagueLevel).toBe(2);
-    const expected = 25_000 + 2 * (REFERRAL.leagues[1]! + REFERRAL.leagues[2]!);
+    expect(res.state.leagueLevel).toBe(1);
+    const expected = 25_000 + 2 * REFERRAL.leagues[1]!;
     expect(await balance(11011)).toBe(expected);
   });
 
@@ -79,7 +80,7 @@ describe('referrals', () => {
     const before = inviter.balance.toNumber();
     // друг заработал до Platinum (Gold и Platinum — сразу два бонуса)
     await withUserLock(friend.id, (tx, u) =>
-      applyBalanceChanges(tx, u, [{ type: 'admin_adjustment', amount: 100_000 }]),
+      applyBalanceChanges(tx, u, [{ type: 'admin_adjustment', amount: LEAGUES[3]!.threshold }]),
     );
     const after = (await prisma.user.findUniqueOrThrow({ where: { id: inviter.id } })).balance.toNumber();
     expect(after - before).toBe(REFERRAL.leagues[2]! + REFERRAL.leagues[3]!);
@@ -130,8 +131,8 @@ describe('referrals', () => {
     expect(res.total).toBe(3);
     expect(res.link).toContain('?start=ref_11051');
     expect(res.friends.map((f) => f.name)).toEqual(['Cat11062', 'Cat11061', 'Cat11060']);
-    expect(res.friends[2]).toMatchObject({ isPremium: true, leagueLevel: 2 });
-    expect(res.friends[2]!.bonus).toBe(25_000 + 2 * (REFERRAL.leagues[1]! + REFERRAL.leagues[2]!));
+    expect(res.friends[2]).toMatchObject({ isPremium: true, leagueLevel: 1 });
+    expect(res.friends[2]!.bonus).toBe(25_000 + 2 * REFERRAL.leagues[1]!);
     expect(res.earned).toBe(res.friends.reduce((s, f) => s + f.bonus, 0));
     expect(res.nextCursor).toBeNull();
     expect(res.bonuses.leagues[0]).toEqual({ level: 1, regular: 20_000, premium: 40_000 });

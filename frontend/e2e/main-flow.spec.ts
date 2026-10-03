@@ -38,6 +38,6 @@ test('main flow: login, tap, buy a card, claim the daily reward, invite a friend
   await expect(page.getByTestId('friend-row')).toContainText('Новичок');
   await page.getByTestId('nav-office').click();
   // 1 010 − 800 (карточка) + 500 (День 1) + 5 000 + 20 000 (друг и его Silver) + пассивный доход
-  // + достижения: первая карточка 1 000, первый друг 5 000, лиги Silver 2 000 и Gold 5 000
-  await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^38\s7\d\d$/);
+  // + достижения: первая карточка 1 000, первый друг 5 000, лига Silver 2 000 (Gold теперь от 10 млн)
+  await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^33\s7\d\d$/);
 });
