@@ -21,12 +21,14 @@ import { client, createApp, resetDb, tgUser } from './helpers.js';
 const ADMIN_ID = 999000999;
 
 const newCard: AdminCardInput = {
-  category: 'MARKETS',
-  nameRu: 'Тестовая биржа',
-  nameEn: 'Test exchange',
+  category: 'LAYER1',
+  nameRu: 'Тестовая сеть',
+  nameEn: 'Test chain',
   descRu: 'Описание',
   descEn: 'Description',
-  icon: 'rocket/star/4',
+  icon: 'token/TEST/4',
+  rarity: 'common',
+  starsPrice: null,
   baseCost: 1_000,
   baseProfit: 150,
   costMultiplier: 1.9,
@@ -125,7 +127,7 @@ describe('admin API', () => {
   it('cards: preview, create, edit (players see it), validation and safe delete', async () => {
     await login(ADMIN_ID);
     const list = (await admin().get('/api/admin/cards')).json<{ cards: AdminCard[] }>().cards;
-    expect(list.length).toBeGreaterThanOrEqual(120);
+    expect(list.length).toBeGreaterThanOrEqual(60);
 
     const preview = await admin().post('/api/admin/cards/preview', { id: 'test_ex', card: newCard });
     const p = preview.json<CardPreviewResponse>();
@@ -138,20 +140,19 @@ describe('admin API', () => {
     });
     expect(bad.json<CardPreviewResponse>().warnings.join(' ')).toContain('costMultiplier');
 
+    // по очереди: лимит частоты запросов админки не должен влиять на проверку
     const invalid = [
-      admin().post('/api/admin/cards', { id: 'test_ex', card: { ...newCard, icon: 'logo/none/0' } }),
-      admin().post('/api/admin/cards', { id: 'Bad Id', card: newCard }),
-      admin().post('/api/admin/cards', {
-        id: 'test_ex',
-        card: { ...newCard, condition: { type: 'card', cardId: 'test_ex', level: 1 } },
-      }),
-      admin().post('/api/admin/cards', {
-        id: 'test_ex',
-        card: { ...newCard, condition: { type: 'card', cardId: 'nope', level: 1 } },
-      }),
-      admin().post('/api/admin/cards', { id: 'mk_spot', card: newCard }),
+      { id: 'test_ex', card: { ...newCard, icon: 'logo/none/0' } },
+      { id: 'test_ex', card: { ...newCard, icon: 'token/bad ticker/0' } },
+      { id: 'test_ex', card: { ...newCard, starsPrice: 0 } },
+      { id: 'Bad Id', card: newCard },
+      { id: 'test_ex', card: { ...newCard, condition: { type: 'card', cardId: 'test_ex', level: 1 } } },
+      { id: 'test_ex', card: { ...newCard, condition: { type: 'card', cardId: 'nope', level: 1 } } },
+      { id: 'doge', card: newCard },
     ];
-    expect((await Promise.all(invalid)).map((r) => r.statusCode)).toEqual([400, 400, 400, 400, 409]);
+    const codes: number[] = [];
+    for (const body of invalid) codes.push((await admin().post('/api/admin/cards', body)).statusCode);
+    expect(codes).toEqual([400, 400, 400, 400, 400, 400, 409]);
 
     expect((await admin().post('/api/admin/cards', { id: 'test_ex', card: newCard })).statusCode).toBe(200);
     const edited = await admin().put('/api/admin/cards/test_ex', { ...newCard, nameRu: 'Новая биржа' });
@@ -160,12 +161,16 @@ describe('admin API', () => {
     await login(19021, { balance: 10_000 });
     const player = client(app, tgUser(19021));
     const cards = (await player.get('/api/cards')).json<CardsResponse>().cards;
-    expect(cards.find((c) => c.id === 'test_ex')?.name).toEqual({ ru: 'Новая биржа', en: 'Test exchange' });
+    expect(cards.find((c) => c.id === 'test_ex')?.name).toEqual({ ru: 'Новая биржа', en: 'Test chain' });
     expect((await player.post('/api/cards/test_ex/upgrade')).statusCode).toBe(200);
 
     const del = await admin().del('/api/admin/cards/test_ex');
     expect(del.json<ApiErrorBody>().error.code).toBe('CONFLICT');
-    await admin().post('/api/admin/cards', { id: 'test_ex2', card: newCard });
+    const priced = await admin().post('/api/admin/cards', {
+      id: 'test_ex2',
+      card: { ...newCard, starsPrice: 15 },
+    });
+    expect(priced.json<{ card: AdminCard }>().card).toMatchObject({ starsPrice: 15, rarity: 'common' });
     expect((await admin().del('/api/admin/cards/test_ex2')).statusCode).toBe(200);
   });
 

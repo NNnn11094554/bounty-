@@ -1,13 +1,23 @@
 /**
- * Карточки: категории, типы ответа API и каталог иконок.
- * Иконка карточки — строка "glyph/badge/palette": рисунок, значок в углу и градиент фона.
- * Бэкенд хранит строку, фронтенд рисует её (frontend/src/components/cardIcons.tsx).
+ * Крипто-активы (в коде — «карточки»): категории, редкость, типы ответа API и каталог иконок.
+ * Иконка — строка "glyph/badge/palette": рисунок, значок в углу и градиент фона. У монет-токенов
+ * иконка "token/ТИКЕР/palette": своя стилизованная монета с тикером (без логотипов настоящих проектов).
+ * Бэкенд хранит строку, фронтенд рисует её (frontend/src/components/cards/CardIcon.tsx).
+ * Активы — игровые предметы, а не настоящая криптовалюта: их нельзя вывести, продать или перевести.
  */
 import type { PlayerState } from './api.js';
 import type { ComboUpdate } from './daily.js';
 
-export const CARD_CATEGORIES = ['MARKETS', 'PR_TEAM', 'LEGAL', 'SPECIALS'] as const;
+/** Блокчейны, DeFi, мемкоины и особые активы (инфраструктура и события). */
+export const CARD_CATEGORIES = ['LAYER1', 'DEFI', 'MEME', 'SPECIALS'] as const;
 export type CardCategory = (typeof CARD_CATEGORIES)[number];
+
+/** Редкость актива — от тира: чем дальше в прогрессии, тем реже. */
+export const CARD_RARITIES = ['common', 'rare', 'epic', 'legendary'] as const;
+export type CardRarity = (typeof CARD_RARITIES)[number];
+export function isCardRarity(value: string): value is CardRarity {
+  return (CARD_RARITIES as readonly string[]).includes(value);
+}
 
 export interface Localized {
   ru: string;
@@ -121,6 +131,7 @@ export const CARD_GLYPHS = [
   'trophy',
   'eye',
   'megaphone',
+  'token',
 ] as const;
 export type CardGlyph = (typeof CARD_GLYPHS)[number];
 
@@ -215,16 +226,31 @@ export interface CardIconSpec {
   glyph: CardGlyph;
   badge: CardBadge;
   palette: number;
+  /** тикер на монете (только у иконок "token/ТИКЕР/palette") */
+  ticker: string | null;
 }
+
+/** Тикер монеты: 2–6 латинских заглавных букв и цифр. */
+export const TICKER_RE = /^[A-Z0-9]{2,6}$/;
 
 export function parseCardIcon(icon: string): CardIconSpec {
   const [glyph, badge = 'none', palette = '0'] = icon.split('/');
+  const paletteIndex = Math.abs(Number.parseInt(palette, 10) || 0) % CARD_PALETTES.length;
+  if (glyph === 'token') {
+    return {
+      glyph: 'token',
+      badge: 'none',
+      palette: paletteIndex,
+      ticker: TICKER_RE.test(badge) ? badge : '?',
+    };
+  }
   return {
     glyph: (CARD_GLYPHS as readonly string[]).includes(glyph ?? '') ? (glyph as CardGlyph) : 'coins',
     badge: ([...CARD_ICON_BADGES, ...CARD_TEXT_BADGES] as readonly string[]).includes(badge)
       ? (badge as CardBadge)
       : 'none',
-    palette: Math.abs(Number.parseInt(palette, 10) || 0) % CARD_PALETTES.length,
+    palette: paletteIndex,
+    ticker: null,
   };
 }
 
@@ -240,8 +266,14 @@ export interface CardView {
   name: Localized;
   description: Localized;
   icon: string;
+  rarity: CardRarity;
   level: number;
   maxLevel: number;
+  /**
+   * цена открытия в Telegram Stars (первый уровень); null — актив открывается за монеты или уже куплен.
+   * Следующие уровни всегда покупаются за монеты.
+   */
+  starsPrice: number | null;
   /** суммарная прибыль карточки в час на текущем уровне */
   profitPerHour: number;
   /** прирост прибыли в час за следующий уровень; null — максимум */

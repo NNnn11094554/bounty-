@@ -55,6 +55,8 @@ export async function adminDailyRoutes(app: FastifyInstance): Promise<void> {
     for (const id of cardIds) {
       const card = catalog.find((c) => c.id === id);
       if (!card || !card.isActive) throw new ApiError('VALIDATION', `Unknown or inactive card ${id}`);
+      // комбо должно собираться без покупок за Stars
+      if (card.starsPrice !== null) throw new ApiError('VALIDATION', `Card ${id} is unlocked with Stars`);
     }
     await prisma.dailyCombo.upsert({
       where: { dayKey: key },

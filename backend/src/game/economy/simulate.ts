@@ -3,6 +3,8 @@
  * Не 24/7: несколько заходов в день, ночью копится не больше лимита офлайн-дохода, иногда пропуски дней,
  * шифр и комбо — не каждый день, друзья появляются постепенно. Покупает самое выгодное (лучшая окупаемость),
  * а если на него не хватает — копит. По ней настраивается экономика и проверяется тестами.
+ * Игрок со Stars открывает платные активы, как только выполнены их условия; бесплатный — только активы
+ * за монеты (их прокачка у обоих одинаковая — за монеты).
  */
 import {
   MAX_LEVEL,
@@ -33,6 +35,8 @@ export interface PlayerProfile {
   fullEnergyPerDay: number;
   /** друзья: [день, всего друзей к этому дню] */
   friends: ReadonlyArray<readonly [number, number]>;
+  /** открывает активы за Stars (иначе — только бесплатные) */
+  stars: boolean;
 }
 
 /** Обычный активный игрок Telegram-игры. */
@@ -51,7 +55,11 @@ export const NORMAL_PLAYER: PlayerProfile = {
     [45, 7],
     [80, 10],
   ],
+  stars: true,
 };
+
+/** Тот же игрок, но без покупок за Stars: только бесплатные активы. */
+export const FREE_PLAYER: PlayerProfile = { ...NORMAL_PLAYER, stars: false };
 
 export interface Snapshot {
   day: number;
@@ -70,6 +78,8 @@ export interface Snapshot {
   nextLeagueDays: number | null;
   /** доступно уровней карточек прямо сейчас (условия выполнены, не на кулдауне) */
   availableUpgrades: number;
+  /** сколько звёзд потрачено на открытие активов */
+  starsSpent: number;
   /** заработано за последние сутки по источникам */
   income: { passive: number; taps: number; daily: number; other: number };
 }
@@ -111,6 +121,7 @@ export function simulate(
   const rand = rng(opts.seed ?? 7);
   const lvl = new Map<string, number>(CARDS.map((c) => [c.id, 0]));
   const cooldown = new Map<string, number>();
+  let starsSpent = 0;
   let balance = 0;
   let total = 0;
   let pph = 0;
@@ -152,9 +163,13 @@ export function simulate(
     if (k.type === 'league') return leagueForTotal(total) >= k.level;
     return true; // задания (подписка на канал) выполнены
   };
+  /** первый уровень актива за Stars — без монет */
+  const paidWithStars = (c: CardConfig) => c.starsPrice !== null && lvl.get(c.id) === 0;
+  const coinCost = (c: CardConfig) => (paidWithStars(c) ? 0 : cardLevelCost(c, lvl.get(c.id)! + 1));
   const available = (c: CardConfig, t: number, day: number) => {
     const l = lvl.get(c.id)!;
     if (l >= c.maxLevel) return false;
+    if (paidWithStars(c) && !p.stars) return false;
     if ((cooldown.get(c.id) ?? 0) > t) return false;
     if (c.isLimited && !limitedOpen(c, t)) return false;
     return condOk(c, day);
@@ -165,7 +180,7 @@ export function simulate(
     for (const c of CARDS) {
       if (!available(c, t, day)) continue;
       const next = lvl.get(c.id)! + 1;
-      const pb = cardLevelCost(c, next) / cardLevelProfit(c, next);
+      const pb = coinCost(c) / cardLevelProfit(c, next);
       if (pb < bestPb) {
         bestPb = pb;
         best = c;
@@ -245,7 +260,11 @@ export function simulate(
       if (rand() < p.comboRate) {
         // комбо: по уровню трёх недорогих карточек дня — если хватает денег
         const pool = CARDS.filter(
-          (c) => !c.isLimited && c.baseCost <= COMBO_MAX_BASE_COST && available(c, t, day),
+          (c) =>
+            !c.isLimited &&
+            c.starsPrice === null &&
+            c.baseCost <= COMBO_MAX_BASE_COST &&
+            available(c, t, day),
         );
         const pick = [0, 1, 2]
           .map(() => pool[Math.floor(rand() * pool.length)])
@@ -301,7 +320,8 @@ export function simulate(
 
   const buy = (c: CardConfig, t: number) => {
     const next = lvl.get(c.id)! + 1;
-    balance -= cardLevelCost(c, next);
+    if (paidWithStars(c)) starsSpent += c.starsPrice!;
+    balance -= coinCost(c);
     pph += cardLevelProfit(c, next);
     lvl.set(c.id, next);
     if (c.cooldownSec) cooldown.set(c.id, t + c.cooldownSec / 3600);
@@ -342,7 +362,7 @@ export function simulate(
         }
       }
       if (!card) return;
-      const cost = cardLevelCost(card, lvl.get(card.id)! + 1);
+      const cost = coinCost(card);
       if (cost > balance) return;
       buy(card, t);
     }
@@ -354,7 +374,7 @@ export function simulate(
     const effHourly =
       (pph * (p.sessions.length * GAME.passive.maxOfflineHours)) / 24 +
       (dayIncome.taps + dayIncome.daily + dayIncome.other) / 24;
-    const nextCost = card ? cardLevelCost(card, lvl.get(card.id)! + 1) : 0;
+    const nextCost = card ? coinCost(card) : 0;
     const league = leagueForTotal(total);
     const perDay = Object.values(dayIncome).reduce((s, v) => s + v, 0);
     snapshots.push({
@@ -372,6 +392,7 @@ export function simulate(
       nextLeagueDays:
         league < LEAGUES.length - 1 && perDay > 0 ? (LEAGUES[league + 1]!.threshold - total) / perDay : null,
       availableUpgrades: CARDS.filter((c) => available(c, t, day)).length,
+      starsSpent,
       income: { ...dayIncome },
     });
   };

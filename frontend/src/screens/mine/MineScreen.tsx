@@ -76,7 +76,7 @@ function Segmented<T extends string>({
   );
 }
 
-/** Экран Mine: карточки по категориям, покупка уровней. */
+/** Экран «Активы»: крипто-активы по категориям, открытие (монеты или Stars) и прокачка уровней. */
 export function MineScreen() {
   const t = useT();
   const cards = useCards((s) => s.cards);
@@ -207,6 +207,14 @@ export function MineScreen() {
               ))}
             </motion.div>
           </AnimatePresence>
+        )}
+        {cards.length > 0 && (
+          <p
+            className="mx-auto mt-4 max-w-[320px] text-center text-[11px] font-semibold leading-snug text-white/35"
+            data-testid="mine-disclaimer"
+          >
+            {t('asset.disclaimer')}
+          </p>
         )}
       </div>
 

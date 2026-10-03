@@ -46,6 +46,9 @@ export const endpoints = {
   cards: () => api<CardsResponse>('/api/cards'),
   upgradeCard: (id: string) =>
     api<CardUpgradeResponse>(`/api/cards/${encodeURIComponent(id)}/upgrade`, { method: 'POST' }),
+  /** счёт в Stars за открытие актива */
+  assetInvoice: (id: string) =>
+    api<InvoiceResponse>(`/api/cards/${encodeURIComponent(id)}/invoice`, { method: 'POST' }),
   leagueTop: (level: number) => api<LeaderboardResponse>(`/api/leagues/${level}/top`),
   claimDaily: () => api<DailyClaimResponse>('/api/daily-reward/claim', { method: 'POST' }),
   tasks: () => api<TasksResponse>('/api/tasks'),

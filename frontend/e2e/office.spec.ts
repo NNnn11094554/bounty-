@@ -137,22 +137,37 @@ test.describe('Office', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
-  test('50 rapid taps: the character returns exactly to its pose and does not drift', async ({ page }) => {
+  test('50 rapid taps: the character does not move at all — only the face reacts', async ({ page }) => {
     await page.goto('/?uid=700000207&name=Барабанщик');
     await expect(page.getByTestId('hero')).toBeVisible();
     await page.waitForTimeout(800);
     const figure = page.locator('.hero-fig');
     const before = (await figure.boundingBox())!;
     const hit = (await page.getByTestId('cat-hit').boundingBox())!;
+    // все трансформации тела и головы во время серии (без дыхания — это отдельный CSS-цикл)
+    const pose = () =>
+      page.evaluate(() => ({
+        body: (document.querySelector('.hero-react') as HTMLElement).style.transform,
+        head: getComputedStyle(document.querySelector('.hero-head')!).transform,
+        pose: (document.querySelector('[data-testid="hero"]') as HTMLElement).dataset.pose ?? '',
+      }));
+    let squinted = false;
     for (let i = 0; i < 50; i++) {
       await page.mouse.click(
         hit.x + hit.width * (0.3 + (i % 5) * 0.1),
         hit.y + hit.height * (0.2 + (i % 4) * 0.18),
         HUMAN_TAP,
       );
+      if (i % 10 === 0) {
+        // тап не двигает ни тело, ни голову: ни прыжка, ни наклона, ни сжатия
+        expect(await pose()).toEqual({ body: '', head: 'none', pose: '' });
+        squinted ||= (await page.getByTestId('hero').getAttribute('data-squint')) === 'true';
+      }
     }
+    // на тап отвечает лицо — короткий прищур
+    expect(squinted).toBe(true);
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '50');
-    // пружины успокаиваются — трансформации реакции снимаются полностью
+    // слой реакции так и остался без трансформаций
     await expect
       .poll(
         () =>
@@ -169,13 +184,20 @@ test.describe('Office', () => {
     const after = (await figure.boundingBox())!;
     expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
     expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);
-    // запущенные из скрипта анимации не копятся (остаются только бесконечные CSS-покачивания)
-    const scripted = await page.evaluate(
-      () =>
-        document.getAnimations().filter((a) => !(a instanceof CSSAnimation) && a.playState === 'running')
-          .length,
-    );
-    expect(scripted).toBeLessThanOrEqual(4);
+    // запущенные из скрипта анимации (числа, круги, искры) доигрывают и не копятся — остаются только
+    // бесконечные CSS-циклы дыхания и света
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              document
+                .getAnimations()
+                .filter((a) => !(a instanceof CSSAnimation) && a.playState === 'running').length,
+          ),
+        { timeout: 6000 },
+      )
+      .toBeLessThanOrEqual(4);
   });
 
   test('without energy taps give nothing and the cat looks tired; energy comes back', async ({ page }) => {

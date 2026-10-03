@@ -83,25 +83,25 @@ describe('daily combo and cipher', () => {
 
   it('upgrading all three combo cards pays the combo reward once', async () => {
     const key = dayKey(new Date());
-    await prisma.dailyCombo.create({ data: { dayKey: key, cardIds: ['mk_spot', 'pr_support', 'lg_kyc'] } });
+    await prisma.dailyCombo.create({ data: { dayKey: key, cardIds: ['doge', 'link', 'ton'] } });
     const { c, user } = await player(9002, 1_000_000);
 
-    const other = (await c.post('/api/cards/mk_futures/upgrade')).json<CardUpgradeResponse>();
+    const other = (await c.post('/api/cards/not/upgrade')).json<CardUpgradeResponse>();
     expect(other.combo).toBeNull();
 
-    const one = (await c.post('/api/cards/mk_spot/upgrade')).json<CardUpgradeResponse>();
+    const one = (await c.post('/api/cards/doge/upgrade')).json<CardUpgradeResponse>();
     expect(one.combo?.reward).toBe(0);
-    expect(one.combo?.combo.slots.map((s) => s?.id ?? null)).toEqual(['mk_spot', null, null]);
+    expect(one.combo?.combo.slots.map((s) => s?.id ?? null)).toEqual(['doge', null, null]);
     // повторное улучшение той же карточки ничего не меняет
     await prisma.userCard.update({
-      where: { userId_cardId: { userId: user.id, cardId: 'mk_spot' } },
+      where: { userId_cardId: { userId: user.id, cardId: 'doge' } },
       data: { cooldownUntil: null },
     });
-    expect((await c.post('/api/cards/mk_spot/upgrade')).json<CardUpgradeResponse>().combo).toBeNull();
+    expect((await c.post('/api/cards/doge/upgrade')).json<CardUpgradeResponse>().combo).toBeNull();
 
-    await c.post('/api/cards/pr_support/upgrade');
+    await c.post('/api/cards/link/upgrade');
     const before = (await c.get('/api/state')).json<{ state: { balance: number } }>().state.balance;
-    const last = (await c.post('/api/cards/lg_kyc/upgrade')).json<CardUpgradeResponse>();
+    const last = (await c.post('/api/cards/ton/upgrade')).json<CardUpgradeResponse>();
     expect(last.combo).toMatchObject({
       reward: comboReward(last.state.profitPerHour),
       combo: { rewarded: true },
@@ -109,18 +109,18 @@ describe('daily combo and cipher', () => {
     expect(last.state.balance).toBeGreaterThan(before + REWARDS.combo.min - 2_000);
 
     const games = (await c.get('/api/combo')).json<DailyGamesResponse>();
-    expect(games.combo.slots.map((s) => s?.id)).toEqual(['mk_spot', 'pr_support', 'lg_kyc']);
+    expect(games.combo.slots.map((s) => s?.id)).toEqual(['doge', 'link', 'ton']);
     expect(await prisma.transaction.count({ where: { userId: user.id, type: 'combo_reward' } })).toBe(1);
   });
 
   it('progress of a previous day does not count today', async () => {
     const key = dayKey(new Date());
-    await prisma.dailyCombo.create({ data: { dayKey: key, cardIds: ['mk_spot', 'pr_support', 'lg_kyc'] } });
+    await prisma.dailyCombo.create({ data: { dayKey: key, cardIds: ['doge', 'link', 'ton'] } });
     const { c, user } = await player(9003, 1_000_000);
     await prisma.userComboProgress.create({
-      data: { userId: user.id, dayKey: previousDayKey(key), foundCardIds: ['mk_spot', 'pr_support'] },
+      data: { userId: user.id, dayKey: previousDayKey(key), foundCardIds: ['doge', 'link'] },
     });
-    const res = (await c.post('/api/cards/lg_kyc/upgrade')).json<CardUpgradeResponse>();
+    const res = (await c.post('/api/cards/ton/upgrade')).json<CardUpgradeResponse>();
     expect(res.combo?.reward).toBe(0);
     expect(res.combo?.combo.slots.filter(Boolean)).toHaveLength(1);
   });
@@ -168,16 +168,17 @@ describe('daily combo and cipher', () => {
     const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
     expect((await someone.get('/api/admin/daily')).statusCode).toBe(403);
-    const ok = await admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['mk_spot', 'pr_blog', 'lg_aml'] });
+    const ok = await admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['doge', 'link', 'ada'] });
     expect(ok.statusCode).toBe(200);
     expect(
       (await admin.put(`/api/admin/cipher/${tomorrow}`, { word: 'whisker', hintRu: 'ус' })).statusCode,
     ).toBe(200);
 
     const bad = [
-      admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['mk_spot', 'mk_spot', 'lg_aml'] }),
-      admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['mk_spot', 'nope', 'lg_aml'] }),
-      admin.put(`/api/admin/combo/${previousDayKey(today)}`, { cardIds: ['mk_spot', 'pr_blog', 'lg_aml'] }),
+      admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['doge', 'doge', 'ada'] }),
+      admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['doge', 'nope', 'ada'] }),
+      admin.put(`/api/admin/combo/${previousDayKey(today)}`, { cardIds: ['doge', 'link', 'ada'] }),
+      admin.put(`/api/admin/combo/${tomorrow}`, { cardIds: ['doge', 'link', 'btc'] }), // BTC — за Stars
       admin.put(`/api/admin/cipher/${tomorrow}`, { word: 'CAT' }),
       admin.put(`/api/admin/cipher/${tomorrow}`, { word: 'КОТИК' }),
     ];
@@ -190,7 +191,7 @@ describe('daily combo and cipher', () => {
     expect(days[0]!.dayKey).toBe(today);
     expect(days[1]).toMatchObject({
       dayKey: tomorrow,
-      combo: { cardIds: ['mk_spot', 'pr_blog', 'lg_aml'] },
+      combo: { cardIds: ['doge', 'link', 'ada'] },
       cipher: { word: 'WHISKER' },
     });
   });

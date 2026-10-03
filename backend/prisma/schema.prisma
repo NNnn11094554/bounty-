@@ -112,14 +112,16 @@ model User {
   @@index([createdAt])
 }
 
+/// Категории крипто-активов: блокчейны, DeFi, мемкоины, особые (инфраструктура и события).
 enum CardCategory {
-  MARKETS
-  PR_TEAM
-  LEGAL
+  LAYER1
+  DEFI
+  MEME
   SPECIALS
 }
 
-/// Карточки: заполняются из backend/src/game/config/cards.ts (npm run db:seed), правятся в админке.
+/// Крипто-активы (игровые предметы, не настоящая криптовалюта): заполняются из
+/// backend/src/game/config/cards.ts (npm run db:seed), правятся в админке.
 model Card {
   id               String       @id
   category         CardCategory
@@ -128,6 +130,8 @@ model Card {
   descRu           String
   descEn           String
   icon             String
+  /// common | rare | epic | legendary
+  rarity           String       @default("common")
   baseCost         BigInt
   baseProfit       BigInt
   costMultiplier   Decimal      @db.Decimal(8, 4)
@@ -137,6 +141,8 @@ model Card {
   /// условие открытия: card | friends | task | league; значение: "cardId:level" | число | taskId
   conditionType    String?
   conditionValue   String?
+  /// цена открытия (1-го уровня) в Telegram Stars; null — открывается за монеты
+  starsPrice       Int?
   isLimited        Boolean      @default(false)
   availableFrom    DateTime?
   availableUntil   DateTime?

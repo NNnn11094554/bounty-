@@ -11,12 +11,13 @@ import { toCoins } from '../lib/money.js';
 import { requirePlayer } from '../services/player.js';
 
 /** Требования Airdrop (без кошелька): лига Platinum, уровень 10, 3 друга, серия 7 дней, 15 карточек, 5 заданий. */
-const TARGETS: Record<AirdropRequirementId, number> = {
+export const AIRDROP_TARGETS: Record<AirdropRequirementId, number> = {
   league: 3,
   level: 10,
   friends: 3,
   streak: 7,
-  cards: 15,
+  // все активы за монеты: требование выполнимо без покупок за Stars
+  cards: 6,
   tasks: 5,
 };
 
@@ -55,12 +56,14 @@ export async function airdropRoutes(app: FastifyInstance): Promise<void> {
       cards,
       tasks,
     };
-    const requirements: AirdropRequirement[] = (Object.keys(TARGETS) as AirdropRequirementId[]).map((id) => ({
-      id,
-      current: Math.min(current[id], TARGETS[id]),
-      target: TARGETS[id],
-      done: current[id] >= TARGETS[id],
-    }));
+    const requirements: AirdropRequirement[] = (Object.keys(AIRDROP_TARGETS) as AirdropRequirementId[]).map(
+      (id) => ({
+        id,
+        current: Math.min(current[id], AIRDROP_TARGETS[id]),
+        target: AIRDROP_TARGETS[id],
+        done: current[id] >= AIRDROP_TARGETS[id],
+      }),
+    );
     return {
       points,
       rank,

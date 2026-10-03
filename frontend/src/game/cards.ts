@@ -2,13 +2,15 @@ import type { CardUpgradeResponse, CardView, PlayerState } from '@meowgul/shared
 import { useCards } from '../store/cards';
 import { useDailyGames } from '../store/dailyGames';
 import { runAction } from './actions';
+import { payInvoice, type PayResult } from './payments';
 import { endpoints } from '../api/endpoints';
 
-/** Почему карточку нельзя улучшить прямо сейчас (null — можно). Баланс — «живой» с клиента. */
+/** Почему актив нельзя улучшить за монеты прямо сейчас (null — можно). Баланс — «живой» с клиента. */
 export type CardBlock =
   | { kind: 'max' }
   | { kind: 'unavailable' }
   | { kind: 'locked' }
+  | { kind: 'stars'; stars: number }
   | { kind: 'cooldown'; until: number }
   | { kind: 'funds'; missing: number };
 
@@ -16,6 +18,8 @@ export function cardBlock(card: CardView, balance: number, serverNow: number): C
   if (card.nextPrice === null) return { kind: 'max' };
   if (!card.available) return { kind: 'unavailable' };
   if (card.lock) return { kind: 'locked' };
+  // первый уровень платного актива — за Stars, а не за монеты
+  if (card.starsPrice !== null) return { kind: 'stars', stars: card.starsPrice };
   if (card.cooldownUntil && card.cooldownUntil > serverNow)
     return { kind: 'cooldown', until: card.cooldownUntil };
   if (balance < card.nextPrice) return { kind: 'funds', missing: card.nextPrice - balance };
@@ -53,4 +57,24 @@ export async function upgradeCard(card: CardView): Promise<CardUpgradeResponse |
     if (res.combo.reward > 0) games.celebrateCombo(res.combo.reward);
   }
   return res;
+}
+
+/** Окупаемость следующего уровня в часах: цена / прирост дохода в час (null — максимум или за Stars). */
+export function cardPaybackHours(card: CardView): number | null {
+  if (card.nextPrice === null || card.nextProfit === null || card.starsPrice !== null) return null;
+  return card.nextPrice / Math.max(1, card.nextProfit);
+}
+
+/** Открыть платный актив за Telegram Stars; после оплаты список активов обновляется с сервера. */
+export async function unlockAsset(card: CardView): Promise<PayResult> {
+  const result = await payInvoice(() => endpoints.assetInvoice(card.id));
+  const store = useCards.getState();
+  if (result === 'paid') {
+    await store.load(true);
+    store.markUpgraded(card.id);
+  } else if (result === 'failed') {
+    // условие или окно продажи могли измениться — показываем актуальное
+    void store.load(true);
+  }
+  return result;
 }

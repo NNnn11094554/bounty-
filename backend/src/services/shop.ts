@@ -10,11 +10,23 @@ import type { Prisma, Purchase, User } from '@prisma/client';
 import { GrammyError } from 'grammy';
 import { botLocale } from '../bot/texts.js';
 import { env } from '../env.js';
+import { cardLevelProfit } from '../game/config/cards.js';
 import { maxEnergy } from '../game/config/game.js';
 import { packCoins, SHOP } from '../game/config/shop.js';
 import { prisma } from '../lib/db.js';
 import { ApiError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
+import { checkAchievements } from './achievements.js';
+import {
+  cardLock,
+  getCatalog,
+  getCatalogCard,
+  grantAssetUnlock,
+  limitedWindow,
+  loadProgress,
+  needsStars,
+  revokeAssetUnlock,
+} from './cards.js';
 import { grantCosmetic, ownedCosmetics, revokeCosmetic } from './cosmetics.js';
 import { applyBalanceChanges } from './ledger.js';
 import { payments } from './payments.js';
@@ -23,7 +35,11 @@ import { syncPassive } from './sync.js';
 import { withUserLock } from './userLock.js';
 
 /** Что выдаётся за покупку (рассчитано при выставлении счёта и хранится в Purchase.grant). */
-type Grant = { coins: number } | { energy: true } | { hours: number } | { cosmetic: string };
+type Grant =
+  { coins: number } | { energy: true } | { hours: number } | { cosmetic: string } | { asset: string };
+
+/** Покупка актива за Stars: productId = "asset_<id актива>". */
+export const ASSET_PRODUCT_PREFIX = 'asset_';
 
 /** Неоплаченный счёт действует сутки. */
 const INVOICE_TTL_MS = 24 * 3_600_000;
@@ -112,44 +128,105 @@ function playerLocale(user: User): Locale {
   return parseSettings(user.settings).language ?? botLocale(user.languageCode);
 }
 
+interface InvoiceItem {
+  productId: string;
+  stars: number;
+  grant: Grant;
+  title: string;
+  description: string;
+}
+
 /** Выставить счёт: запись покупки (PENDING) и ссылка для Telegram.WebApp.openInvoice. */
-export async function createInvoice(
-  user: User,
-  productId: ShopProductId,
-): Promise<{ purchase: Purchase; link: string }> {
+async function issueInvoice(user: User, item: InvoiceItem): Promise<{ purchase: Purchase; link: string }> {
   const recent = await prisma.purchase.count({
     where: { userId: user.id, status: 'PENDING', createdAt: { gt: new Date(Date.now() - 10 * 60_000) } },
   });
   if (recent >= MAX_PENDING_PER_10_MIN) throw new ApiError('RATE_LIMITED', 'Too many unpaid invoices');
-  const cosmeticId = SHOP[productId].cosmeticId;
-  if (cosmeticId && (await ownedCosmetics(prisma, user)).includes(cosmeticId)) {
-    throw new ApiError('CONFLICT', 'Already owned');
-  }
-  const grant = grantFor(productId, user);
   const purchase = await prisma.purchase.create({
     data: {
       userId: user.id,
-      productId,
-      stars: SHOP[productId].stars,
+      productId: item.productId,
+      stars: item.stars,
       payload: randomUUID(),
-      grant: grant as Prisma.InputJsonValue,
+      grant: item.grant as Prisma.InputJsonValue,
     },
   });
-  const [title, description] = INVOICE_TEXT[productId][playerLocale(user)](grant);
   try {
     const link = await payments().createInvoiceLink({
-      title,
-      description,
+      // ограничения Telegram: название до 32 символов, описание до 255
+      title: item.title.slice(0, 32),
+      description: item.description.slice(0, 255),
       payload: purchase.payload,
       stars: purchase.stars,
       photoUrl: `${env.WEBAPP_URL.replace(/\/$/, '')}/assets/generated/og-image.jpg`,
     });
     return { purchase, link };
   } catch (err) {
-    logger.error({ err, productId }, 'createInvoiceLink failed');
+    logger.error({ err, productId: item.productId }, 'createInvoiceLink failed');
     await prisma.purchase.delete({ where: { id: purchase.id } });
     throw new ApiError('UNAVAILABLE', 'Payments are unavailable, try later');
   }
+}
+
+/** Счёт за товар магазина. */
+export async function createInvoice(
+  user: User,
+  productId: ShopProductId,
+): Promise<{ purchase: Purchase; link: string }> {
+  const cosmeticId = SHOP[productId].cosmeticId;
+  if (cosmeticId && (await ownedCosmetics(prisma, user)).includes(cosmeticId)) {
+    throw new ApiError('CONFLICT', 'Already owned');
+  }
+  const grant = grantFor(productId, user);
+  const [title, description] = INVOICE_TEXT[productId][playerLocale(user)](grant);
+  return issueInvoice(user, { productId, stars: SHOP[productId].stars, grant, title, description });
+}
+
+/**
+ * Счёт за открытие актива в Stars: актив в продаже (у лимитированного идёт окно), ещё не куплен,
+ * открывается именно за Stars и его условия выполнены.
+ */
+export async function createAssetInvoice(
+  user: User,
+  cardId: string,
+): Promise<{ purchase: Purchase; link: string }> {
+  const card = await getCatalogCard(cardId);
+  if (!card || !card.isActive) throw new ApiError('NOT_FOUND', 'Card not found');
+  const [catalog, progress] = await Promise.all([getCatalog(), loadProgress(prisma, user)]);
+  if ((progress.levels.get(card.id) ?? 0) > 0) throw new ApiError('CONFLICT', 'Already owned');
+  if (!needsStars(card, progress)) throw new ApiError('CONFLICT', 'This asset is unlocked with coins');
+  if (card.isLimited) {
+    const window = limitedWindow(card, catalog, new Date());
+    if (!window.active) {
+      throw new ApiError('LOCKED', 'Card is not available now', {
+        reason: 'limited',
+        nextFrom: window.nextFrom?.getTime() ?? null,
+      });
+    }
+  }
+  const lock = cardLock(card, progress, new Map(catalog.map((c) => [c.id, c])));
+  if (lock) throw new ApiError('LOCKED', 'Card is locked', { reason: 'condition', lock });
+  const locale = playerLocale(user);
+  const profit = fmt(cardLevelProfit(card, 1), locale);
+  const [title, description] =
+    locale === 'ru'
+      ? [
+          `Актив ${card.nameRu}`,
+          `Открыть игровой актив ${card.nameRu} в Meowgul: 1-й уровень и +${profit} монет к доходу в час. ` +
+            'Дальше он прокачивается за монеты. Это игровой предмет, а не криптовалюта.',
+        ]
+      : [
+          `Asset ${card.nameEn}`,
+          `Unlock the ${card.nameEn} game asset in Meowgul: level 1 and +${profit} coins per hour. ` +
+            'Further levels are bought with coins. This is a game item, not a cryptocurrency.',
+        ];
+  return issueInvoice(user, {
+    productId: `${ASSET_PRODUCT_PREFIX}${card.id}`,
+    stars: card.starsPrice!,
+    grant: { asset: card.id },
+    title,
+    description,
+  });
 }
 
 export interface PaymentInfo {
@@ -177,6 +254,13 @@ export async function checkPreCheckout(p: PaymentInfo): Promise<string | null> {
   if (purchase.user.telegramId !== BigInt(p.fromId)) return stale;
   if (p.currency !== 'XTR' || p.totalAmount !== purchase.stars) return stale;
   if (purchase.user.isBanned) return ru ? 'Аккаунт заблокирован' : 'Your account is banned';
+  const grant = purchase.grant as Grant;
+  if ('asset' in grant) {
+    const owned = await prisma.userCard.findUnique({
+      where: { userId_cardId: { userId: purchase.userId, cardId: grant.asset } },
+    });
+    if (owned && owned.level > 0) return ru ? 'Этот актив уже открыт' : 'You already own this asset';
+  }
   return null;
 }
 
@@ -228,6 +312,13 @@ export async function fulfillPayment(
       } else if ('cosmetic' in grant) {
         // премиальный скин или эффект — в коллекцию и сразу надеть
         await grantCosmetic(tx, user, grant.cosmetic, 'stars');
+      } else if ('asset' in grant) {
+        // актив за Stars: 1-й уровень и его доход; дальше — прокачка за монеты
+        const updated = await grantAssetUnlock(tx, user, grant.asset, now);
+        if (updated) await checkAchievements(tx, updated, now, ['cards']);
+        // уже был открыт (оплата второго счёта) или снят из каталога — разбирать вручную (возврат в админке)
+        else
+          logger.error({ userId: user.id, asset: grant.asset, purchaseId: purchase.id }, 'asset not granted');
       } else {
         const from = user.incomeBoostUntil && user.incomeBoostUntil > now ? user.incomeBoostUntil : now;
         await tx.user.update({
@@ -248,7 +339,7 @@ export async function fulfillPayment(
 
 /**
  * Возврат звёзд (админка): Telegram возвращает оплату, у игрока забирается выданное — монеты (сколько есть
- * на балансе) и время буста.
+ * на балансе), время буста, предмет коллекции или актив (монеты за его уровни со 2-го возвращаются).
  */
 export async function refundPurchase(purchaseId: number): Promise<Purchase> {
   const purchase = await prisma.purchase.findUnique({ where: { id: purchaseId }, include: { user: true } });
@@ -283,6 +374,8 @@ export async function refundPurchase(purchaseId: number): Promise<Purchase> {
         );
       } else if ('cosmetic' in grant) {
         await revokeCosmetic(tx, user, grant.cosmetic);
+      } else if ('asset' in grant) {
+        await revokeAssetUnlock(tx, user, grant.asset, now);
       } else if ('hours' in grant && user.incomeBoostUntil) {
         const until = user.incomeBoostUntil.getTime() - grant.hours * 3_600_000;
         await tx.user.update({

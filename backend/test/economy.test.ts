@@ -3,13 +3,14 @@ import { CARDS, cardLevelCost, cardLevelProfit } from '../src/game/config/cards.
 import { GAME } from '../src/game/config/game.js';
 import { LEAGUES } from '../src/game/config/leagues.js';
 import { REWARDS, cipherReward, comboReward, dailyReward } from '../src/game/config/rewards.js';
-import { NORMAL_PLAYER, simulate, type PlayerProfile } from '../src/game/economy/simulate.js';
+import { FREE_PLAYER, NORMAL_PLAYER, simulate, type PlayerProfile } from '../src/game/economy/simulate.js';
 import { accruePassive } from '../src/game/passive.js';
 
 /**
  * Экономика под долгую игру: обычный активный игрок (4 захода в день, пропуск раз в неделю, шифр и комбо
- * не каждый день, друзья появляются постепенно) берёт ~80% общего прогресса за 6–7 месяцев, а 100% —
- * долгий эндгейм. Симуляция — на настоящем конфиге, тот же код, что в `npm run economy-sim`.
+ * не каждый день, друзья появляются постепенно), открывающий активы за Stars, берёт ~80% общего прогресса
+ * за 6–7 месяцев, а 100% — долгий эндгейм. Бесплатный игрок растёт на активах за монеты.
+ * Симуляция — на настоящем конфиге, тот же код, что в `npm run economy-sim`.
  */
 describe('economy: long progression', () => {
   const DAYS = 760;
@@ -54,6 +55,19 @@ describe('economy: long progression', () => {
       expect(s.nextBuyHours).toBeLessThan(72);
       expect(s.availableUpgrades).toBeGreaterThan(5);
     }
+  });
+
+  it('a free player grows on coin assets for months: income keeps rising, there is always an upgrade', () => {
+    const free = simulate({ days: 120, profile: FREE_PLAYER, snapshotDays: [1, 7, 30, 90, 120] });
+    for (let i = 1; i < free.length; i++)
+      expect(free[i]!.profitPerHour).toBeGreaterThan(free[i - 1]!.profitPerHour);
+    for (const s of free.slice(0, 4)) {
+      expect(s.availableUpgrades).toBeGreaterThan(0);
+      expect(s.nextBuyHours).toBeLessThan(48);
+      expect(s.starsSpent).toBe(0);
+    }
+    // но платные активы дают заметно больше
+    expect(normal[89]!.profitPerHour).toBeGreaterThan(free[3]!.profitPerHour * 5);
   });
 
   it('even a hardcore player (7 visits a day, never misses) does not reach 80% in 3 months', () => {

@@ -1,5 +1,5 @@
 /** Контракт API админ-панели (/api/admin/*, доступ — только ADMIN_TELEGRAM_IDS). */
-import type { CardCategory } from './cards.js';
+import type { CardCategory, CardRarity } from './cards.js';
 
 export interface AdminDayPoint {
   dayKey: string;
@@ -43,6 +43,9 @@ export interface AdminCardInput {
   descRu: string;
   descEn: string;
   icon: string;
+  rarity: CardRarity;
+  /** цена открытия в Telegram Stars; null — открывается за монеты */
+  starsPrice: number | null;
   baseCost: number;
   baseProfit: number;
   costMultiplier: number;

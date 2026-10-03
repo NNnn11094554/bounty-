@@ -40,6 +40,8 @@ function Glyph({ spec, clipId }: { spec: CardIconSpec; clipId: string }) {
       </>
     );
   }
+  // монеты токенов рисует TokenCoin
+  if (spec.glyph === 'token') return null;
   return <>{GLYPHS[spec.glyph]}</>;
 }
 
@@ -85,6 +87,97 @@ function Badge({ spec, dark }: { spec: CardIconSpec; dark: string }): ReactNode 
   );
 }
 
+/** Размер тикера на монете: короткие — крупно, длинные — мельче, чтобы влезли в лицевую сторону. */
+function tickerFont(ticker: string): number {
+  return ticker.length <= 2
+    ? 18
+    : ticker.length === 3
+      ? 16
+      : ticker.length === 4
+        ? 12.5
+        : ticker.length === 5
+          ? 10.2
+          : 8.8;
+}
+
+/**
+ * Монета токена в сетке 64×64: объёмный ребристый гурт, лицевая сторона с бликом и выпуклый тикер.
+ * Своя стилизация в цветах палитры — никаких логотипов настоящих проектов.
+ */
+function TokenCoin({ spec, id }: { spec: CardIconSpec; id: string }) {
+  const [light, dark] = CARD_PALETTES[spec.palette] ?? CARD_PALETTES[0];
+  const ticker = spec.ticker ?? '?';
+  const font = tickerFont(ticker);
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}-rim`} x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0" stopColor={light} />
+          <stop offset="1" stopColor={dark} />
+        </linearGradient>
+        <radialGradient id={`${id}-face`} cx="36%" cy="30%" r="78%">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
+          <stop offset="0.35" stopColor={light} />
+          <stop offset="1" stopColor={dark} />
+        </radialGradient>
+      </defs>
+      <ellipse cx="32" cy="60" rx="19" ry="3.2" fill="#000" opacity="0.28" />
+      {/* толщина монеты: тёмный край чуть ниже лицевой стороны */}
+      <circle cx="32" cy="33.6" r="28.5" fill={dark} />
+      <circle cx="32" cy="33.6" r="28.5" fill="#000" opacity="0.28" />
+      <circle cx="32" cy="31" r="28.5" fill={`url(#${id}-rim)`} />
+      <circle
+        cx="32"
+        cy="31"
+        r="25.6"
+        fill="none"
+        stroke="#000"
+        strokeOpacity="0.22"
+        strokeWidth="2.4"
+        strokeDasharray="1.3 2.1"
+      />
+      <circle cx="32" cy="31" r="28" fill="none" stroke="#fff" strokeOpacity="0.4" strokeWidth="1" />
+      <circle cx="32" cy="31" r="22" fill={`url(#${id}-face)`} />
+      <circle cx="32" cy="31" r="22" fill="none" stroke="#fff" strokeOpacity="0.5" strokeWidth="1.2" />
+      <circle cx="32" cy="31" r="18.6" fill="none" stroke="#fff" strokeOpacity="0.18" strokeWidth="0.8" />
+      <path
+        d="M13.5 22.5 A21 21 0 0 1 40 10.6"
+        fill="none"
+        stroke="#fff"
+        strokeOpacity="0.55"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+      <text
+        x="32"
+        y={31 + font * 0.36 + 0.9}
+        textAnchor="middle"
+        fontSize={font}
+        fontWeight="900"
+        fill={dark}
+        opacity="0.55"
+        fontFamily="inherit"
+        letterSpacing="-0.2"
+      >
+        {ticker}
+      </text>
+      <text
+        x="32"
+        y={31 + font * 0.36}
+        textAnchor="middle"
+        fontSize={font}
+        fontWeight="900"
+        fill="#fff"
+        fontFamily="inherit"
+        letterSpacing="-0.2"
+        data-ticker={ticker}
+      >
+        {ticker}
+      </text>
+    </>
+  );
+}
+
 interface Props {
   icon: string;
   size: number;
@@ -93,11 +186,26 @@ interface Props {
   muted?: boolean;
 }
 
-/** Иконка карточки: градиентный фон палитры, белый рисунок, значок в углу. */
+/** Иконка актива: монета токена или градиентный фон палитры с белым рисунком и значком в углу. */
 export const CardIcon = memo(function CardIcon({ icon, size, className, muted }: Props) {
   const id = useSvgId();
   const spec = parseCardIcon(icon);
   const [light, dark] = CARD_PALETTES[spec.palette] ?? CARD_PALETTES[0];
+  if (spec.glyph === 'token') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 64 64"
+        className={className}
+        style={mutedStyle(muted, spec)}
+        aria-hidden
+        data-icon={icon}
+      >
+        <TokenCoin spec={spec} id={id} />
+      </svg>
+    );
+  }
   return (
     <svg
       width={size}
@@ -223,12 +331,20 @@ export const CardArt = memo(function CardArt({
         ),
       )}
       <ellipse cx="80" cy="90" rx="34" ry="5" fill="#000" opacity="0.18" />
-      <g transform="translate(46 16) scale(1.42)" color={dark} filter={`url(#${id}-sh)`}>
-        <Glyph spec={spec} clipId={`${id}-clip`} />
-      </g>
-      <g transform="translate(96 36)">
-        <Badge spec={spec} dark={dark} />
-      </g>
+      {spec.glyph === 'token' ? (
+        <g transform="translate(48 18) scale(1)">
+          <TokenCoin spec={spec} id={`${id}-coin`} />
+        </g>
+      ) : (
+        <>
+          <g transform="translate(46 16) scale(1.42)" color={dark} filter={`url(#${id}-sh)`}>
+            <Glyph spec={spec} clipId={`${id}-clip`} />
+          </g>
+          <g transform="translate(96 36)">
+            <Badge spec={spec} dark={dark} />
+          </g>
+        </>
+      )}
     </svg>
   );
 });

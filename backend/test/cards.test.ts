@@ -15,8 +15,10 @@ import {
   getCatalog,
   invalidateCatalog,
   limitedWindow,
+  retireLegacyCards,
   syncCardEconomy,
 } from '../src/services/cards.js';
+import { dayKey } from '../src/game/dayKey.js';
 import { client, createApp, resetDb, tgUser } from './helpers.js';
 
 const config = (id: string) => {
@@ -54,54 +56,90 @@ describe('cards API', () => {
 
   const upgrade = (c: ReturnType<typeof client>, id: string) => c.post(`/api/cards/${id}/upgrade`);
 
-  it('lists cards with prices, profits and locks', async () => {
+  /** Сделать актив бесплатным (как правка в админке) — чтобы проверять условия отдельно от Stars. */
+  async function makeFree(id: string) {
+    await prisma.card.update({ where: { id }, data: { starsPrice: null } });
+    invalidateCatalog();
+  }
+
+  it('lists assets with prices, profits, rarity, Stars prices and locks', async () => {
     const { c } = await player(5001);
     const res = await c.get('/api/cards');
     expect(res.statusCode).toBe(200);
     const { cards, serverTime } = res.json<CardsResponse>();
     expect(serverTime).toBeGreaterThan(0);
     expect(cards.filter((x) => !x.limited).length).toBe(CARDS.filter((x) => !x.isLimited).length);
-    // в продаже одновременно две лимитированные карточки из ротации
+    // в продаже одновременно два лимитированных события из ротации
     expect(cards.filter((x) => x.limited).length).toBe(LIMITED_ROTATION.concurrent);
 
-    const spot = cards.find((x) => x.id === 'mk_spot');
-    expect(spot).toMatchObject({
+    const doge = cards.find((x) => x.id === 'doge');
+    expect(doge).toMatchObject({
+      category: 'MEME',
+      icon: 'token/DOGE/0',
+      rarity: 'common',
       level: 0,
       profitPerHour: 0,
-      nextPrice: config('mk_spot').baseCost,
-      nextProfit: config('mk_spot').baseProfit,
+      nextPrice: config('doge').baseCost,
+      nextProfit: config('doge').baseProfit,
+      starsPrice: null,
       lock: null,
       available: true,
       cooldownUntil: null,
       limited: null,
-      name: { ru: 'Спот-торговля', en: 'Spot Trading' },
+      name: { ru: 'Dogecoin', en: 'Dogecoin' },
     });
-    expect(cards.find((x) => x.id === 'mk_margin20')?.lock).toEqual({
+    expect(cards.filter((x) => x.starsPrice === null).length).toBe(
+      CARDS.filter((x) => x.starsPrice === null).length,
+    );
+    expect(cards.find((x) => x.id === 'btc')).toMatchObject({
+      rarity: 'legendary',
+      starsPrice: config('btc').starsPrice,
+    });
+    expect(cards.find((x) => x.id === 'shib')?.lock).toEqual({
       type: 'card',
-      cardId: 'mk_margin10',
-      level: 5,
+      cardId: 'doge',
+      level: 3,
       currentLevel: 0,
-      name: { ru: 'Маржа x10', en: 'Margin x10' },
+      name: { ru: 'Dogecoin', en: 'Dogecoin' },
     });
-    expect(cards.find((x) => x.id === 'sp_laser')?.lock).toEqual({ type: 'friends', count: 1, current: 0 });
-    expect(cards.find((x) => x.id === 'mk_otc')?.lock).toMatchObject({ type: 'league', level: 3 });
-    expect(cards.find((x) => x.id === 'sp_yarn')?.lock).toEqual({
+    expect(cards.find((x) => x.id === 'atom')?.lock).toEqual({ type: 'friends', count: 1, current: 0 });
+    expect(cards.find((x) => x.id === 'avax')?.lock).toMatchObject({ type: 'league', level: 3 });
+    expect(cards.find((x) => x.id === 'ldo')?.lock).toEqual({
       type: 'task',
       taskId: 'tg_channel',
       title: null,
     });
   });
 
-  it('upgrades a card: charges the price, adds profit per hour, writes the ledger', async () => {
-    const card = config('mk_spot');
+  it('a Stars asset cannot be bought for coins until it is unlocked; then levels cost coins', async () => {
+    const card = config('uni');
+    expect(card.starsPrice).not.toBeNull();
+    const { c, user } = await player(5016, { balance: 10_000_000 });
+    await setLevel(user.id, 'link', 3); // условие открытия
+    const res = await upgrade(c, 'uni');
+    expect(res.statusCode).toBe(409);
+    expect(res.json<ApiErrorBody>().error).toMatchObject({
+      code: 'LOCKED',
+      details: { reason: 'stars', stars: card.starsPrice },
+    });
+    expect(await prisma.userCard.count({ where: { userId: user.id, cardId: 'uni' } })).toBe(0);
+    // открыт (оплата Stars выдала 1-й уровень) — дальше прокачка за монеты
+    await setLevel(user.id, 'uni', 1);
+    const second = (await upgrade(c, 'uni')).json<CardUpgradeResponse>();
+    expect(second.state.balance).toBe(10_000_000 - cardLevelCost(card, 2));
+    expect(second.cards.find((x) => x.id === 'uni')).toMatchObject({ level: 2, starsPrice: null });
+  });
+
+  it('upgrades an asset: charges the price, adds profit per hour, writes the ledger', async () => {
+    const card = config('doge');
     const { c, user } = await player(5002, { balance: 10_000 });
-    const res = await upgrade(c, 'mk_spot');
+    const res = await upgrade(c, 'doge');
     expect(res.statusCode).toBe(200);
     const body = res.json<CardUpgradeResponse>();
     expect(body.profitDelta).toBe(card.baseProfit);
     expect(body.state.profitPerHour).toBe(card.baseProfit);
     expect(body.state.balance).toBe(10_000 - card.baseCost);
-    const view = body.cards.find((x) => x.id === 'mk_spot');
+    const view = body.cards.find((x) => x.id === 'doge');
     expect(view).toMatchObject({
       level: 1,
       profitPerHour: card.baseProfit,
@@ -109,7 +147,7 @@ describe('cards API', () => {
       nextProfit: cardLevelProfit(card, 2),
     });
 
-    const second = (await upgrade(c, 'mk_spot')).json<CardUpgradeResponse>();
+    const second = (await upgrade(c, 'doge')).json<CardUpgradeResponse>();
     expect(second.state.balance).toBe(10_000 - card.baseCost - cardLevelCost(card, 2));
     expect(second.state.profitPerHour).toBe(card.baseProfit + cardLevelProfit(card, 2));
 
@@ -119,14 +157,14 @@ describe('cards API', () => {
       [-cardLevelCost(card, 2), -card.baseCost].sort((a, b) => a - b),
     );
     const stored = await prisma.userCard.findUniqueOrThrow({
-      where: { userId_cardId: { userId: user.id, cardId: 'mk_spot' } },
+      where: { userId_cardId: { userId: user.id, cardId: 'doge' } },
     });
     expect(stored.level).toBe(2);
   });
 
   it('refuses when there are not enough coins', async () => {
     const { c, user } = await player(5003, { balance: 10 });
-    const res = await upgrade(c, 'mk_spot');
+    const res = await upgrade(c, 'doge');
     expect(res.statusCode).toBe(409);
     expect(res.json<ApiErrorBody>().error.code).toBe('INSUFFICIENT_FUNDS');
     const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
@@ -135,49 +173,53 @@ describe('cards API', () => {
   });
 
   it('double click buys exactly one level', async () => {
-    const card = config('mk_spot');
+    const card = config('doge');
     const { c, user } = await player(5004, { balance: card.baseCost + cardLevelCost(card, 2) - 1 });
-    const results = await Promise.all([upgrade(c, 'mk_spot'), upgrade(c, 'mk_spot')]);
+    const results = await Promise.all([upgrade(c, 'doge'), upgrade(c, 'doge')]);
     expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
     const stored = await prisma.userCard.findUniqueOrThrow({
-      where: { userId_cardId: { userId: user.id, cardId: 'mk_spot' } },
+      where: { userId_cardId: { userId: user.id, cardId: 'doge' } },
     });
     expect(stored.level).toBe(1);
   });
 
-  it('card condition unlocks the dependent card', async () => {
+  it('asset condition unlocks the dependent asset', async () => {
+    await makeFree('shib');
     const { c, user } = await player(5005, { balance: 10_000_000 });
-    const locked = await upgrade(c, 'mk_margin20');
+    const locked = await upgrade(c, 'shib');
     expect(locked.statusCode).toBe(409);
     expect(locked.json<ApiErrorBody>().error).toMatchObject({
       code: 'LOCKED',
       details: {
         reason: 'condition',
-        lock: { type: 'card', cardId: 'mk_margin10', level: 5, currentLevel: 0 },
+        lock: { type: 'card', cardId: 'doge', level: 3, currentLevel: 0 },
       },
     });
-    await setLevel(user.id, 'mk_margin10', 4);
-    const res = (await upgrade(c, 'mk_margin10')).json<CardUpgradeResponse>();
-    // вместе с купленной карточкой приходит открывшаяся
-    expect(res.cards.find((x) => x.id === 'mk_margin20')?.lock).toBeNull();
-    expect((await upgrade(c, 'mk_margin20')).statusCode).toBe(200);
+    await setLevel(user.id, 'doge', 2);
+    const res = (await upgrade(c, 'doge')).json<CardUpgradeResponse>();
+    // вместе с купленным активом приходит открывшийся
+    expect(res.cards.find((x) => x.id === 'shib')?.lock).toBeNull();
+    expect((await upgrade(c, 'shib')).statusCode).toBe(200);
   });
 
   it('friends and league conditions', async () => {
+    await makeFree('atom');
+    await makeFree('avax');
     const { c, user } = await player(5006, { balance: 100_000_000 });
-    expect((await upgrade(c, 'sp_laser')).statusCode).toBe(409);
+    expect((await upgrade(c, 'atom')).statusCode).toBe(409);
     const { user: friend } = await player(5007);
     await prisma.referral.create({ data: { inviterId: user.id, inviteeId: friend.id } });
-    expect((await upgrade(c, 'sp_laser')).statusCode).toBe(200);
+    expect((await upgrade(c, 'atom')).statusCode).toBe(200);
 
-    expect((await upgrade(c, 'mk_otc')).statusCode).toBe(409);
+    expect((await upgrade(c, 'avax')).statusCode).toBe(409);
     await prisma.user.update({ where: { id: user.id }, data: { leagueLevel: 3 } });
-    expect((await upgrade(c, 'mk_otc')).statusCode).toBe(200);
+    expect((await upgrade(c, 'avax')).statusCode).toBe(200);
   });
 
   it('task condition is met when the task is done', async () => {
+    await makeFree('ldo');
     const { c, user } = await player(5008, { balance: 100_000 });
-    expect((await upgrade(c, 'sp_yarn')).statusCode).toBe(409);
+    expect((await upgrade(c, 'ldo')).statusCode).toBe(409);
     await prisma.task.create({
       data: {
         id: 'tg_channel',
@@ -188,78 +230,79 @@ describe('cards API', () => {
       },
     });
     const list = (await c.get('/api/cards')).json<CardsResponse>();
-    expect(list.cards.find((x) => x.id === 'sp_yarn')?.lock).toEqual({
+    expect(list.cards.find((x) => x.id === 'ldo')?.lock).toEqual({
       type: 'task',
       taskId: 'tg_channel',
       title: { ru: 'Канал', en: 'Channel' },
     });
     await prisma.userTask.create({ data: { userId: user.id, taskId: 'tg_channel', status: 'DONE' } });
-    expect((await upgrade(c, 'sp_yarn')).statusCode).toBe(200);
+    expect((await upgrade(c, 'ldo')).statusCode).toBe(200);
   });
 
   it('conditions only gate the first level', async () => {
     const { c, user } = await player(5009, { balance: 100_000_000 });
-    await setLevel(user.id, 'mk_otc', 1);
-    expect((await upgrade(c, 'mk_otc')).statusCode).toBe(200);
+    await setLevel(user.id, 'avax', 1);
+    expect((await upgrade(c, 'avax')).statusCode).toBe(200);
   });
 
-  it('cooldown after an upgrade of an expensive card', async () => {
-    const card = config('mk_insurance_fund');
+  it('cooldown after an upgrade of an expensive asset', async () => {
+    const card = config('apt');
     expect(card.cooldownSec).toBeGreaterThan(0);
     const { c, user } = await player(5010, { balance: 100_000_000 });
-    await setLevel(user.id, 'mk_insurance_fund', 1);
+    await setLevel(user.id, 'apt', 1);
     const before = Date.now();
-    const res = (await upgrade(c, 'mk_insurance_fund')).json<CardUpgradeResponse>();
-    const view = res.cards.find((x) => x.id === 'mk_insurance_fund');
+    const res = (await upgrade(c, 'apt')).json<CardUpgradeResponse>();
+    const view = res.cards.find((x) => x.id === 'apt');
     expect(view?.cooldownUntil).toBeGreaterThanOrEqual(before + card.cooldownSec * 1000);
-    const again = await upgrade(c, 'mk_insurance_fund');
+    const again = await upgrade(c, 'apt');
     expect(again.statusCode).toBe(409);
     expect(again.json<ApiErrorBody>().error).toMatchObject({ code: 'COOLDOWN' });
-    await setLevel(user.id, 'mk_insurance_fund', 2, new Date(Date.now() - 1000));
-    expect((await upgrade(c, 'mk_insurance_fund')).statusCode).toBe(200);
+    await setLevel(user.id, 'apt', 2, new Date(Date.now() - 1000));
+    expect((await upgrade(c, 'apt')).statusCode).toBe(200);
   });
 
   it('max level cannot be exceeded', async () => {
-    const card = config('mk_spot');
+    const card = config('doge');
     const { c, user } = await player(5011, { balance: 1e15 });
-    await setLevel(user.id, 'mk_spot', card.maxLevel);
-    const res = await upgrade(c, 'mk_spot');
+    await setLevel(user.id, 'doge', card.maxLevel);
+    const res = await upgrade(c, 'doge');
     expect(res.statusCode).toBe(409);
     expect(res.json<ApiErrorBody>().error.code).toBe('LIMIT_REACHED');
-    const view = (await c.get('/api/cards')).json<CardsResponse>().cards.find((x) => x.id === 'mk_spot');
+    const view = (await c.get('/api/cards')).json<CardsResponse>().cards.find((x) => x.id === 'doge');
     expect(view).toMatchObject({ level: card.maxLevel, nextPrice: null, nextProfit: null });
   });
 
-  it('limited cards are sold only inside their window', async () => {
+  it('limited events are sold only inside their window', async () => {
+    await makeFree('ev_halving');
     const { c, user } = await player(5012, { balance: 100_000_000 });
     const now = Date.now();
     await prisma.card.update({
-      where: { id: 'lt_pumpkin' },
+      where: { id: 'ev_halving' },
       data: { availableFrom: new Date(now - 3600_000), availableUntil: new Date(now + 3600_000) },
     });
     invalidateCatalog();
     let list = (await c.get('/api/cards')).json<CardsResponse>();
-    const pumpkin = list.cards.find((x) => x.id === 'lt_pumpkin');
+    const pumpkin = list.cards.find((x) => x.id === 'ev_halving');
     expect(pumpkin?.available).toBe(true);
     expect(pumpkin?.limited?.until).toBe(now + 3600_000);
-    expect((await upgrade(c, 'lt_pumpkin')).statusCode).toBe(200);
+    expect((await upgrade(c, 'ev_halving')).statusCode).toBe(200);
 
     await prisma.card.update({
-      where: { id: 'lt_pumpkin' },
+      where: { id: 'ev_halving' },
       data: { availableFrom: new Date(now - 7200_000), availableUntil: new Date(now - 3600_000) },
     });
     invalidateCatalog();
-    const expired = await upgrade(c, 'lt_pumpkin');
+    const expired = await upgrade(c, 'ev_halving');
     expect(expired.statusCode).toBe(409);
     expect(expired.json<ApiErrorBody>().error).toMatchObject({
       code: 'LOCKED',
       details: { reason: 'limited' },
     });
-    // купленная карточка остаётся в списке (и приносит прибыль), но улучшать её нельзя
+    // купленный актив остаётся в списке (и приносит прибыль), но улучшать его нельзя
     list = (await c.get('/api/cards')).json<CardsResponse>();
-    expect(list.cards.find((x) => x.id === 'lt_pumpkin')).toMatchObject({ level: 1, available: false });
+    expect(list.cards.find((x) => x.id === 'ev_halving')).toMatchObject({ level: 1, available: false });
     const state = (await c.get('/api/state')).json<StateResponse>().state;
-    expect(state.profitPerHour).toBe(config('lt_pumpkin').baseProfit);
+    expect(state.profitPerHour).toBe(config('ev_halving').baseProfit);
     expect(user.id).toBeGreaterThan(0);
   });
 
@@ -286,11 +329,11 @@ describe('cards API', () => {
 
   it('inactive cards are hidden and cannot be bought', async () => {
     const { c } = await player(5013, { balance: 100_000 });
-    await prisma.card.update({ where: { id: 'mk_spot' }, data: { isActive: false } });
+    await prisma.card.update({ where: { id: 'doge' }, data: { isActive: false } });
     invalidateCatalog();
     const list = (await c.get('/api/cards')).json<CardsResponse>();
-    expect(list.cards.find((x) => x.id === 'mk_spot')).toBeUndefined();
-    expect((await upgrade(c, 'mk_spot')).statusCode).toBe(404);
+    expect(list.cards.find((x) => x.id === 'doge')).toBeUndefined();
+    expect((await upgrade(c, 'doge')).statusCode).toBe(404);
   });
 
   it('validates the card id', async () => {
@@ -318,7 +361,7 @@ describe('cards API', () => {
 
   it('economy sync: cards are rewritten from config and profit per hour is recalculated once', async () => {
     const top = [...CARDS].sort((a, b) => b.baseCost - a.baseCost)[0]!;
-    const cheap = config('mk_spot');
+    const cheap = config('doge');
     // в БД — старые цифры дорогой карточки, у игрока — старый завышенный доход
     await prisma.card.update({ where: { id: top.id }, data: { baseProfit: 30_000_000n } });
     const { user } = await player(5901, { profitPerHour: 31_000_000n });
@@ -340,5 +383,48 @@ describe('cards API', () => {
     await prisma.card.update({ where: { id: cheap.id }, data: { baseProfit: 1n } });
     expect(await syncCardEconomy()).toBeNull();
     expect(Number((await prisma.card.findUniqueOrThrow({ where: { id: cheap.id } })).baseProfit)).toBe(1);
+  });
+
+  it('legacy cards are retired once: coins spent on them come back, the cards and their combo are gone', async () => {
+    // старая карточка первой экономики и созданная в админке — её трогать нельзя
+    const legacyRow = {
+      category: 'LAYER1' as const,
+      nameRu: 'Спот-торговля',
+      nameEn: 'Spot Trading',
+      descRu: '',
+      descEn: '',
+      icon: 'candles/none/0',
+      baseCost: 1000n,
+      baseProfit: 200n,
+      costMultiplier: 1.5,
+      profitMultiplier: 1.2,
+    };
+    await prisma.card.create({ data: { id: 'mk_spot', ...legacyRow } });
+    await prisma.card.create({ data: { id: 'custom_admin', ...legacyRow, nameRu: 'Своя', nameEn: 'Own' } });
+    invalidateCatalog();
+    const { user } = await player(5903, { balance: 50, profitPerHour: 200n + 240n + 999n });
+    await setLevel(user.id, 'mk_spot', 2); // 1000 + 1500 монет, +200 +240 в час
+    await setLevel(user.id, 'custom_admin', 1);
+    const { user: other } = await player(5904, { balance: 7 });
+    const today = dayKey();
+    await prisma.dailyCombo.create({ data: { dayKey: today, cardIds: ['mk_spot', 'doge', 'link'] } });
+
+    expect(await retireLegacyCards()).toEqual({ users: 1, refunded: 2500 });
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(after.balance.toNumber()).toBeGreaterThanOrEqual(50 + 2500);
+    expect(after.balance.toNumber()).toBeLessThan(50 + 2500 + 10); // + пассив за секунды теста
+    expect(after.totalEarned.toNumber()).toBeLessThan(2500); // возврат не двигает лигу
+    expect(Number(after.profitPerHour)).toBe(999);
+    expect(await prisma.card.findUnique({ where: { id: 'mk_spot' } })).toBeNull();
+    expect(await prisma.card.findUnique({ where: { id: 'custom_admin' } })).not.toBeNull();
+    expect(await prisma.userCard.count({ where: { userId: user.id } })).toBe(1);
+    expect(await prisma.dailyCombo.findUnique({ where: { dayKey: today } })).toBeNull();
+    const refund = await prisma.transaction.findFirstOrThrow({
+      where: { userId: user.id, type: 'cards_refund' },
+    });
+    expect(refund.amount.toNumber()).toBe(2500);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: other.id } })).balance.toNumber()).toBe(7);
+    // повторный запуск ничего не делает
+    expect(await retireLegacyCards()).toEqual({ users: 0, refunded: 0 });
   });
 });

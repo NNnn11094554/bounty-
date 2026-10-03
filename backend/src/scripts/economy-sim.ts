@@ -1,9 +1,10 @@
 /**
  * Симуляция прогресса обычного активного игрока: npm run economy-sim [-- --days=N]
  * Таблица по контрольным дням и день, когда общий прогресс достигает 20/50/70/80/90/100%.
+ * Два игрока: открывающий активы за Stars и бесплатный (только активы за монеты).
  */
 import { formatShort } from '@meowgul/shared';
-import { NORMAL_PLAYER, simulate, type PlayerProfile } from '../game/economy/simulate.js';
+import { FREE_PLAYER, NORMAL_PLAYER, simulate, type PlayerProfile } from '../game/economy/simulate.js';
 
 process.stdout.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EPIPE') process.exit(0);
@@ -23,7 +24,7 @@ function report(name: string, profile: PlayerProfile, days: number): void {
   const snaps = simulate({ days, profile, snapshotDays: all });
   console.log(`\n=== ${name} ===`);
   console.log(
-    'день | прогресс (карточки/лига/уровень) | баланс | доход/ч | карт | ср.ур | лига | ур.игрока | доход за день (пассив/тапы/ежедн./прочее) | след. покупка | до лиги',
+    'день | прогресс (активы/лига/уровень) | баланс | доход/ч | активов | ср.ур | лига | ур.игрока | доход за день (пассив/тапы/ежедн./прочее) | след. покупка | до лиги | Stars',
   );
   for (const s of snaps.filter((x) => CHECK.includes(x.day))) {
     const i = s.income;
@@ -40,6 +41,7 @@ function report(name: string, profile: PlayerProfile, days: number): void {
         `${f(i.passive)}/${f(i.taps)}/${f(i.daily)}/${f(i.other)}`,
         `${s.nextBuy ?? '—'} через ${hours(s.nextBuyHours)}`,
         s.nextLeagueDays === null ? '—' : `${s.nextLeagueDays.toFixed(1)} дн`,
+        s.starsSpent,
       ].join(' | '),
     );
   }
@@ -52,5 +54,6 @@ function report(name: string, profile: PlayerProfile, days: number): void {
 }
 
 const days = Number(process.argv.find((a) => a.startsWith('--days='))?.slice(7) ?? 730);
-report('обычный активный игрок', NORMAL_PLAYER, days);
+report('обычный активный игрок (открывает активы за Stars)', NORMAL_PLAYER, days);
+report('бесплатный игрок (только активы за монеты)', FREE_PLAYER, days);
 if (process.argv.includes('--solo')) report('без друзей', { ...NORMAL_PLAYER, friends: [] }, days);

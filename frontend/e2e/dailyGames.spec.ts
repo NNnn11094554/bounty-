@@ -90,11 +90,11 @@ test.describe('Daily combo and cipher', () => {
     await expect(page.getByTestId('cipher-letters')).toContainText('T');
   });
 
-  test('combo: upgrading the three cards reveals slots and pays 3 hours of income (min 50 000)', async ({
+  test('combo: upgrading the three assets reveals slots and pays 3 hours of income (min 50 000)', async ({
     page,
   }) => {
     const day = gameDay();
-    const cardIds = ['mk_p2p', 'pr_blog', 'lg_aml'];
+    const cardIds = ['ton', 'link', 'doge'];
     await db.dailyCombo.upsert({
       where: { dayKey: day },
       create: { dayKey: day, cardIds },
@@ -116,11 +116,11 @@ test.describe('Daily combo and cipher', () => {
       await page.getByTestId('card-buy').click();
       await expect(page.getByTestId('card-sheet').getByRole('dialog')).toBeHidden();
     };
-    await buy('MARKETS', 'mk_p2p');
-    await expect(page.getByTestId('combo-slot-0').locator('[data-card="mk_p2p"]')).toBeVisible();
-    await expect(page.getByText('Карточка из комбо дня!')).toBeVisible();
-    await buy('PR_TEAM', 'pr_blog');
-    await buy('LEGAL', 'lg_aml');
+    await buy('LAYER1', 'ton');
+    await expect(page.getByTestId('combo-slot-0').locator('[data-card="ton"]')).toBeVisible();
+    await expect(page.getByText('Актив из комбо дня!')).toBeVisible();
+    await buy('DEFI', 'link');
+    await buy('MEME', 'doge');
     await expect(page.getByTestId('combo-celebration')).toContainText('+50 000');
     await expect(page.getByTestId('combo-done')).toBeVisible();
   });

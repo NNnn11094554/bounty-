@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { FullEnergyIcon } from '../../components/boostIcons';
 import { Segmented } from '../../components/Segmented';
 import { CosmeticGrid } from '../collection/CollectionScreen';
+import { AssetOffers } from './AssetOffers';
 import { CoinIcon, StarIcon } from '../../components/icons';
 import { RollingNumber } from '../../components/RollingNumber';
 import { catMood } from '../../game/catMood';
@@ -112,10 +113,9 @@ function ProductCard({
   );
 }
 
-/** Магазин за Telegram Stars: пакеты монет, полная энергия и доход ×2. */
-type ShopTab = 'skins' | 'boosts' | 'special' | 'cosmetics';
+type ShopTab = 'skins' | 'assets' | 'boosts' | 'special' | 'cosmetics';
 
-/** Магазин: скины (главное), бусты, особое (монеты) и косметика (эффекты тапа). */
+/** Магазин: скины (главное), крипто-активы за Stars, бусты, особое (монеты) и косметика (эффекты тапа). */
 export function ShopScreen({ onOpenCollection }: { onOpenCollection?: () => void }) {
   const t = useT();
   const { products, status, load } = useShop();
@@ -161,6 +161,7 @@ export function ShopScreen({ onOpenCollection }: { onOpenCollection?: () => void
         <Segmented
           options={[
             { value: 'skins', label: t('shop.tab.skins') },
+            { value: 'assets', label: t('shop.tab.assets') },
             { value: 'boosts', label: t('shop.tab.boosts') },
             { value: 'special', label: t('shop.tab.special') },
             { value: 'cosmetics', label: t('shop.tab.cosmetics') },
@@ -187,6 +188,8 @@ export function ShopScreen({ onOpenCollection }: { onOpenCollection?: () => void
           )}
         </>
       )}
+
+      {tab === 'assets' && <AssetOffers />}
 
       {tab === 'cosmetics' && (
         <>

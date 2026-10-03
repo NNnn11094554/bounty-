@@ -47,7 +47,7 @@ function gearPath(cx: number, cy: number, outer: number, inner: number, teeth: n
   return `M${pts.join('L')}Z`;
 }
 
-export const GLYPHS: Record<Exclude<CardGlyph, 'character'>, ReactNode> = {
+export const GLYPHS: Record<Exclude<CardGlyph, 'character' | 'token'>, ReactNode> = {
   candles: (
     <>
       <path d="M16 6v36M32 4v34" {...line(3)} />

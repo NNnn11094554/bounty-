@@ -50,10 +50,10 @@ test('capture main screens', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   await page.getByTestId('open-mine').click();
-  await expect(page.getByTestId('card-mk_spot')).toBeVisible();
+  await expect(page.getByTestId('card-ton')).toBeVisible();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${dir}/04-mine.png` });
-  await page.getByTestId('card-mk_spot').click();
+  await page.getByTestId('card-ton').click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${dir}/05-card-sheet.png` });
   await page.getByTestId('card-buy').click();
@@ -62,10 +62,10 @@ test('capture main screens', async ({ page }) => {
   await page.getByTestId('mine-cat-SPECIALS').click();
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${dir}/07-specials.png` });
-  await page.getByTestId('mine-cat-LEGAL').click();
+  await page.getByTestId('mine-cat-MEME').click();
   await page.getByTestId('mine-list').evaluate((el) => el.scrollTo(0, 1200));
   await page.waitForTimeout(600);
-  await page.screenshot({ path: `${dir}/08-legal-locked.png` });
+  await page.screenshot({ path: `${dir}/08-meme-locked.png` });
 
   await page.keyboard.press('Escape'); // из Mine — на главную
   await page.getByTestId('open-earn').click();

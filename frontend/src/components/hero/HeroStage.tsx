@@ -1,5 +1,5 @@
 import { formatShort, type Locale } from '@meowgul/shared';
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../../animations';
 import { catMood, type CatEvent } from '../../game/catMood';
 import { CatMotion } from '../../game/catMotion';
@@ -51,10 +51,15 @@ const PT_POOL = 32;
 const STREAK_GAP_MS = 700;
 /** без тапов столько — кот засыпает */
 const SLEEP_AFTER_MS = 45_000;
-/** случайные спокойные действия — раз в 6–14 секунд, если не тапали хотя бы 4 секунды */
-const IDLE_MIN_MS = 6_000;
-const IDLE_SPREAD_MS = 8_000;
-const IDLE_QUIET_MS = 4_000;
+/** случайные спокойные действия — раз в 5–11 секунд, если не тапали хотя бы 3 секунды */
+const IDLE_MIN_MS = 5_000;
+const IDLE_SPREAD_MS = 6_000;
+const IDLE_QUIET_MS = 3_000;
+/** моргание — раз в 2,4–6,4 секунды, иногда дважды подряд */
+const BLINK_MIN_MS = 2_400;
+const BLINK_SPREAD_MS = 4_000;
+/** прищур после тапа держится столько */
+const SQUINT_MS = 260;
 /** лёгкая вибрация не чаще раза в 70 мс */
 const HAPTIC_GAP_MS = 70;
 /** подсказка «тапни кота» — один раз, до первого тапа */
@@ -72,20 +77,16 @@ function hintSeen(): boolean {
 
 /**
  * Главная сцена: надетый персонаж — он и есть кнопка игры. Тап по нему → существующая логика награды
- * (handler.tap → tapEngine: энергия, баланс, множители) → реакция персонажа и эффекты.
+ * (handler.tap → tapEngine: энергия, баланс, множители) → лёгкая реакция лица и эффекты вокруг.
  *
- * Движение без рывков: спокойная анимация скина — бесшовный CSS-цикл на своём слое; реакции на тап —
- * пружины CatMotion на другом слое (без наложения анимаций друг на друга: тап только добавляет скорость,
- * отклонение ограничено, персонаж всегда возвращается точно в исходную позу). Позиция не меняется,
- * всё — transform/opacity. Смена скина — персонаж мягко проявляется, обработчики и физика остаются.
+ * Тап персонажа НЕ двигает: ни прыжков, ни сжатия, ни тряски. На тап отвечают только лицо (короткий
+ * прищур, взгляд в сторону пальца) и интерфейс: «+N», круги, искры, частицы, аура.
+ * Покой и тап разделены полностью: в покое персонаж дышит (CSS-цикл от ступней), моргает, водит глазами,
+ * иногда наклоняет голову или смотрит на лапы и медленно меняет позу (поворот в перспективе) — тапы эти
+ * циклы не трогают. Всё — transform/opacity. Смена скина — персонаж мягко проявляется, обработчики остаются.
  */
 export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId, effectId, onPress }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  // корпус надетого персонажа; при смене скина элемент новый — ref всегда указывает на последний
-  const bodyRef = useRef<HTMLDivElement | null>(null);
-  const setBody = useCallback((el: HTMLDivElement | null) => {
-    if (el) bodyRef.current = el;
-  }, []);
   const hitRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
@@ -116,7 +117,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     if (!root || !hit || !fx) return;
     const reduced = () => isReducedMotion();
 
-    // ── физика реакций: кадры идут, только пока пружины не успокоились ──
+    // ── смена позы в покое: медленный поворот в объёме на пружинах (тапы его не трогают) ──
     const motion = new CatMotion();
     let yawNow = 0;
     let pitchNow = 0;
@@ -124,7 +125,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     let last = 0;
     const apply = () => {
       const t = motion.transforms();
-      if (bodyRef.current) bodyRef.current.style.transform = t.body;
       // объём: угол поворота — переменными, по ним CSS двигает перспективу, глубину слоёв, свет и тень
       if (t.yaw !== yawNow || t.pitch !== pitchNow) {
         yawNow = t.yaw;
@@ -153,20 +153,55 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         raf = requestAnimationFrame(frame);
       }
     };
-    // отложенные толчки пружин (серия подскоков); снимаются при размонтировании
+    // отложенные действия лица; снимаются при размонтировании
     const pending = new Set<number>();
     const later = (fn: () => void, ms: number) => {
       const id = window.setTimeout(() => {
         pending.delete(id);
         fn();
-        kick();
       }, ms);
       pending.add(id);
     };
-    /** n подскоков в ритм */
-    const hops = (n: number, power = 0.8) => {
+
+    // ── лицо: моргание, взгляд, прищур, наклон головы ──
+    /** взгляд: −1…1 по каждой оси (радужка смещается внутри глаза) */
+    const gaze = (gx: number, gy: number) => {
+      root.style.setProperty('--gx', Math.max(-1, Math.min(1, gx)).toFixed(3));
+      root.style.setProperty('--gy', Math.max(-1, Math.min(1, gy)).toFixed(3));
+    };
+    let gazeBack = 0;
+    /** посмотреть и через ms вернуть взгляд прямо */
+    const glanceFor = (gx: number, gy: number, ms: number) => {
+      gaze(gx, gy);
+      window.clearTimeout(gazeBack);
+      gazeBack = window.setTimeout(() => gaze(0, 0), ms);
+    };
+    /** моргнуть: веки сверху вниз и обратно (от текущего положения — сонный моргает из прищура) */
+    const blink = (twice = false) => {
+      root.querySelectorAll<HTMLElement>('.eye-lid').forEach((lid) => {
+        lid.getAnimations().forEach((a) => a.cancel());
+        lid.animate([{ transform: 'scaleY(1)' }], {
+          duration: 75,
+          direction: 'alternate',
+          iterations: twice ? 4 : 2,
+          easing: 'ease-in',
+        });
+      });
+    };
+    let squintTimer = 0;
+    /** короткий довольный прищур — реакция лица на тап */
+    const squint = (ms = SQUINT_MS) => {
+      root.dataset.squint = 'true';
+      window.clearTimeout(squintTimer);
+      squintTimer = window.setTimeout(() => delete root.dataset.squint, ms);
+    };
+    let poseTimer = 0;
+    /** наклон головы на время (только в покое и по событиям игры, не на тап) */
+    const pose = (name: 'tilt-l' | 'tilt-r' | 'paws' | 'up', ms: number) => {
       if (reduced()) return;
-      for (let i = 0; i < n; i++) later(() => motion.hop(i === n - 1 ? power : power * 0.75), i * 300);
+      root.dataset.pose = name;
+      window.clearTimeout(poseTimer);
+      poseTimer = window.setTimeout(() => delete root.dataset.pose, ms);
     };
 
     // пулы переиспользуемых элементов — никаких тысяч DOM-нод при яростном тапании
@@ -312,50 +347,54 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       if (ms) moodTimer = window.setTimeout(() => setMood(''), ms);
     };
 
+    // реакции — лицом и эффектами вокруг; тело остаётся на месте
     const react = (reaction: Reaction) => {
       const head = headPoint();
       switch (reaction) {
         case 'happy':
-          motion.hop(0.8);
-          motion.wiggle(14);
+          squint(420);
+          later(() => blink(), 480);
           break;
         case 'excited':
           setMood('excited', 2600);
-          hops(2);
+          blink(true);
           auraFlash();
           spawnParticles(head.x, head.y, 5, 'star', 1.6);
           break;
         case 'special':
         case 'heart':
           setMood('excited', 3000);
-          motion.hop(1);
+          squint(700);
           auraFlash();
           spawnParticles(head.x, head.y, 8, 'heart', 1.8);
           break;
         case 'celebrate':
           setMood('excited', 3500);
-          hops(3, 1);
+          blink(true);
+          pose('up', 1600);
           confetti(centerOf(root), 60);
           spawnParticles(head.x, head.y, 8, 'gold', 1.8);
           break;
         case 'surprised':
-          motion.hop(1.2);
-          motion.wiggle(-24);
+          // глаза широко, взгляд прямо, голова чуть набок
+          delete root.dataset.squint;
+          glanceFor(0, -0.4, 900);
+          pose(Math.random() < 0.5 ? 'tilt-l' : 'tilt-r', 1400);
           break;
         case 'annoyed':
-          motion.wiggle(-22);
-          later(() => motion.wiggle(18), 180);
+          // нет энергии: отводит взгляд вниз и в сторону
+          glanceFor(Math.random() < 0.5 ? -0.8 : 0.8, 0.7, 1200);
           break;
         case 'sleepy':
           setMood('sleepy');
+          gaze(0, 0.5);
           motion.orbitTo(0, -1.2);
+          kick();
           break;
       }
-      kick();
     };
 
-    // ── взгляд: персонаж чуть разворачивается к пальцу/курсору, через 2,6 с — обратно ──
-    let gazeTimer = 0;
+    // ── взгляд: глаза (не тело) следят за пальцем/курсором, через 1,6 с — снова прямо ──
     /** рамка самого персонажа на экране (зона тапа шире — с запасом для пальца) */
     const catRectNow = () => {
       const r = root.getBoundingClientRect();
@@ -363,17 +402,12 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       return { left: r.left + c.left, top: r.top + c.top, width: c.width, height: c.height };
     };
     const lookAt = (clientX: number, clientY: number) => {
-      if (reduced() || mood === 'sleepy') return;
+      if (mood === 'sleepy') return;
       const rect = catRectNow();
-      const dx = Math.max(-1, Math.min(1, (clientX - (rect.left + rect.width / 2)) / (rect.width * 1.2)));
-      const dy = Math.max(-1, Math.min(1, (clientY - (rect.top + rect.height * 0.25)) / rect.height));
-      motion.orbitTo(dx * 6, dy * -1.2);
-      kick();
-      window.clearTimeout(gazeTimer);
-      gazeTimer = window.setTimeout(() => {
-        motion.orbitTo(0, 0);
-        kick();
-      }, 2600);
+      const eyes = headPoint();
+      const dx = (clientX - (rect.left + eyes.x - layoutRef.current.cat.left)) / (rect.width * 0.5);
+      const dy = (clientY - (rect.top + eyes.y - layoutRef.current.cat.top)) / (rect.height * 0.5);
+      glanceFor(dx, dy, 1600);
     };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' || e.buttons) lookAt(e.clientX, e.clientY);
@@ -404,6 +438,9 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     const wakeUp = () => {
       if (mood === 'sleepy') {
         setMood('');
+        gaze(0, 0);
+        motion.orbitTo(0, 0);
+        kick();
         react('happy');
       }
     };
@@ -428,7 +465,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const catRect = catRectNow();
       const x = e.clientX - rootRect.left;
       const y = e.clientY - rootRect.top;
-      const side = Math.max(-1, Math.min(1, ((e.clientX - catRect.left) / catRect.width - 0.5) * 2));
       const onHead = (e.clientY - catRect.top) / catRect.height < artRef.current.headBottom;
       const now = performance.now();
       lastActivity = now;
@@ -436,16 +472,13 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       wakeUp();
       if (onPressRef.current) {
         pressStarts.set(e.pointerId, now);
-        motion.tap(0.6, side, onHead);
-        kick();
+        squint(180);
         feel(now);
         return;
       }
       const h = handlerRef.current;
       if (!h.tap()) {
-        // энергии нет: кот только устало кивает, награды нет
-        motion.tap(0.35, side, false);
-        kick();
+        // энергии нет: награды нет, кот только устало отводит глаза
         if (now - warnedAt > 600) {
           warnedAt = now;
           haptic.notify('warning');
@@ -458,13 +491,10 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       }
       streak = now - lastTap < STREAK_GAP_MS ? streak + 1 : 1;
       lastTap = now;
-      // серия усиливает только картинку: 1–3 обычно, 4–9 живее, 10+ заметнее; награда — как в логике игры
+      // серия усиливает только эффекты вокруг: 1–3 обычно, 4–9 живее, 10+ заметнее; награда — как в логике
+      // игры. Сам персонаж стоит: лицо лишь чуть щурится (по голове — сильнее)
       const tier = streak >= 10 ? 3 : streak >= 4 ? 2 : 1;
-      const strength = tier === 3 ? 1.35 : tier === 2 ? 1.18 : 1;
-      motion.tap(reduced() ? 0 : strength, side, onHead);
-      // в серии персонаж пружинит в такт — каждый третий тап
-      if (tier >= 2 && streak % 3 === 0 && !reduced()) motion.hop(tier === 3 ? 0.7 : 0.5);
-      kick();
+      squint(onHead ? SQUINT_MS + 120 : SQUINT_MS);
       spawnFloat(
         x,
         y - 10,
@@ -505,35 +535,50 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     root.addEventListener('click', noMenu);
     window.addEventListener('pointermove', onMove, { passive: true });
 
-    // спокойные действия в простое (не чаще раза в 6 с) и засыпание
-    type Idle = 'glance' | 'hop' | 'wiggle' | 'glow';
-    const IDLE: Idle[] = ['glance', 'hop', 'glow', 'wiggle', 'glance', 'hop'];
+    // спокойные действия в простое (не чаще раза в 5 с) и засыпание: глаза, голова, свет — тело на месте
+    type Idle = 'glance' | 'paws' | 'tilt' | 'look-up' | 'glow';
+    const IDLE: Idle[] = ['glance', 'paws', 'tilt', 'glance', 'glow', 'look-up', 'paws', 'tilt'];
     let idleTimer = 0;
     let lastIdle = -1;
     const idleAction = (a: Idle) => {
       switch (a) {
         case 'glance': {
           const dir = Math.random() < 0.5 ? -1 : 1;
-          motion.orbitTo(dir * 5, -0.6);
-          window.clearTimeout(gazeTimer);
-          gazeTimer = window.setTimeout(() => {
-            motion.orbitTo(0, 0);
-            kick();
-          }, 1700);
+          glanceFor(dir * (0.6 + Math.random() * 0.4), Math.random() * 0.4 - 0.2, 1500);
+          later(() => blink(), 1700);
           break;
         }
-        case 'hop':
-          hops(2, 0.6);
+        case 'paws':
+          // посмотреть на лапы: голова вниз, глаза вниз
+          pose('paws', 2400);
+          glanceFor(0.15, 1, 2300);
           break;
-        case 'wiggle':
-          motion.wiggle(Math.random() < 0.5 ? -14 : 14);
+        case 'tilt':
+          pose(Math.random() < 0.5 ? 'tilt-l' : 'tilt-r', 2600);
+          later(() => blink(), 900);
+          break;
+        case 'look-up':
+          pose('up', 1800);
+          glanceFor(Math.random() * 0.6 - 0.3, -1, 1700);
           break;
         case 'glow':
           auraFlash();
+          blink(true);
           break;
       }
-      kick();
     };
+    // моргание — само по себе, независимо от тапов
+    let blinkTimer = 0;
+    const scheduleBlink = () => {
+      blinkTimer = window.setTimeout(
+        () => {
+          if (!document.hidden && mood !== 'sleepy') blink(Math.random() < 0.2);
+          scheduleBlink();
+        },
+        BLINK_MIN_MS + Math.random() * BLINK_SPREAD_MS,
+      );
+    };
+    scheduleBlink();
     // в покое персонаж медленно поворачивается то чуть в одну, то в другую сторону — живой объём
     let orbitTimer = 0;
     const scheduleOrbit = () => {
@@ -541,7 +586,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         () => {
           if (!document.hidden && !reduced() && performance.now() - lastActivity > 2_600) {
             if (mood === 'sleepy') motion.orbitTo(0, -1.2);
-            else motion.orbitTo((Math.random() * 2 - 1) * 4.5, Math.random() * 1.6 - 0.4);
+            else motion.orbitTo((Math.random() * 2 - 1) * 3.5, Math.random() * 1.2 - 0.3);
             kick();
           }
           scheduleOrbit();
@@ -618,9 +663,12 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       offMood();
       window.clearTimeout(idleTimer);
       window.clearTimeout(orbitTimer);
+      window.clearTimeout(blinkTimer);
       pending.forEach((id) => window.clearTimeout(id));
       window.clearTimeout(moodTimer);
-      window.clearTimeout(gazeTimer);
+      window.clearTimeout(gazeBack);
+      window.clearTimeout(squintTimer);
+      window.clearTimeout(poseTimer);
       if (raf) cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pointermove', onMove);
@@ -644,7 +692,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     >
       {/* смена скина: новый персонаж мягко проявляется на том же месте */}
       <div key={skin} className="hero-enter absolute" style={{ left: L.cat.left, top: L.cat.top }}>
-        <HeroFigure skinId={skin} height={L.cat.height} bodyRef={setBody} />
+        <HeroFigure skinId={skin} height={L.cat.height} />
       </div>
       <div
         className="hero-zzz pointer-events-none absolute text-2xl font-black text-white/80"
