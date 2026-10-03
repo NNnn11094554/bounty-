@@ -1,4 +1,4 @@
-import { CARD_CATEGORIES, CARD_RARITIES, parseCardIcon } from '@meowgul/shared';
+import { ACHIEVEMENTS, CARD_CATEGORIES, CARD_RARITIES, parseCardIcon } from '@meowgul/shared';
 import { describe, expect, it } from 'vitest';
 import { checkCardsBalance, levelPayback } from '../src/game/cardsBalance.js';
 import {
@@ -13,6 +13,7 @@ import {
   paybackHours,
 } from '../src/game/config/cards.js';
 import { LEGACY_CARD_IDS } from '../src/game/config/legacyCards.js';
+import { AIRDROP_TARGETS } from '../src/routes/airdrop.js';
 import { conditionFromRow, conditionToRow } from '../src/services/cards.js';
 
 const FORBIDDEN = /hamster|хомяк|bybit|binance|okx|bounty/i;
@@ -56,6 +57,17 @@ describe('crypto assets config', () => {
       expect(paid[i]!.starsPrice!).toBeGreaterThan(paid[i - 1]!.starsPrice!);
     // бесплатные — из разных категорий: комбо дня собирается без покупок за Stars
     expect(new Set(free.map((c) => c.category)).size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('asset goals are reachable: achievements within the catalog, the airdrop needs only coin assets', () => {
+    for (const a of ACHIEVEMENTS.filter((x) => x.metric === 'cards')) {
+      expect(a.threshold, a.id).toBeLessThanOrEqual(CARDS.length);
+    }
+    for (const a of ACHIEVEMENTS.filter((x) => x.metric === 'cardMaxLevel')) {
+      expect(a.threshold, a.id).toBeLessThanOrEqual(Math.max(...CARDS.map((c) => c.maxLevel)));
+    }
+    // требование Airdrop выполнимо бесплатно
+    expect(AIRDROP_TARGETS.cards).toBeLessThanOrEqual(ASSET_UNLOCK.free);
   });
 
   it('assignStarsPrices follows the config: nice numbers, strictly growing, any number of free assets', () => {
