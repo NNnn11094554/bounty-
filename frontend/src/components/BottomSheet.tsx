@@ -12,7 +12,7 @@ interface Props {
   testId?: string;
 }
 
-/** Модалка снизу: выезд со spring и лёгким перелётом, затемнение с blur, закрытие свайпом вниз. */
+/** Модалка снизу: выезд со spring и лёгким перелётом, затемнение (без blur — он дорог телефону), закрытие свайпом вниз. */
 export function BottomSheet({ open, onClose, children, testId }: Props) {
   useBackHandler(open, onClose);
   useBlockingOverlay(open);

@@ -1,6 +1,4 @@
-import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
-import { SPRING } from '../animations';
 import { useT, type MessageKey } from '../i18n';
 import { playSound } from '../lib/sound';
 import { useNav, type Tab } from '../store/nav';
@@ -63,18 +61,12 @@ export function BottomNav() {
             data-testid={`nav-${item.id}`}
             aria-current={active ? 'page' : undefined}
           >
-            {active && (
-              <motion.span
-                layoutId="nav-highlight"
-                className="absolute inset-0 rounded-[18px] bg-night-500"
-                transition={SPRING.tab}
-              />
-            )}
-            <motion.span
-              className="relative"
-              animate={active ? { y: [0, -6, 0], scale: [1, 1.12, 1] } : { y: 0, scale: 1 }}
-              transition={{ duration: 0.42, ease: 'easeOut' }}
-            >
+            {/*
+              Вкладки переключают десятки раз за игру: подсветка встаёт сразу (без общей анимации раскладки —
+              она пересчитывала весь экран), иконка коротко «подпрыгивает» на CSS
+            */}
+            {active && <span className="absolute inset-0 rounded-[18px] bg-night-500" />}
+            <span className={`relative ${active ? 'nav-pop' : ''}`}>
               {item.icon(active)}
               {badges[item.id] && (
                 <span
@@ -82,7 +74,7 @@ export function BottomNav() {
                   data-testid={`nav-badge-${item.id}`}
                 />
               )}
-            </motion.span>
+            </span>
             <span
               className={`relative max-w-full truncate text-[10px] font-extrabold tracking-[-0.02em] ${active ? 'text-white' : 'text-white/55'}`}
             >

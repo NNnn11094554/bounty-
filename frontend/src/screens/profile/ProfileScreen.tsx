@@ -188,7 +188,7 @@ export function ProfileScreen() {
         ACHIEVEMENT_GROUPS.map((group) => {
           const items = VISIBLE_ACHIEVEMENTS.filter((a) => a.group === group);
           return (
-            <section key={group} className="mt-4">
+            <section key={group} className="cv-auto mt-4">
               <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-white/45">
                 {t(`achievements.group.${group}` as MessageKey)}
               </h3>

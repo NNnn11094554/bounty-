@@ -7,22 +7,28 @@ import { Button } from '../Button';
 import { CoinIcon, StarIcon } from '../icons';
 import { SkinPicture } from '../hero/HeroFigure';
 
-/** Рамка по редкости: COMMON — простая, RARE — свечение, EPIC — пульс, LEGENDARY — бегущая полоса, MYTHIC — + блик. */
+/**
+ * Рамка по редкости: цвет рамки и свечение RARE. Живая рамка (live) — у одного открытого предмета: EPIC —
+ * пульс, LEGENDARY — бегущая полоса, MYTHIC — ещё и блик. В сетке рамки неподвижны: десятки вращающихся
+ * слоёв на экране — лишняя работа телефону на каждом кадре.
+ */
 export function RarityFrame({
   rarity,
   children,
   className = '',
+  live = false,
 }: {
   rarity: Rarity;
   children: ReactNode;
   className?: string;
+  live?: boolean;
 }) {
   return (
     <div className={`rc-frame rc-${rarity.toLowerCase()} ${className}`}>
-      {rarity === 'EPIC' && <div className="rc-glow" />}
-      {(rarity === 'LEGENDARY' || rarity === 'MYTHIC') && <div className="rc-spin" />}
+      {live && rarity === 'EPIC' && <div className="rc-glow" />}
+      {live && (rarity === 'LEGENDARY' || rarity === 'MYTHIC') && <div className="rc-spin" />}
       <div className="rc-inner">{children}</div>
-      {rarity === 'MYTHIC' && <div className="rc-shimmer" />}
+      {live && rarity === 'MYTHIC' && <div className="rc-shimmer" />}
     </div>
   );
 }

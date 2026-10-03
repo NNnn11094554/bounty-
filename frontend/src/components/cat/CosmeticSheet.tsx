@@ -173,7 +173,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
 
     return (
       <div className="flex flex-col items-center pb-2 text-center" data-testid="cosmetic-sheet">
-        <RarityFrame rarity={shown.rarity} className="w-full">
+        <RarityFrame rarity={shown.rarity} className="w-full" live>
           {shown.kind === 'skin' ? (
             <SkinPreviewStage id={shown.id} stageRef={previewRef}>
               {locked && (

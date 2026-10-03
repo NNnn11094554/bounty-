@@ -1,6 +1,6 @@
 import { formatShort, type CardView } from '@meowgul/shared';
-import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useRef } from 'react';
+import { EASING, isReducedMotion } from '../../animations';
 import { CardArt, CardIcon } from '../../components/cards/CardIcon';
 import { CooldownRing } from '../../components/CooldownRing';
 import { CoinIcon, StarIcon } from '../../components/icons';
@@ -45,6 +45,8 @@ function LimitedPill({ card }: { card: CardView }) {
 function Footer({ card, affordable }: { card: CardView; affordable: boolean }) {
   const t = useT();
   const locale = useLocale();
+  const firstLevel = useRef(card.level);
+  const bumped = card.level !== firstLevel.current;
   if (card.lock) {
     return (
       <p className="line-clamp-2 text-[11px] font-bold leading-tight text-white/60" data-testid="card-lock">
@@ -59,19 +61,10 @@ function Footer({ card, affordable }: { card: CardView; affordable: boolean }) {
         aria-label={t('card.lvl', { n: card.level })}
         data-testid="card-level"
       >
-        <AnimatePresence initial={false} mode="popLayout">
-          <motion.span
-            key={card.level}
-            className="absolute inset-0"
-            initial={{ rotateX: -90, y: 8, opacity: 0 }}
-            animate={{ rotateX: 0, y: 0, opacity: 1 }}
-            exit={{ rotateX: 90, y: -8, opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            aria-hidden
-          >
-            {t('card.lvl', { n: card.level })}
-          </motion.span>
-        </AnimatePresence>
+        {/* новый уровень въезжает снизу (CSS, только после улучшения — не при открытии экрана) */}
+        <span key={card.level} className={`absolute inset-0 ${bumped ? 'level-in' : ''}`} aria-hidden>
+          {t('card.lvl', { n: card.level })}
+        </span>
       </span>
       <span className="h-4 w-px bg-white/15" />
       {card.nextPrice === null ? (
@@ -119,27 +112,35 @@ interface Props {
 /** Плитка актива: монета (у особых — иллюстрация сверху), доход, уровень и цена в монетах или Stars. */
 export const CardTile = memo(function CardTile({ card, onOpen }: Props) {
   const affordable = useAffordable(card.nextPrice);
-  const controls = useAnimationControls();
+  const ref = useRef<HTMLButtonElement>(null);
   const lastUpgrade = useCards((s) => s.lastUpgrade);
   const special = card.category === 'SPECIALS';
   const muted = Boolean(card.lock) || !card.available;
   const cooling = card.cooldownUntil !== null;
 
+  // улучшенная плитка коротко «подпрыгивает» (WAAPI на видеокарте; десятки плиток — без JS-анимации на каждой)
   useEffect(() => {
-    if (lastUpgrade?.id !== card.id || Date.now() - lastUpgrade.at > 1500) return;
-    void controls.start({ scale: [1, 1.08, 0.97, 1], transition: { duration: 0.5 } });
-  }, [lastUpgrade, card.id, controls]);
+    if (lastUpgrade?.id !== card.id || Date.now() - lastUpgrade.at > 1500 || isReducedMotion()) return;
+    ref.current?.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.06)', offset: 0.35 },
+        { transform: 'scale(0.98)', offset: 0.7 },
+        { transform: 'scale(1)' },
+      ],
+      { duration: 420, easing: EASING.out },
+    );
+  }, [lastUpgrade, card.id]);
 
   const name = <CardName card={card} />;
   const rarity = RARITY_COLOR[card.rarity];
 
   return (
-    <motion.button
+    <button
+      ref={ref}
       type="button"
-      animate={controls}
-      whileTap={{ scale: 0.96 }}
       onClick={() => onOpen(card)}
-      className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-line bg-night-700 text-left shadow-card"
+      className="press relative flex w-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-line bg-night-700 text-left shadow-card"
       style={{
         borderColor: card.rarity === 'common' ? undefined : `${rarity}66`,
         boxShadow: card.rarity === 'legendary' ? `0 0 14px ${rarity}33` : undefined,
@@ -209,7 +210,7 @@ export const CardTile = memo(function CardTile({ card, onOpen }: Props) {
           </div>
         </div>
       )}
-    </motion.button>
+    </button>
   );
 });
 
