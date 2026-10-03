@@ -9,3 +9,4 @@ frontend/public/assets
 playwright-report
 test-results
 *.md
+.claude/skills
