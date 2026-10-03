@@ -499,7 +499,7 @@ API: `GET /api/collection`, `POST /api/collection/:id/buy` (за монеты: �
 | Что | Результат | Как проверить |
 |---|---|---|
 | Unit и интеграционные тесты | shared 10, backend 174 (на тестовой БД), frontend 9 — все зелёные | `npm test` |
-| E2E (Playwright) | 59 сценариев, включая главный: вход → тап → покупка карточки → ежедневка → друг, а также скины, коллекция, Airdrop и магазин | `npm run test:e2e` |
+| E2E (Playwright) | 67 сценариев, включая главный: вход → тап → покупка карточки → ежедневка → друг, а также персонажи (покупка, надевание, просмотр, смена мира, быстрое переключение, старый скин в базе), Airdrop и магазин | `npm run test:e2e` |
 | Покрытие игровой логики | 96 % строк в `src/game`, `src/auth`, `src/services` (порог в конфиге — 80 %) | `npm run test:coverage -w backend` |
 | Lighthouse, мобильный режим | Performance 92–95, Accessibility 94, Best Practices 96; CLS 0 | `npx lighthouse <адрес игры>` |
 | Бандл главного экрана | ≈ 171 KB gzip (код 71 + React 43 + Framer Motion 45 + CSS 12); экраны и админка грузятся отдельно, TON Connect при выключенном флаге не попадает в сборку | `npm run build -w frontend` |
