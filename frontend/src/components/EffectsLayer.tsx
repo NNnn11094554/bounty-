@@ -77,6 +77,8 @@ export function EffectsLayer() {
         ctx.restore();
       }
       raf = particles.length ? requestAnimationFrame(step) : 0;
+      // холст на весь экран видеокарта складывает с остальными на каждом кадре — без конфетти он скрыт
+      if (!raf) canvas.style.visibility = 'hidden';
     };
 
     const burst = (origin: Point | undefined, amount: number) => {
@@ -100,6 +102,7 @@ export function EffectsLayer() {
       }
       if (!raf) {
         last = performance.now();
+        canvas.style.visibility = 'visible';
         raf = requestAnimationFrame(step);
       }
     };
@@ -170,7 +173,7 @@ export function EffectsLayer() {
     <>
       <canvas
         ref={canvasRef}
-        className="pointer-events-none fixed inset-0 z-[70] h-full w-full"
+        className="pointer-events-none invisible fixed inset-0 z-[70] h-full w-full"
         aria-hidden
       />
       <div ref={coinsRef} className="pointer-events-none fixed inset-0 z-[71]" aria-hidden />

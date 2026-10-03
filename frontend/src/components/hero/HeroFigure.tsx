@@ -54,12 +54,12 @@ const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
 
 /**
  * Персонаж в полный рост — это и есть надетый скин. Слои (каждое движение — на своём элементе):
- *  - объём: медленный поворот в перспективе (--yaw/--pitch от сцены) — смена позы в покое;
+ *  - объём: медленный поворот в перспективе (transform ставит сцена) — смена позы в покое;
  *  - дыхание: бесшовный CSS-цикл от ступней (грудь поднимается, персонаж стоит на месте);
  *  - тело: картинка с «окном» под голову;
  *  - голова: та же картинка по эллипсу головы, чуть наклоняется вокруг шеи (CSS, data-pose от сцены);
- *  - глаза: радужка смещается внутри глаза (взгляд, --gx/--gy) и веко из меха над глазом (моргание, --lid).
- * Тап персонажа не двигает: реагирует только лицо (прищур, взгляд) и эффекты вокруг. Событий не принимает.
+ *  - глаза: радужка смещается внутри глаза (взгляд). Глаза не закрываются.
+ * Тап персонажа не двигает: реагирует только взгляд и эффекты вокруг. Событий не принимает.
  */
 export function HeroFigure({ skinId: rawId, height }: { skinId: string; height: number }) {
   const id = skinId(rawId);
@@ -109,37 +109,27 @@ export function HeroFigure({ skinId: rawId, height }: { skinId: string; height: 
                 style={layer({ maskImage: headMask, WebkitMaskImage: headMask })}
               />
               {face.eyes.map(([ex, ey, erx, ery], i) => {
-                const box = (k: number): CSSProperties => ({
-                  left: (ex - erx * k) * width,
-                  top: (ey - ery * k) * height,
-                  width: erx * 2 * k * width,
-                  height: ery * 2 * k * height,
-                });
-                // фон — вся картинка персонажа, сдвинутая так, чтобы в окошке был этот же кусок (dy — выше)
-                const at = (k: number, dy = 0) =>
-                  `${(-(ex - erx * k) * width).toFixed(2)}px ${(-(ey - ery * k) * height + dy).toFixed(2)}px`;
+                // окошко по глазу (чуть меньше самого глаза) — неподвижно; внутри — та же картинка персонажа,
+                // её сдвигает transform (взгляд): радужка смещается внутри глаза
+                const k = 0.92;
+                const left = (ex - erx * k) * width;
+                const top = (ey - ery * k) * height;
                 return (
-                  <div key={i} className="hero-eye" data-testid="hero-eye">
+                  <div
+                    key={i}
+                    className="eye-iris absolute overflow-hidden"
+                    style={{ left, top, width: erx * 2 * k * width, height: ery * 2 * k * height }}
+                    data-testid="hero-eye"
+                    data-reach={(Math.min(erx * width, ery * height) * 0.2).toFixed(2)}
+                  >
                     <div
-                      className="eye-iris skin-img absolute"
+                      className="eye-iris-img skin-img absolute"
                       style={layer({
-                        ...box(0.92),
-                        backgroundSize: `${width}px ${height}px`,
-                        ['--ax' as string]: `${(-(ex - erx * 0.92) * width).toFixed(2)}px`,
-                        ['--ay' as string]: `${(-(ey - ery * 0.92) * height).toFixed(2)}px`,
-                        // насколько радужка может сместиться внутри глаза
-                        ['--reach' as string]: `${(Math.min(erx * width, ery * height) * 0.2).toFixed(2)}px`,
-                      })}
-                    />
-                    <div
-                      className="eye-lid absolute"
-                      style={layer({
-                        ...box(1.12),
-                        backgroundSize: `${width}px ${height}px`,
-                        // веко — мех прямо над глазом, опущенный на место глаза
-                        backgroundPosition: at(1.12, ery * 2.1 * height),
-                        backgroundColor: face.lid,
-                        ['--lash' as string]: face.lash,
+                        left: -left,
+                        top: -top,
+                        width,
+                        height,
+                        backgroundSize: '100% 100%',
                       })}
                     />
                   </div>
@@ -151,10 +141,7 @@ export function HeroFigure({ skinId: rawId, height }: { skinId: string; height: 
               className="hero-shade absolute inset-0"
               style={{ maskImage: mask, WebkitMaskImage: mask }}
               aria-hidden
-            >
-              <div className="hero-shade-dark absolute" />
-              <div className="hero-shade-light absolute" />
-            </div>
+            />
           </div>
         </div>
       </div>

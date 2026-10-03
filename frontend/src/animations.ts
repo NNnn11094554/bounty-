@@ -9,6 +9,11 @@ export const DURATION = {
   balanceRoll: 380,
   balanceGlow: 600,
   tabSwitch: 250,
+  /** появление вкладки: только прозрачность, быстро — вкладки переключают десятки раз за игру */
+  tabFade: 150,
+  /** экран поверх вкладки въезжает справа и уезжает обратно */
+  screenIn: 300,
+  screenOut: 240,
   sheet: 320,
   stagger: 40,
   coinFlight: 700,
@@ -18,6 +23,10 @@ export const DURATION = {
 export const STAGGER_MAX = 8;
 
 export const EASING = {
+  /** сильный ease-out для появления и исчезновения (то же, что --ease-out в CSS) */
+  out: 'cubic-bezier(0.23, 1, 0.32, 1)',
+  /** кривая выезжающих панелей в духе iOS (--ease-drawer) */
+  drawer: 'cubic-bezier(0.32, 0.72, 0, 1)',
   /** пружинистый возврат с лёгким перелётом */
   springOut: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
   smoothOut: 'cubic-bezier(0.22, 1, 0.36, 1)',
