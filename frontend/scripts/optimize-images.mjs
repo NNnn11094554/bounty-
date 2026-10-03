@@ -1,33 +1,36 @@
-// Готовит изображения персонажа: слои и скины (scripts/hero), портрет для иконок, WebP-размеры,
-// иконки приложения и сцену для превью ссылок и приветствия бота.
-// Исходник — assets-src/hero.png (кот и кнопка TAP на «шахматке»), всё остальное собирается из него.
-import { existsSync, mkdirSync, statSync } from 'node:fs';
+// Готовит изображения бренда из стартового персонажа (public/assets/skins/<DEFAULT>/, собирает
+// scripts/skins): портрет для иконок и экрана загрузки, иконки приложения и сцену для превью ссылок
+// и приветствия бота. Картинки только уменьшаются — маленькие исходники не растягиваются.
+import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { buildHero, HERO_PORTRAIT } from './hero/build.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.join(root, 'public', 'assets', 'generated');
 mkdirSync(out, { recursive: true });
 
-const hero = await buildHero(out);
-// портрет (голова и плечи кота на тёмно-синем фоне) — источник иконок, аватаров и экрана загрузки
-const input = hero.portrait;
-const srcMtime = statSync(HERO_PORTRAIT).mtimeMs;
+// стартовый персонаж — тот же id, что DEFAULT_SKIN_ID в @meowgul/shared
+const cosmetics = readFileSync(path.join(root, '..', 'shared', 'src', 'cosmetics.ts'), 'utf8');
+const DEFAULT_SKIN = /DEFAULT_SKIN_ID = '([a-z_]+)'/.exec(cosmetics)?.[1];
+if (!DEFAULT_SKIN) throw new Error('DEFAULT_SKIN_ID not found');
+const skinDir = path.join(root, 'public', 'assets', 'skins', DEFAULT_SKIN);
+const PORTRAIT = path.join(skinDir, 'icon.webp');
+const CHARACTER = path.join(skinDir, 'character.webp');
+const input = readFileSync(PORTRAIT);
+const srcMtime = Math.max(statSync(PORTRAIT).mtimeMs, statSync(CHARACTER).mtimeMs);
 const fresh = (file) => existsSync(file) && statSync(file).mtimeMs >= srcMtime;
+const square = (s, size) => s.resize(size, size, { fit: 'cover', withoutEnlargement: true });
 
 const jobs = [
-  ['character-512.webp', (s) => s.resize(512, 512).webp({ quality: 86, effort: 5 })],
-  ['character-1024.webp', (s) => s.resize(1024, 1024).webp({ quality: 86, effort: 5 })],
-  ['character-512.png', (s) => s.resize(512, 512).png({ compressionLevel: 9 })],
-  ['character-256.webp', (s) => s.resize(256, 256).webp({ quality: 84 })],
-  ['icon-192.png', (s) => s.resize(192, 192).png()],
-  ['icon-512.png', (s) => s.resize(512, 512).png()],
-  ['favicon-64.png', (s) => s.resize(64, 64).png()],
+  ['character-512.webp', (s) => square(s, 512).webp({ quality: 86, effort: 5 })],
+  ['character-512.png', (s) => square(s, 512).png({ compressionLevel: 9 })],
+  ['character-256.webp', (s) => square(s, 256).webp({ quality: 84 })],
+  ['icon-192.png', (s) => square(s, 192).png()],
+  ['favicon-64.png', (s) => square(s, 64).png()],
 ];
 
-let made = hero.made;
+let made = 0;
 for (const [name, transform] of jobs) {
   const file = path.join(out, name);
   if (fresh(file)) continue;
@@ -35,7 +38,7 @@ for (const [name, transform] of jobs) {
   made++;
 }
 
-// Космическая сцена в стиле фона игры: тёмное небо, туманность полосой, звёзды, кот в золотом круге.
+// Космическая сцена в стиле фона игры: тёмное небо, туманность полосой, звёзды, стартовый персонаж.
 // Используется для Open Graph (превью ссылки) и картинки приветствия бота.
 function rand32(seed) {
   let a = seed;
@@ -129,22 +132,16 @@ async function spaceScene(w, h, { cta }) {
         : ''
     }
   </svg>`;
-  // кот в полный рост (слои скина по умолчанию: хвост, кроссовка, ухо и голова под телом)
+  // стартовый персонаж в полный рост
   const catH = Math.round(h * 0.94);
-  const layer = (part) => path.join(out, 'hero', `black_crown-${part}.webp`);
-  const catImg = await sharp(layer('tail'))
-    .composite([
-      { input: layer('foot') },
-      { input: layer('ear') },
-      { input: layer('head') },
-      { input: layer('body') },
-    ])
-    .png()
-    .toBuffer()
-    .then((b) => sharp(b).resize(null, catH).png().toBuffer());
+  const catImg = await sharp(CHARACTER).resize({ height: catH, withoutEnlargement: true }).png().toBuffer();
   const catW = (await sharp(catImg).metadata()).width ?? 0;
   return sharp(Buffer.from(svg)).composite([
-    { input: catImg, left: Math.max(0, Math.round(cx - catW / 2)), top: h - catH },
+    {
+      input: catImg,
+      left: Math.max(0, Math.round(cx - catW / 2)),
+      top: h - ((await sharp(catImg).metadata()).height ?? catH),
+    },
   ]);
 }
 

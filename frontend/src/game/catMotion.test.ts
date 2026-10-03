@@ -23,7 +23,7 @@ describe('cat tap physics', () => {
     expect(min).toBeGreaterThan(-0.03);
     expect(max).toBeLessThan(0.015);
     settle(m);
-    expect(m.transforms()).toEqual({ body: '', head: '', tail: '', ear: '', foot: '', yaw: 0, pitch: 0 });
+    expect(m.transforms()).toEqual({ body: '', yaw: 0, pitch: 0 });
   });
 
   it('50 rapid taps never exceed the limits and the cat returns to the initial pose', () => {
@@ -35,13 +35,12 @@ describe('cat tap physics', () => {
       m.advance(1 / 60);
       expect(Math.abs(m.squash.x)).toBeLessThanOrEqual(m.squash.limit);
       expect(Math.abs(m.tilt.x)).toBeLessThanOrEqual(m.tilt.limit);
-      expect(Math.abs(m.head.x)).toBeLessThanOrEqual(m.head.limit);
-      expect(Math.abs(m.tail.x)).toBeLessThanOrEqual(m.tail.limit);
-      expect(Math.abs(m.ear.x)).toBeLessThanOrEqual(m.ear.limit);
+      expect(Math.abs(m.yaw.x)).toBeLessThanOrEqual(m.yaw.limit);
+      expect(Math.abs(m.pitch.x)).toBeLessThanOrEqual(m.pitch.limit);
     }
     expect(settle(m)).toBeLessThan(6);
     expect(m.active).toBe(false);
-    expect(m.transforms()).toEqual({ body: '', head: '', tail: '', ear: '', foot: '', yaw: 0, pitch: 0 });
+    expect(m.transforms()).toEqual({ body: '', yaw: 0, pitch: 0 });
   });
 
   it('a long frame (tab in background) does not explode the springs', () => {
@@ -52,38 +51,24 @@ describe('cat tap physics', () => {
     settle(m);
     expect(m.active).toBe(false);
   });
-
-  it('the head can hold a gaze target and comes back when released', () => {
-    const m = new CatMotion();
-    m.lookAt(9, 9);
-    settle(m);
-    expect(m.head.x).toBe(3);
-    expect(m.look.x).toBe(1.4);
-    expect(m.transforms().head).toContain('rotate(3.000deg)');
-    m.lookAt(0, 0);
-    settle(m);
-    expect(m.transforms().head).toBe('');
-  });
 });
 
-describe('ear and foot', () => {
-  it('the heel never goes below the floor, ear and foot settle exactly', () => {
+describe('hop and wiggle', () => {
+  it('a hop never goes below the floor or above the limit and settles exactly', () => {
     const m = new CatMotion();
     for (let i = 0; i < 20; i++) {
-      m.stomp(1);
-      m.twitch(i % 2 ? 1 : -1, 1.2);
+      m.hop(1.5);
+      m.wiggle(i % 2 ? 20 : -20);
       for (let f = 0; f < 4; f++) {
         m.advance(1 / 60);
-        expect(m.foot.x).toBeGreaterThanOrEqual(0);
-        expect(m.foot.x).toBeLessThanOrEqual(m.foot.limit);
-        expect(Math.abs(m.ear.x)).toBeLessThanOrEqual(m.ear.limit);
+        expect(m.lift.x).toBeGreaterThanOrEqual(0);
+        expect(m.lift.x).toBeLessThanOrEqual(m.lift.limit);
+        expect(Math.abs(m.tilt.x)).toBeLessThanOrEqual(m.tilt.limit);
       }
     }
     for (let f = 0; f < 600 && m.advance(1 / 60); f++);
     expect(m.active).toBe(false);
-    const t = m.transforms();
-    expect(t.ear).toBe('');
-    expect(t.foot).toBe('');
+    expect(m.transforms().body).toBe('');
   });
 });
 

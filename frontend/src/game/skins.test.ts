@@ -1,50 +1,107 @@
-import { COSMETICS } from '@meowgul/shared';
+import { COSMETICS, DEFAULT_SKIN_ID, LEGACY_SKINS } from '@meowgul/shared';
+import { existsSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { heroLayout } from '../components/hero/layout';
-import { CAT_RIGS, heroAsset, SKIN_STYLES } from './skins';
+import art from './skinArt.json';
+import { liteDevice, resetLiteDevice, skinArt, skinAsset, skinIcon, skinStyle, SKIN_STYLES } from './skins';
 
-describe('hero skins', () => {
-  const skins = COSMETICS.filter((c) => c.kind === 'skin')
-    .map((c) => c.id)
-    .sort();
+const SKINS = COSMETICS.filter((c) => c.kind === 'skin');
+const PUBLIC = path.resolve(__dirname, '..', '..', 'public');
 
-  it('every catalog skin has colours and a recolor recipe for the build', async () => {
-    expect(Object.keys(SKIN_STYLES).sort()).toEqual(skins);
-    // рецепты перекраски живут в скрипте сборки картинок (node), путь — от папки frontend
-    const url = `file://${process.cwd()}/scripts/hero/recolor.mjs`;
-    const { SKIN_RECOLORS } = (await import(/* @vite-ignore */ url)) as {
-      SKIN_RECOLORS: Record<string, unknown>;
-    };
-    expect(Object.keys(SKIN_RECOLORS).sort()).toEqual(skins);
-  });
-
-  it('an unknown skin falls back to the base images', () => {
-    expect(heroAsset('nope', 'body')).toBe('/assets/generated/hero/black_crown-body.webp');
-    expect(heroAsset('queen', 'head')).toBe('/assets/generated/hero/queen-head.webp');
-  });
-
-  it('the cat fits the stage, stands on its bottom edge, a bit left of centre; the tap zone covers it', () => {
-    const { aspect } = CAT_RIGS.street;
-    for (const w of [280, 328, 360, 398, 460]) {
-      for (const h of [120, 260, 340, 420, 600]) {
-        const { cat, hit } = heroLayout(w, h, aspect);
-        expect(cat.left).toBeGreaterThanOrEqual(0);
-        expect(cat.left + cat.width).toBeLessThanOrEqual(w + 0.01);
-        expect(cat.top).toBeGreaterThanOrEqual(-0.01);
-        expect(cat.top + cat.height).toBeCloseTo(h, 5);
-        // хвост слева — рамка кота чуть левее середины, сам кот на глаз по центру
-        const centre = cat.left + cat.width / 2;
-        expect(centre).toBeLessThan(w / 2);
-        expect(centre).toBeGreaterThan(w / 2 - cat.width * 0.1);
-        expect(hit.left).toBeGreaterThanOrEqual(0);
-        expect(hit.left + hit.width).toBeLessThanOrEqual(w + 0.01);
-        expect(hit.left).toBeLessThanOrEqual(cat.left + 0.01);
-        expect(hit.left + hit.width).toBeGreaterThanOrEqual(cat.left + cat.width - 0.01);
+describe('skin catalog ↔ visuals', () => {
+  it('every skin in the catalog has a style, art geometry and all its files (AVIF + WebP)', () => {
+    expect(Object.keys(SKIN_STYLES).sort()).toEqual(SKINS.map((s) => s.id).sort());
+    expect(Object.keys(art).sort()).toEqual(SKINS.map((s) => s.id).sort());
+    for (const { id } of SKINS) {
+      for (const file of ['character', 'background', 'preview'] as const) {
+        for (const format of ['avif', 'webp'] as const) {
+          const f = path.join(PUBLIC, skinAsset(id, file, format));
+          expect(existsSync(f), f).toBe(true);
+          // не пустышка и не гигант: телефону хватает
+          expect(statSync(f).size).toBeGreaterThan(2_000);
+          expect(statSync(f).size).toBeLessThan(600_000);
+        }
       }
+      expect(existsSync(path.join(PUBLIC, skinIcon(id)))).toBe(true);
     }
   });
 
-  it('every skin uses a known rig', () => {
-    for (const id of skins) expect(CAT_RIGS[SKIN_STYLES[id]!.rig]).toBeDefined();
+  it('characters are distinct: own colours, scene atmosphere and animation set per skin', () => {
+    const accents = new Set(SKINS.map((s) => skinStyle(s.id).accent));
+    expect(accents.size).toBeGreaterThanOrEqual(18);
+    const combos = new Set(
+      SKINS.map((s) => `${skinStyle(s.id).ambient}/${skinStyle(s.id).idle}/${skinStyle(s.id).accent}`),
+    );
+    expect(combos.size).toBe(SKINS.length);
+  });
+
+  it('geometry is sane: proportions of a standing character, head in the top part', () => {
+    for (const { id } of SKINS) {
+      const a = skinArt(id);
+      expect(a.aspect).toBeGreaterThan(0.4);
+      expect(a.aspect).toBeLessThan(1.1);
+      expect(a.head[1]).toBeLessThan(0.3);
+      expect(a.headBottom).toBeGreaterThan(a.head[1]);
+      expect(a.body).toBeGreaterThan(0.2);
+      expect(a.body).toBeLessThan(0.8);
+    }
+  });
+
+  it('unknown and old skin ids fall back to the default character (no old assets are ever requested)', () => {
+    expect(skinAsset('nope', 'character')).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/character.webp`);
+    for (const old of Object.keys(LEGACY_SKINS)) {
+      expect(skinAsset(old, 'background', 'avif')).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/background.avif`);
+      expect(skinIcon(old)).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/icon.webp`);
+    }
+    expect(existsSync(path.join(PUBLIC, 'assets', 'generated', 'hero'))).toBe(false);
+  });
+});
+
+describe('stage layout', () => {
+  it('the character stands on the floor, body centred, tap zone covers it with a margin', () => {
+    for (const { id } of SKINS) {
+      const { aspect, body } = skinArt(id);
+      for (const [w, h] of [
+        [358, 420],
+        [390, 520],
+        [320, 300],
+        [430, 640],
+      ] as const) {
+        const { cat, hit } = heroLayout(w, h, aspect, body);
+        expect(cat.top + cat.height).toBeCloseTo(h, 5);
+        expect(cat.left).toBeGreaterThanOrEqual(0);
+        expect(cat.left + cat.width).toBeLessThanOrEqual(w + 1e-6);
+        // центр тела — у середины сцены (если хватает места)
+        expect(Math.abs(cat.left + cat.width * body - w / 2)).toBeLessThan(w * 0.12);
+        // зона тапа шире персонажа, но в пределах сцены
+        expect(hit.width).toBeGreaterThanOrEqual(Math.min(w, cat.width));
+        expect(hit.left).toBeGreaterThanOrEqual(0);
+        expect(hit.left + hit.width).toBeLessThanOrEqual(w + 1e-6);
+        expect(hit.left).toBeLessThanOrEqual(cat.left + cat.width * 0.2);
+      }
+    }
+  });
+});
+
+describe('weak devices', () => {
+  it('few cores, little memory or data saver → light mode', () => {
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    const cores = Object.getOwnPropertyDescriptor(Navigator.prototype, 'hardwareConcurrency');
+    Object.defineProperty(navigator, 'hardwareConcurrency', { value: 8, configurable: true });
+    Object.defineProperty(nav, 'deviceMemory', { value: 8, configurable: true });
+    resetLiteDevice();
+    expect(liteDevice()).toBe(false);
+    Object.defineProperty(navigator, 'hardwareConcurrency', { value: 4, configurable: true });
+    resetLiteDevice();
+    expect(liteDevice()).toBe(true);
+    Object.defineProperty(navigator, 'hardwareConcurrency', { value: 8, configurable: true });
+    Object.defineProperty(nav, 'deviceMemory', { value: 2, configurable: true });
+    resetLiteDevice();
+    expect(liteDevice()).toBe(true);
+    if (cores) Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', cores);
+    delete (navigator as { hardwareConcurrency?: number }).hardwareConcurrency;
+    delete nav.deviceMemory;
+    resetLiteDevice();
   });
 });

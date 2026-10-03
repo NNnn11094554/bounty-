@@ -3,7 +3,9 @@ import {
   DEFAULT_EFFECT_ID,
   DEFAULT_SKIN_ID,
   isDefaultCosmetic,
+  knownEquipped,
   playerLevel,
+  resolveCosmeticId,
   type CollectionResponse,
   type CosmeticDef,
 } from '@meowgul/shared';
@@ -30,7 +32,7 @@ export function collectionOf(
   user: Pick<User, 'equippedSkinId' | 'equippedEffectId'>,
   owned: string[],
 ): CollectionResponse {
-  return { owned, equipped: { skin: user.equippedSkinId, effect: user.equippedEffectId } };
+  return { owned, equipped: knownEquipped(user.equippedSkinId, user.equippedEffectId) };
 }
 
 export function requireCosmetic(id: string): CosmeticDef {
@@ -70,13 +72,17 @@ export async function buyWithCoins(tx: Tx, user: User, id: string, now: Date): P
   return updated;
 }
 
-/** Выдать предмет (оплата Stars, админ) и надеть его. Повторная выдача ничего не меняет. */
+/**
+ * Выдать предмет (оплата Stars, админ) и надеть его. Повторная выдача ничего не меняет. Счёт,
+ * выставленный за скин прошлой коллекции, выдаёт его замену из новой.
+ */
 export async function grantCosmetic(
   tx: Tx,
   user: User,
-  id: string,
+  grantedId: string,
   source: 'stars' | 'admin',
 ): Promise<User> {
+  const id = resolveCosmeticId(grantedId);
   const item = requireCosmetic(id);
   await tx.userCosmetic.upsert({
     where: { userId_cosmeticId: { userId: user.id, cosmeticId: id } },
@@ -87,7 +93,8 @@ export async function grantCosmetic(
 }
 
 /** Забрать предмет (возврат оплаты): если он был надет — вернуть стартовый. */
-export async function revokeCosmetic(tx: Tx, user: User, id: string): Promise<User> {
+export async function revokeCosmetic(tx: Tx, user: User, revokedId: string): Promise<User> {
+  const id = resolveCosmeticId(revokedId);
   await tx.userCosmetic.deleteMany({ where: { userId: user.id, cosmeticId: id } });
   return tx.user.update({
     where: { id: user.id },

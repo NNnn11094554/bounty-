@@ -9,6 +9,8 @@ import { useNow } from '../../hooks/useNow';
 import { useT } from '../../i18n';
 import { useCollection } from '../../store/collection';
 import { useGame } from '../../store/game';
+import { toast } from '../../store/toasts';
+import { haptic } from '../../telegram/webapp';
 
 /** Сетка предметов коллекции (скины или эффекты) с окном предмета. */
 export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: string }) {
@@ -16,6 +18,8 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
   const owned = useCollection((s) => s.owned);
   const status = useCollection((s) => s.status);
   const load = useCollection((s) => s.load);
+  const equip = useCollection((s) => s.equip);
+  const busy = useCollection((s) => s.busy);
   const equipped = useGame((s) => s.player?.cosmetics);
   const [open, setOpen] = useState<CosmeticDef | null>(null);
   useNow(2000); // уровень растёт от тапов — карточки обновляются
@@ -24,6 +28,16 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
     void load();
   }, [load]);
   const items = COSMETICS.filter((c) => c.kind === kind);
+  const onEquip = async (id: string) => {
+    const result = await equip(id);
+    if (result === 'ok') {
+      toast.success(t('collection.equippedToast'));
+      haptic.notify('success');
+    } else {
+      toast.error(t('collection.error.failed'));
+      haptic.notify('error');
+    }
+  };
 
   if (status === 'error' && !owned.length) {
     return (
@@ -39,7 +53,10 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
     return (
       <div className="grid grid-cols-2 gap-3" aria-busy="true" data-testid="collection-loading">
         {items.slice(0, 4).map((c) => (
-          <div key={c.id} className="skeleton h-[196px] rounded-[20px]" />
+          <div
+            key={c.id}
+            className={`skeleton rounded-[20px] ${kind === 'skin' ? 'aspect-[4/5]' : 'h-[196px]'}`}
+          />
         ))}
       </div>
     );
@@ -55,6 +72,8 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
             equipped={equipped?.skin === item.id || equipped?.effect === item.id}
             level={level}
             onOpen={setOpen}
+            onEquip={(item) => void onEquip(item.id)}
+            busy={busy}
           />
         ))}
       </div>
@@ -63,7 +82,7 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
   );
 }
 
-/** Коллекция: все коты и эффекты тапа — свои, открытые и закрытые. */
+/** Коллекция: все персонажи и эффекты тапа — свои, открытые и закрытые. */
 export function CollectionScreen() {
   const t = useT();
   const owned = useCollection((s) => s.owned);

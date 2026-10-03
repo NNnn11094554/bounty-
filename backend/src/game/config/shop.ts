@@ -30,9 +30,10 @@ export const SHOP: Record<ShopProductId, ProductConfig> = {
   coins_large: { kind: 'coins', stars: 250, hours: 45, min: 500_000 },
   energy_refill: { kind: 'energy', stars: 10 },
   income_x2: { kind: 'income_boost', stars: 150, hours: 24 },
-  skin_diamond: cosmetic('diamond'),
-  skin_queen: cosmetic('queen'),
-  skin_legendary_crown: cosmetic('legendary_crown'),
+  skin_angel_guardian: cosmetic('angel_guardian'),
+  skin_shadow_drifter: cosmetic('shadow_drifter'),
+  skin_cyber_samurai: cosmetic('cyber_samurai'),
+  skin_galaxy_emperor: cosmetic('galaxy_emperor'),
   effect_matrix: cosmetic('matrix'),
 };
 

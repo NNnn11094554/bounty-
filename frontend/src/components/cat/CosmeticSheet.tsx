@@ -12,9 +12,14 @@ import { haptic } from '../../telegram/webapp';
 import { BottomSheet } from '../BottomSheet';
 import { Button } from '../Button';
 import { CoinIcon, StarIcon } from '../icons';
+import { HeroFigure } from '../hero/HeroFigure';
+import { SkinScene } from '../hero/SkinScene';
 import { CosmeticPreview, RarityFrame } from './CosmeticCard';
 
-/** Окно предмета: большое живое превью, редкость, описание, требование, цена и действие. */
+/**
+ * Окно предмета. Для персонажа — полный просмотр: он сам в полный рост в своём мире (фон, свет, частицы,
+ * спокойная анимация), редкость, имя, описание, как получить и действие (надеть / купить / закрыт).
+ */
 export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onClose: () => void }) {
   const t = useT();
   const locale = useLocale();
@@ -113,9 +118,32 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
     return (
       <div className="flex flex-col items-center pb-2 text-center" data-testid="cosmetic-sheet">
         <RarityFrame rarity={shown.rarity} className="w-full">
-          <div ref={previewRef} className="flex justify-center px-4 pb-5 pt-8">
-            <CosmeticPreview item={shown} size={shown.kind === 'skin' ? 220 : 150} />
-          </div>
+          {shown.kind === 'skin' ? (
+            <div
+              ref={previewRef}
+              className="relative h-[300px] overflow-hidden rounded-[18px] short:h-[240px]"
+              data-testid="skin-preview"
+            >
+              <SkinScene key={shown.id} skinId={shown.id} />
+              <div
+                key={`f-${shown.id}`}
+                className="hero-enter absolute inset-x-0 bottom-3 flex justify-center"
+              >
+                <HeroFigure skinId={shown.id} height={250} />
+              </div>
+              {locked && (
+                <div className="absolute inset-0 grid place-items-center bg-black/35">
+                  <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm font-black">
+                    🔒 {t('collection.levelLock', { level: shown.unlockLevel })}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div ref={previewRef} className="flex justify-center px-4 pb-5 pt-8">
+              <CosmeticPreview item={shown} size={150} />
+            </div>
+          )}
         </RarityFrame>
         <p
           className="mt-4 text-[11px] font-black uppercase tracking-[0.18em]"
@@ -132,6 +160,23 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
         </p>
         {shown.kind === 'effect' && (
           <p className="mt-1 text-xs font-bold text-white/40">{t('collection.tryTap')}</p>
+        )}
+        {shown.kind === 'skin' && (
+          <div className="mt-3 w-full rounded-2xl bg-white/5 px-3 py-2 text-left" data-testid="skin-how-to">
+            <p className="text-[11px] font-black uppercase tracking-wide text-white/45">
+              {t('collection.howTo')}
+            </p>
+            <p className="text-[13px] font-bold text-white/80">
+              {!shown.price
+                ? t('collection.howFree')
+                : shown.price.currency === 'stars'
+                  ? t('collection.howStars', { price: shown.price.amount })
+                  : t('collection.howLevel', {
+                      level: shown.unlockLevel,
+                      price: formatInt(shown.price.amount),
+                    })}
+            </p>
+          </div>
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold">

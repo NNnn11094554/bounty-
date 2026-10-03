@@ -7,9 +7,10 @@ export const SHOP_PRODUCT_IDS = [
   'coins_large',
   'energy_refill',
   'income_x2',
-  'skin_diamond',
-  'skin_queen',
-  'skin_legendary_crown',
+  'skin_angel_guardian',
+  'skin_shadow_drifter',
+  'skin_cyber_samurai',
+  'skin_galaxy_emperor',
   'effect_matrix',
 ] as const;
 export type ShopProductId = (typeof SHOP_PRODUCT_IDS)[number];

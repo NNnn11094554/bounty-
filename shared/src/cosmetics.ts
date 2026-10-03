@@ -22,8 +22,33 @@ export interface CosmeticDef {
   desc: Record<Locale, string>;
 }
 
-export const DEFAULT_SKIN_ID = 'black_crown';
+export const DEFAULT_SKIN_ID = 'neon_punk';
 export const DEFAULT_EFFECT_ID = 'coins';
+
+/**
+ * Скины прошлой коллекции (перекраски одного кота) → персонажи новой коллекции той же ценности.
+ * Нужно миграции базы и старым покупкам за Stars (выдача по неоплаченному счёту, возврат).
+ */
+export const LEGACY_SKINS: Readonly<Record<string, string>> = {
+  black_crown: 'neon_punk',
+  pink_angel: 'desert_nomad',
+  cyber: 'sakura_blossom',
+  crypto_king: 'astro_cat',
+  samurai: 'mecha',
+  neon_tokyo: 'crystal_prince',
+  shadow: 'forest_spirit',
+  galaxy: 'ocean_guardian',
+  golden_boss: 'stealth_assassin',
+  hacker: 'dark_reaper',
+  diamond: 'angel_guardian',
+  queen: 'shadow_drifter',
+  legendary_crown: 'galaxy_emperor',
+};
+
+/** id предмета с учётом переименований прошлой коллекции. */
+export function resolveCosmeticId(id: string): string {
+  return LEGACY_SKINS[id] ?? id;
+}
 
 const skin = (
   id: string,
@@ -56,145 +81,231 @@ const stars = (amount: number): CosmeticPrice => ({ currency: 'stars', amount })
  * Каталог коллекции. Скины уровней покупаются за монеты после достижения уровня, премиальные — за
  * Telegram Stars. Цены, уровни и тексты меняются здесь — сервер и клиент берут их отсюда.
  */
+/**
+ * Каталог коллекции. Скины — разные персонажи (свой костюм, силуэт, сцена и анимация; оформление —
+ * frontend/src/game/skins.ts). Редкость — только внешний вид: на доход, тапы и награды скины не влияют.
+ * Скины уровней покупаются за монеты после достижения уровня, премиальные — за Telegram Stars.
+ * Цены, уровни и тексты меняются здесь — сервер и клиент берут их отсюда.
+ */
 export const COSMETICS: readonly CosmeticDef[] = [
   skin(
-    'black_crown',
-    'COMMON',
+    'neon_punk',
+    'EPIC',
     1,
     null,
-    ['Чёрный Король', 'Black Crown Cat'],
+    ['Неоновый Панк', 'Neon Punk'],
     [
-      'Стритвир, наушники с короной и синий неон. С него всё началось.',
-      'Streetwear, crown headphones and blue neon. Where it all began.',
+      'Кибер-худи, наушники и синий ирокез. Ночной город светится вокруг — с него всё начинается.',
+      'Cyber hoodie, headphones and a blue mohawk. The night city glows around — where it all begins.',
     ],
   ),
   skin(
-    'pink_angel',
-    'RARE',
+    'desert_nomad',
+    'EPIC',
     3,
     coins(10_000),
-    ['Розовый Ангел', 'Pink Angel Cat'],
+    ['Пустынный Странник', 'Desert Nomad'],
     [
-      'Пастельно-розовый неон и сердечки вокруг. Милый — но за свой баланс порвёт.',
-      'Pastel pink neon and hearts around. Cute — until you touch the balance.',
+      'Очки-гогглы, шарф от песка и походное снаряжение. Ветер гонит дюны к старой крепости.',
+      'Goggles, a sand scarf and travel gear. The wind drives the dunes towards an old fortress.',
     ],
   ),
   skin(
-    'cyber',
-    'RARE',
+    'sakura_blossom',
+    'EPIC',
     5,
     coins(75_000),
-    ['Кибер-кот', 'Cyber Cat'],
+    ['Цветок Сакуры', 'Sakura Blossom'],
     [
-      'Бирюзовый электрический неон на всём костюме и взгляд из 2077 года.',
-      'Turquoise electric neon all over the outfit and a stare from 2077.',
+      'Розовое кимоно, нимб и цветы в волосах. Вокруг — сад и кружащиеся лепестки.',
+      'A pink kimono, a halo and flowers in the hair. A garden and swirling petals all around.',
     ],
   ),
   skin(
-    'crypto_king',
+    'astro_cat',
     'EPIC',
     8,
     coins(400_000),
-    ['Крипто-Король', 'Crypto King Cat'],
+    ['Астрокот', 'Astro Cat'],
     [
-      'Оранжевый неон цвета биткоина, золотые логотипы и монеты вокруг.',
-      'Bitcoin-orange neon, golden logos and coins all around.',
+      'Скафандр, шлем с антенной и Земля за спиной. Невесомость ему к лицу.',
+      'A spacesuit, a helmet with an antenna and Earth behind. Zero gravity suits him.',
     ],
   ),
   skin(
-    'samurai',
+    'mecha',
     'EPIC',
     10,
     coins(1_000_000),
-    ['Кот-самурай', 'Samurai Cat'],
+    ['Меха', 'Mecha'],
     [
-      'Алый неон и лепестки сакуры. Путь холдера — путь воина.',
-      'Crimson neon and sakura petals. The holder’s way is the warrior’s way.',
+      'Боевая броня с голубыми реакторами и крыльями-лезвиями. Город будущего в огнях.',
+      'Battle armour with blue reactors and blade wings. A future city in lights.',
     ],
   ),
   skin(
-    'neon_tokyo',
+    'crystal_prince',
     'EPIC',
     12,
-    coins(2_000_000),
-    ['Неоновый Токио', 'Neon Tokyo Cat'],
+    coins(2_500_000),
+    ['Кристальный Принц', 'Crystal Prince'],
     [
-      'Пурпурно-розовые огни ночного Токио и ноты в воздухе.',
-      'The magenta-pink lights of Tokyo at night and music in the air.',
+      'Корона из кристаллов и мантия с аметистами. Кристаллический лес мерцает фиолетовым.',
+      'A crown of crystals and an amethyst mantle. The crystal forest shimmers violet.',
     ],
   ),
   skin(
-    'shadow',
+    'forest_spirit',
     'LEGENDARY',
-    15,
+    14,
     coins(8_000_000),
-    ['Тень', 'Shadow Cat'],
+    ['Лесной Дух', 'Forest Spirit'],
     [
-      'Почти чёрный: приглушённый фиолетовый свет, тёмные логотипы и дымка вокруг.',
-      'Almost black: dim violet light, dark logos and smoke around.',
+      'Рога из веток, мох и листья на плаще. Светлячки и лучи сквозь листву древнего леса.',
+      'Antlers of branches, moss and leaves on the cloak. Fireflies and sunbeams in an ancient forest.',
     ],
   ),
   skin(
-    'galaxy',
+    'ocean_guardian',
     'LEGENDARY',
-    20,
-    coins(40_000_000),
-    ['Галактический кот', 'Galaxy Cat'],
+    16,
+    coins(20_000_000),
+    ['Страж Океана', 'Ocean Guardian'],
     [
-      'Индиго и фиолет переливаются снизу вверх, вокруг — звёзды.',
-      'Indigo flowing into violet from boots to ears, with stars around.',
+      'Трезубец, чешуйчатая броня и шерсть цвета волны. Пузырьки и свет из глубины.',
+      'A trident, scale armour and fur the colour of the waves. Bubbles and light from the deep.',
     ],
   ),
   skin(
-    'golden_boss',
-    'MYTHIC',
-    32,
+    'inferno',
+    'LEGENDARY',
+    19,
+    coins(60_000_000),
+    ['Инферно', 'Inferno'],
+    [
+      'Огненный хвост, броня в раскалённых трещинах и искры вокруг. Всё вокруг горит.',
+      'A flaming tail, armour with glowing cracks and sparks around. Everything is on fire.',
+    ],
+  ),
+  skin(
+    'toxic',
+    'LEGENDARY',
+    22,
+    coins(150_000_000),
+    ['Токсик', 'Toxic'],
+    [
+      'Противогаз, кислотно-зелёные пятна и пар. Лаборатория, где что-то пошло не так.',
+      'A gas mask, acid-green stains and steam. A lab where something went wrong.',
+    ],
+  ),
+  skin(
+    'stealth_assassin',
+    'LEGENDARY',
+    25,
     coins(600_000_000),
-    ['Золотой Босс', 'Golden Boss Cat'],
+    ['Тайный Ассасин', 'Stealth Assassin'],
     [
-      'Золотой неон, золотые логотипы и подошвы. Здесь главный — он.',
-      'Gold neon, golden logos and soles. This is the boss.',
+      'Капюшон, маска и клинок с алым отсветом. Ночной храм и падающие лепестки.',
+      'A hood, a mask and a blade with a crimson glow. A night temple and falling petals.',
     ],
   ),
   skin(
-    'hacker',
-    'MYTHIC',
-    38,
+    'dark_reaper',
+    'LEGENDARY',
+    28,
     coins(2_000_000_000),
-    ['Кот-хакер', 'Hacker Cat'],
+    ['Тёмный Жнец', 'Dark Reaper'],
     [
-      'Зелёный неон терминала и бегущий код вокруг. Root-доступ к рынку.',
-      'Terminal-green neon and running code around. Root access to the market.',
+      'Коса с фиолетовым пламенем и рваный плащ. Луна над старым кладбищем.',
+      'A scythe with violet flame and a tattered cloak. The moon over an old graveyard.',
     ],
   ),
   skin(
-    'diamond',
+    'arctic_king',
+    'MYTHIC',
+    31,
+    coins(6_000_000_000),
+    ['Арктический Король', 'Arctic King'],
+    [
+      'Ледяная корона, меховая мантия и посох из льда. Снег над замком на вершине.',
+      'An ice crown, a fur mantle and a staff of ice. Snow over a castle on the summit.',
+    ],
+  ),
+  skin(
+    'vampire_lord',
+    'MYTHIC',
+    35,
+    coins(20_000_000_000),
+    ['Лорд Вампиров', 'Vampire Lord'],
+    [
+      'Алые глаза, крылья и плащ с высоким воротником. Кровавая луна над замком.',
+      'Crimson eyes, wings and a high-collared cloak. A blood moon over the castle.',
+    ],
+  ),
+  skin(
+    'lunar_witch',
+    'MYTHIC',
+    40,
+    coins(60_000_000_000),
+    ['Лунная Ведьма', 'Lunar Witch'],
+    [
+      'Широкополая шляпа, посох с лунным камнем и фиолетовые чары. Полная луна над шпилями.',
+      'A wide-brimmed hat, a moonstone staff and violet spells. A full moon over the spires.',
+    ],
+  ),
+  skin(
+    'royal_emperor',
+    'MYTHIC',
+    45,
+    coins(200_000_000_000),
+    ['Император', 'Royal Emperor'],
+    [
+      'Золотая корона, алая мантия и золотые драконы за троном. Здесь главный — он.',
+      'A golden crown, a crimson robe and golden dragons behind the throne. This is the boss.',
+    ],
+  ),
+  skin(
+    'angel_guardian',
     'EPIC',
     1,
     stars(149),
-    ['Бриллиантовый кот', 'Diamond Cat'],
-    ['Ледяной бело-голубой неон и бриллиантовые искры.', 'Icy white-blue neon and diamond sparkles.'],
-  ),
-  skin(
-    'queen',
-    'LEGENDARY',
-    1,
-    stars(249),
-    ['Королева', 'Queen Cat'],
+    ['Ангел-Хранитель', 'Angel Guardian'],
     [
-      'Розово-алый неон, золотые короны на одежде, сердечки и особая анимация.',
-      'Rose-red neon, golden crowns on the outfit, hearts and a special animation.',
+      'Белые крылья, нимб и сияющий клинок. Облака и мягкий свет небес.',
+      'White wings, a halo and a shining blade. Clouds and the soft light of the heavens.',
     ],
   ),
   skin(
-    'legendary_crown',
+    'shadow_drifter',
     'LEGENDARY',
     1,
-    stars(399),
-    ['Легендарная Корона', 'Legendary Crown Cat'],
+    stars(249),
+    ['Теневой Бродяга', 'Shadow Drifter'],
     [
-      'Неон переливается от синего к розовому, премиальная аура и двойная волна на каждый тап.',
-      'Neon flowing from blue to pink, a premium aura and a double wave on every tap.',
+      'Кепка, плащ и фиолетовые тени, что тянутся следом. Ночной мегаполис под дождём.',
+      'A cap, a cloak and violet shadows trailing behind. A night megacity in the rain.',
+    ],
+  ),
+  skin(
+    'cyber_samurai',
+    'LEGENDARY',
+    1,
+    stars(299),
+    ['Кибер-Самурай', 'Cyber Samurai'],
+    [
+      'Красная катана, кибер-маска и броня. Красная луна, тории и лепестки сакуры.',
+      'A red katana, a cyber mask and armour. A red moon, torii gates and sakura petals.',
+    ],
+  ),
+  skin(
+    'galaxy_emperor',
+    'MYTHIC',
+    1,
+    stars(399),
+    ['Галактический Император', 'Galaxy Emperor'],
+    [
+      'Звёздная мантия, кольца планет и космическая аура. Целая галактика у его лап.',
+      'A starry mantle, planetary rings and a cosmic aura. A whole galaxy at his paws.',
     ],
   ),
   effect(
@@ -249,6 +360,16 @@ export const COSMETICS: readonly CosmeticDef[] = [
 
 export function cosmeticById(id: string): CosmeticDef | undefined {
   return COSMETICS.find((c) => c.id === id);
+}
+
+/** Надетый предмет, который клиент сможет показать: неизвестный (удалённый) — стартовый. */
+export function knownEquipped(skin: string, effect: string): { skin: string; effect: string } {
+  const s = cosmeticById(skin);
+  const e = cosmeticById(effect);
+  return {
+    skin: s?.kind === 'skin' ? s.id : DEFAULT_SKIN_ID,
+    effect: e?.kind === 'effect' ? e.id : DEFAULT_EFFECT_ID,
+  };
 }
 
 /** Стартовые предметы есть у всех. */
