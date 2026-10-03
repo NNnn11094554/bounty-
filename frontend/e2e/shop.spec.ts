@@ -41,4 +41,36 @@ test.describe('Shop (Telegram Stars)', () => {
     await expect(page.getByTestId('office')).toBeVisible();
     await expect(page.getByTestId('income-boost-badge')).toBeVisible();
   });
+
+  test('assets section: Stars assets from cheap to expensive; unlocking one moves it to the assets screen', async ({
+    page,
+  }) => {
+    const uid = 700001503;
+    await page.goto(`/?uid=${uid}&name=Криптокот`);
+    await expect(page.getByTestId('office')).toBeVisible();
+    await page.getByTestId('nav-shop').click();
+    await page.getByTestId('shop-tabs-assets').click();
+    const list = page.getByTestId('shop-assets');
+    await expect(list).toContainText('Игровые активы — не настоящая криптовалюта');
+    const rows = list.locator('[data-testid^="shop-asset-"]');
+    await expect(rows.first()).toBeVisible();
+    // цены в Stars идут по возрастанию
+    const prices = (await rows.locator('span.tabular').allTextContents()).map(Number);
+    expect(prices.length).toBeGreaterThan(40);
+    expect([...prices].sort((a, b) => a - b)).toEqual(prices);
+    // бесплатных (за монеты) активов здесь нет
+    await expect(page.getByTestId('shop-asset-doge')).toHaveCount(0);
+
+    // Litecoin — без условий: открыть за Stars прямо из магазина
+    await page.getByTestId('shop-asset-ltc').click();
+    await page.getByTestId('card-unlock').click();
+    await expect(page.getByTestId('toast-success')).toContainText('Litecoin');
+    await expect(page.getByTestId('shop-asset-ltc')).toHaveCount(0);
+    const user = await db.user.findUniqueOrThrow({ where: { telegramId: BigInt(uid) } });
+    const owned = await db.userCard.findUniqueOrThrow({
+      where: { userId_cardId: { userId: user.id, cardId: 'ltc' } },
+    });
+    expect(owned.level).toBe(1);
+    expect(Number(user.profitPerHour)).toBeGreaterThan(0);
+  });
 });

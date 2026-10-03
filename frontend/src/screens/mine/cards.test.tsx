@@ -2,15 +2,17 @@ import { CARD_GLYPHS, CARD_ICON_BADGES, CARD_TEXT_BADGES, type CardView } from '
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CardArt, CardIcon } from '../../components/cards/CardIcon';
-import { cardBlock } from '../../game/cards';
+import { cardBlock, cardPaybackHours } from '../../game/cards';
 import { limitedText, lockText } from './cardText';
 
 const base: CardView = {
-  id: 'mk_spot',
-  category: 'MARKETS',
-  name: { ru: 'Спот-торговля', en: 'Spot Trading' },
+  id: 'ton',
+  category: 'LAYER1',
+  name: { ru: 'Toncoin', en: 'Toncoin' },
   description: { ru: '', en: '' },
-  icon: 'candles/none/0',
+  icon: 'token/TON/5',
+  rarity: 'common',
+  starsPrice: null,
   level: 3,
   maxLevel: 25,
   profitPerHour: 600,
@@ -25,8 +27,27 @@ const base: CardView = {
 };
 
 describe('card icons', () => {
+  it('draws our own coin with the ticker for tokens (no logos)', () => {
+    for (const ticker of ['OP', 'SOL', 'DOGE', 'FLOKI', 'MEOWGL']) {
+      const { container, unmount } = render(<CardIcon icon={`token/${ticker}/2`} size={64} />);
+      const label = container.querySelector('[data-ticker]')!;
+      expect(label.textContent).toBe(ticker);
+      // длинные тикеры — мельче, чтобы влезли
+      expect(Number(label.getAttribute('font-size'))).toBeLessThanOrEqual(18);
+      expect(container.querySelector('image')).toBeNull();
+      unmount();
+    }
+    expect(
+      Number(
+        render(<CardIcon icon="token/MEOWGL/0" size={64} />)
+          .container.querySelector('[data-ticker]')!
+          .getAttribute('font-size'),
+      ),
+    ).toBeLessThan(10);
+  });
+
   it('draws every glyph and badge', () => {
-    for (const glyph of CARD_GLYPHS) {
+    for (const glyph of CARD_GLYPHS.filter((g) => g !== 'token')) {
       const { container, unmount } = render(<CardIcon icon={`${glyph}/none/3`} size={64} />);
       const svg = container.querySelector('svg')!;
       // фон, блик, рамка и сам рисунок
@@ -60,7 +81,7 @@ describe('card texts', () => {
         currentLevel: 1,
         name: { ru: 'Маржа x10', en: 'Margin x10' },
       }),
-    ).toBe('Нужна карточка «Маржа x10» ур. 5');
+    ).toBe('Нужен актив «Маржа x10» ур. 5');
     expect(lockText('ru', { type: 'friends', count: 1, current: 0 })).toBe('Пригласи 1 друга');
     expect(lockText('ru', { type: 'friends', count: 5, current: 0 })).toBe('Пригласи 5 друзей');
     expect(lockText('en', { type: 'friends', count: 1, current: 0 })).toBe('Invite 1 friend');
@@ -100,5 +121,17 @@ describe('cardBlock', () => {
     });
     expect(cardBlock({ ...base, cooldownUntil: now - 1 }, 5000, now)).toBeNull();
     expect(cardBlock(base, 2000, now)).toEqual({ kind: 'funds', missing: 310 });
+  });
+  it('a Stars asset is unlocked with Stars, not coins (after its requirement is met)', () => {
+    const paid = { ...base, level: 0, starsPrice: 25 };
+    expect(cardBlock(paid, 1e9, now)).toEqual({ kind: 'stars', stars: 25 });
+    expect(cardBlock({ ...paid, lock: { type: 'league', level: 2, name: 'Gold' } }, 1e9, now)).toEqual({
+      kind: 'locked',
+    });
+    expect(cardPaybackHours(paid)).toBeNull();
+  });
+  it('payback = upgrade cost / additional profit per hour', () => {
+    expect(cardPaybackHours(base)).toBeCloseTo(2310 / 260, 6);
+    expect(cardPaybackHours({ ...base, nextPrice: null, nextProfit: null })).toBeNull();
   });
 });

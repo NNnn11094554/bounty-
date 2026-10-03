@@ -39,12 +39,12 @@ for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: width === 320 ? 568 : 780 });
     await page.goto(`/?uid=70000012${width % 7}&name=Кот`);
     await page.getByTestId('open-mine').click();
-    await expect(page.getByTestId('card-mk_spot')).toBeVisible();
+    await expect(page.getByTestId('card-ton')).toBeVisible();
     await page.getByTestId('mine-cat-SPECIALS').click();
-    await expect(page.getByTestId('card-sp_ceo_photo')).toBeVisible();
+    await expect(page.getByTestId('card-in_gpu')).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const tile = (await page.getByTestId('card-sp_cardboard_hq').boundingBox())!;
+    const tile = (await page.getByTestId('card-in_node').boundingBox())!;
     expect(tile.x + tile.width).toBeLessThanOrEqual(width);
     const list = (await page.getByTestId('mine-list').boundingBox())!;
     expect(list.y + list.height).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) + 1);

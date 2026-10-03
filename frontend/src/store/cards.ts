@@ -34,7 +34,7 @@ export const useCards = create<CardsStore>((set, get) => ({
   status: 'idle',
   loadedAt: 0,
   loadedLeague: -1,
-  category: 'MARKETS',
+  category: 'LAYER1',
   specialsTab: null,
   lastUpgrade: null,
   load: (force = false) => {

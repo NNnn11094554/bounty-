@@ -4,7 +4,9 @@ import {
   CARD_GLYPHS,
   CARD_ICON_BADGES,
   CARD_PALETTES,
+  CARD_RARITIES,
   CARD_TEXT_BADGES,
+  TICKER_RE,
   formatInt,
   formatShort,
   isTextBadge,
@@ -26,12 +28,14 @@ import { attempt, confirmAction, fromLocalInput, toLocalInput } from './helpers'
 import { Badge, Empty, Field, NumberInput, Panel, Select, TextArea, TextInput } from './ui';
 
 const BLANK: AdminCardInput = {
-  category: 'MARKETS',
+  category: 'LAYER1',
   nameRu: '',
   nameEn: '',
   descRu: '',
   descEn: '',
-  icon: 'rocket/none/0',
+  icon: 'token/NEW/0',
+  rarity: 'common',
+  starsPrice: null,
   baseCost: 1_000,
   baseProfit: 120,
   costMultiplier: 1.9,
@@ -63,7 +67,19 @@ function IconPicker({ value, onChange }: { value: string; onChange: (icon: strin
         <Field label={a('cards.glyph')}>
           <Select
             value={glyph}
-            onChange={(e) => set(e.target.value, badge, palette)}
+            onChange={(e) => {
+              const g = e.target.value;
+              // монета — с тикером, рисунок — со значком из каталога
+              const next =
+                g === 'token'
+                  ? TICKER_RE.test(badge)
+                    ? badge
+                    : 'NEW'
+                  : BADGES.includes(badge as CardBadge)
+                    ? badge
+                    : 'none';
+              set(g, next, palette);
+            }}
             data-testid="admin-card-glyph"
           >
             {CARD_GLYPHS.map((g) => (
@@ -73,15 +89,31 @@ function IconPicker({ value, onChange }: { value: string; onChange: (icon: strin
             ))}
           </Select>
         </Field>
-        <Field label={a('cards.badge')}>
-          <Select value={badge} onChange={(e) => set(glyph, e.target.value, palette)}>
-            {BADGES.map((b) => (
-              <option key={b} value={b}>
-                {badgeLabel(b)}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        {glyph === 'token' ? (
+          <Field label={a('cards.ticker')}>
+            <TextInput
+              value={badge === 'none' ? '' : badge}
+              maxLength={6}
+              onChange={(e) =>
+                set(glyph, e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'NEW', palette)
+              }
+              data-testid="admin-card-ticker"
+            />
+          </Field>
+        ) : (
+          <Field label={a('cards.badge')}>
+            <Select
+              value={BADGES.includes(badge as CardBadge) ? badge : 'none'}
+              onChange={(e) => set(glyph, e.target.value, palette)}
+            >
+              {BADGES.map((b) => (
+                <option key={b} value={b}>
+                  {badgeLabel(b)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <div className="col-span-2">
           <span className="text-xs font-bold text-white/55">{a('cards.palette')}</span>
           <div className="mt-1 flex flex-wrap gap-1.5">
@@ -314,6 +346,28 @@ function CardEditor({
             </Field>
             <Field label={a('cards.sortOrder')}>
               <NumberInput value={form.sortOrder} step={1} onChange={num('sortOrder')} />
+            </Field>
+            <Field label={a('cards.rarity')}>
+              <Select
+                value={form.rarity}
+                onChange={(e) => set('rarity', e.target.value as AdminCardInput['rarity'])}
+                data-testid="admin-card-rarity"
+              >
+                {CARD_RARITIES.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={a('cards.starsPrice')}>
+              <NumberInput
+                value={form.starsPrice}
+                step={1}
+                placeholder="—"
+                onChange={(v) => set('starsPrice', v !== null && v > 0 ? Math.round(v) : null)}
+                data-testid="admin-card-stars"
+              />
             </Field>
             <div className="flex items-end gap-4 pb-1">
               <label className="flex items-center gap-2 text-sm font-bold">

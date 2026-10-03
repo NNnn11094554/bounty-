@@ -3,13 +3,14 @@ import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import { memo, useEffect } from 'react';
 import { CardArt, CardIcon } from '../../components/cards/CardIcon';
 import { CooldownRing } from '../../components/CooldownRing';
-import { CoinIcon } from '../../components/icons';
+import { CoinIcon, StarIcon } from '../../components/icons';
 import { tapEngine } from '../../game/tapEngine';
 import { useAffordable } from '../../hooks/useAffordable';
 import { useNow } from '../../hooks/useNow';
 import { useLocale, useT } from '../../i18n';
 import { useCards } from '../../store/cards';
 import { limitedText, lockText } from './cardText';
+import { RARITY_COLOR } from './rarity';
 
 function LockBadge({ size = 22 }: { size?: number }) {
   return (
@@ -75,6 +76,14 @@ function Footer({ card, affordable }: { card: CardView; affordable: boolean }) {
       <span className="h-4 w-px bg-white/15" />
       {card.nextPrice === null ? (
         <span className="text-gold">{t('card.max')}</span>
+      ) : card.starsPrice !== null ? (
+        <span
+          className={`flex min-w-0 items-center gap-1 text-gold ${card.available ? '' : 'opacity-50'}`}
+          data-testid="card-stars"
+        >
+          <StarIcon size={14} />
+          {card.starsPrice}
+        </span>
       ) : (
         <span
           className={`flex min-w-0 items-center gap-1 ${affordable && card.available ? '' : 'text-white/40'}`}
@@ -107,7 +116,7 @@ interface Props {
   onOpen: (card: CardView) => void;
 }
 
-/** Плитка карточки в сетке Mine. У Specials — иллюстрация сверху. */
+/** Плитка актива: монета (у особых — иллюстрация сверху), доход, уровень и цена в монетах или Stars. */
 export const CardTile = memo(function CardTile({ card, onOpen }: Props) {
   const affordable = useAffordable(card.nextPrice);
   const controls = useAnimationControls();
@@ -122,6 +131,7 @@ export const CardTile = memo(function CardTile({ card, onOpen }: Props) {
   }, [lastUpgrade, card.id, controls]);
 
   const name = <CardName card={card} />;
+  const rarity = RARITY_COLOR[card.rarity];
 
   return (
     <motion.button
@@ -130,9 +140,22 @@ export const CardTile = memo(function CardTile({ card, onOpen }: Props) {
       whileTap={{ scale: 0.96 }}
       onClick={() => onOpen(card)}
       className="relative flex w-full min-w-0 flex-col overflow-hidden rounded-[18px] border border-line bg-night-700 text-left shadow-card"
+      style={{
+        borderColor: card.rarity === 'common' ? undefined : `${rarity}66`,
+        boxShadow: card.rarity === 'legendary' ? `0 0 14px ${rarity}33` : undefined,
+      }}
       data-testid={`card-${card.id}`}
       data-locked={card.lock ? 'true' : undefined}
+      data-rarity={card.rarity}
+      data-stars={card.starsPrice ?? undefined}
     >
+      {card.rarity !== 'common' && (
+        <span
+          className="absolute right-2 top-2 z-10 h-2 w-2 rotate-45 rounded-[2px]"
+          style={{ background: rarity, boxShadow: `0 0 6px ${rarity}` }}
+          aria-hidden
+        />
+      )}
       {special ? (
         <>
           <div className="relative aspect-[16/10] w-full">

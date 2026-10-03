@@ -39,17 +39,17 @@ test.describe('Admin panel', () => {
     expect(banned).toMatchObject({ isBanned: true, banReason: 'Проверка бана' });
     expect(banned.balance.toNumber()).toBe(2500);
 
-    // карточки: правка названия с превью уровней
+    // активы: правка названия с превью уровней
     await page.getByTestId('admin-tab-cards').click();
-    await page.getByTestId('admin-card-mk_spot').click();
+    await page.getByTestId('admin-card-doge').click();
     await expect(page.getByTestId('admin-card-levels')).toBeVisible();
     await expect(page.getByTestId('admin-card-warnings')).toBeVisible();
-    await page.getByTestId('admin-card-name-ru').fill('Спот-торговля PRO');
+    await page.getByTestId('admin-card-name-ru').fill('Dogecoin PRO');
     if (shots) await page.screenshot({ path: `${shots}/28-admin-card.png`, fullPage: true });
     await page.getByTestId('admin-card-save').click();
-    await expect(page.getByTestId('admin-cards')).toContainText('Спот-торговля PRO');
-    const card = await db.card.findUniqueOrThrow({ where: { id: 'mk_spot' } });
-    expect(card.nameRu).toBe('Спот-торговля PRO');
+    await expect(page.getByTestId('admin-cards')).toContainText('Dogecoin PRO');
+    const card = await db.card.findUniqueOrThrow({ where: { id: 'doge' } });
+    expect(card.nameRu).toBe('Dogecoin PRO');
 
     // настройки: дополнительный счастливый час
     await page.getByTestId('admin-tab-settings').click();
@@ -66,7 +66,7 @@ test.describe('Admin panel', () => {
 
     // вернуть как было для других сценариев
     await db.user.update({ where: { telegramId: 700001402n }, data: { isBanned: false, banReason: null } });
-    await db.card.update({ where: { id: 'mk_spot' }, data: { nameRu: card.nameRu.replace(' PRO', '') } });
+    await db.card.update({ where: { id: 'doge' }, data: { nameRu: card.nameRu.replace(' PRO', '') } });
     await db.appSetting.update({
       where: { key: 'happyHour' },
       data: { value: { auto: false, override: null } },
