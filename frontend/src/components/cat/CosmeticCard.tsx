@@ -2,6 +2,7 @@ import { formatShort, type CosmeticDef, type Rarity } from '@meowgul/shared';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { EFFECT_PARTICLE, RARITY_COLOR } from '../../game/skins';
 import { useLocale, useT, type MessageKey } from '../../i18n';
+import { lockOf, useLeagueName, type CosmeticLock } from './lock';
 import { Button } from '../Button';
 import { CoinIcon, StarIcon } from '../icons';
 import { SkinPicture } from '../hero/HeroFigure';
@@ -68,11 +69,23 @@ export function CosmeticPreview({
   );
 }
 
+/** Коротко, что держит замок: «Лига Gold» или «Ур. 6». */
+function useLockText(): (lock: NonNullable<CosmeticLock>) => string {
+  const t = useT();
+  const leagueName = useLeagueName();
+  return (lock) =>
+    lock.by === 'league'
+      ? t('collection.leagueLock', { league: leagueName(lock.league) })
+      : t('collection.levelLock', { level: lock.level });
+}
+
 interface Props {
   item: CosmeticDef;
   owned: boolean;
   equipped: boolean;
   level: number;
+  /** лига игрока: скины-награды открываются по ней */
+  league: number;
   onOpen: (item: CosmeticDef) => void;
   /** надеть прямо с карточки (свой, ещё не надетый скин) */
   onEquip?: (item: CosmeticDef) => void;
@@ -80,13 +93,13 @@ interface Props {
   busy?: string | null;
 }
 
-/** Условие получения коротко: уровень, цена или «бесплатно». */
-function Condition({ item, owned, locked }: { item: CosmeticDef; owned: boolean; locked: boolean }) {
+/** Условие получения коротко: лига, уровень, цена или «бесплатно». */
+function Condition({ item, owned, lock }: { item: CosmeticDef; owned: boolean; lock: CosmeticLock }) {
   const t = useT();
   const locale = useLocale();
+  const lockText = useLockText();
   if (owned) return null;
-  if (locked)
-    return <span className="text-white/70">🔒 {t('collection.levelLock', { level: item.unlockLevel })}</span>;
+  if (lock) return <span className="text-white/70">🔒 {lockText(lock)}</span>;
   if (item.price?.currency === 'stars')
     return (
       <span className="flex items-center gap-1 text-gold">
@@ -108,10 +121,11 @@ function Condition({ item, owned, locked }: { item: CosmeticDef; owned: boolean;
  * Карточка персонажа: картинка в его мире, редкость, имя, статус (надет / есть / закрыт), условие
  * получения и кнопка «Надеть» для своих. Картинка загружается лениво — только когда карточка на экране.
  */
-function SkinCard({ item, owned, equipped, level, onOpen, onEquip, busy }: Props) {
+function SkinCard({ item, owned, equipped, level, league, onOpen, onEquip, busy }: Props) {
   const t = useT();
   const locale = useLocale();
-  const locked = !owned && level < item.unlockLevel;
+  const lock = lockOf(item, owned, level, league);
+  const locked = Boolean(lock);
   const state = equipped ? 'equipped' : owned ? 'owned' : locked ? 'locked' : 'available';
   const open = () => onOpen(item);
   const onKey = (e: KeyboardEvent) => {
@@ -162,7 +176,7 @@ function SkinCard({ item, owned, equipped, level, onOpen, onEquip, busy }: Props
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-2.5 pb-2.5">
             <p className="truncate text-[15px] font-black leading-tight">{item.name[locale]}</p>
             <div className="flex min-h-[24px] items-center justify-between gap-1 text-xs font-extrabold">
-              <Condition item={item} owned={owned} locked={locked} />
+              <Condition item={item} owned={owned} lock={lock} />
               {owned && !equipped && onEquip && (
                 <Button
                   className="h-7 px-3 text-xs"
@@ -190,17 +204,16 @@ export function CosmeticCard(props: Props) {
   return <EffectCard {...props} />;
 }
 
-function EffectCard({ item, owned, equipped, level, onOpen }: Props) {
+function EffectCard({ item, owned, equipped, level, league, onOpen }: Props) {
   const t = useT();
   const locale = useLocale();
-  const locked = !owned && level < item.unlockLevel;
+  const lock = lockOf(item, owned, level, league);
+  const locked = Boolean(lock);
+  const lockText = useLockText();
   let status: ReactNode;
   if (equipped) status = <span className="text-lime">✓ {t('collection.equipped')}</span>;
   else if (owned) status = <span className="text-white/70">{t('collection.owned')}</span>;
-  else if (locked)
-    status = (
-      <span className="text-white/50">🔒 {t('collection.levelLock', { level: item.unlockLevel })}</span>
-    );
+  else if (lock) status = <span className="text-white/50">🔒 {lockText(lock)}</span>;
   else if (item.price?.currency === 'stars')
     status = (
       <span className="flex items-center gap-1 text-gold">

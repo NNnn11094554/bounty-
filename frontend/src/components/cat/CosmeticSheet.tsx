@@ -15,6 +15,7 @@ import { CoinIcon, StarIcon } from '../icons';
 import { HeroFigure } from '../hero/HeroFigure';
 import { SkinScene } from '../hero/SkinScene';
 import { CosmeticPreview, RarityFrame } from './CosmeticCard';
+import { lockOf, useLeagueName } from './lock';
 
 /**
  * Большой просмотр персонажа: он в полный рост в своём мире — фон стоит так, что персонаж на своём месте
@@ -74,6 +75,8 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
   const buy = useCollection((s) => s.buy);
   const equip = useCollection((s) => s.equip);
   const cosmetics = useGame((s) => s.player?.cosmetics);
+  const league = useGame((s) => s.player?.leagueLevel ?? 0);
+  const leagueName = useLeagueName();
   const previewRef = useRef<HTMLDivElement>(null);
   // при закрытии окно уезжает с последним предметом, а не пустым
   const lastRef = useRef(item);
@@ -85,7 +88,12 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
     const isOwned = owned.includes(shown.id);
     const equipped = cosmetics ? cosmetics.skin === shown.id || cosmetics.effect === shown.id : false;
     const level = playerLevel(tapEngine.totalEarnedNow()).level;
-    const locked = !isOwned && level < shown.unlockLevel;
+    const lock = lockOf(shown, isOwned, level, league);
+    const locked = Boolean(lock);
+    const lockLabel =
+      lock?.by === 'league'
+        ? t('collection.leagueLock', { league: leagueName(lock.league) })
+        : t('collection.levelLock', { level: shown.unlockLevel });
     const coinsPrice = shown.price?.currency === 'coins' ? shown.price.amount : null;
     const noFunds = coinsPrice !== null && tapEngine.balanceNow() < coinsPrice;
 
@@ -139,10 +147,12 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
           {t('collection.equip')}
         </Button>
       );
-    else if (locked)
+    else if (lock)
       action = (
         <Button block className="h-12" variant="secondary" disabled data-testid="cosmetic-locked">
-          {t('collection.locked', { level: shown.unlockLevel })}
+          {lock.by === 'league'
+            ? t('collection.lockedLeague', { league: leagueName(lock.league) })
+            : t('collection.locked', { level: lock.level })}
         </Button>
       );
     else
@@ -169,7 +179,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
               {locked && (
                 <div className="absolute inset-0 grid place-items-center bg-black/35">
                   <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm font-black">
-                    🔒 {t('collection.levelLock', { level: shown.unlockLevel })}
+                    🔒 {lockLabel}
                   </span>
                 </div>
               )}
@@ -186,6 +196,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
         >
           {t(`rarity.${shown.rarity}` as MessageKey)}
           {shown.price?.currency === 'stars' && ` · ${t('collection.premium')}`}
+          {shown.unlockLeague !== undefined && ` · ${t('collection.leagueReward')}`}
         </p>
         <h2 className="mt-1 text-[24px] font-black leading-tight" data-testid="cosmetic-name">
           {shown.name[locale]}
@@ -202,19 +213,30 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
               {t('collection.howTo')}
             </p>
             <p className="text-[13px] font-bold text-white/80">
-              {!shown.price
-                ? t('collection.howFree')
-                : shown.price.currency === 'stars'
-                  ? t('collection.howStars', { price: shown.price.amount })
-                  : t('collection.howLevel', {
-                      level: shown.unlockLevel,
-                      price: formatInt(shown.price.amount),
-                    })}
+              {shown.unlockLeague !== undefined
+                ? t('collection.howLeague', { league: leagueName(shown.unlockLeague) })
+                : !shown.price
+                  ? t('collection.howFree')
+                  : shown.price.currency === 'stars'
+                    ? t('collection.howStars', { price: shown.price.amount })
+                    : t('collection.howLevel', {
+                        level: shown.unlockLevel,
+                        price: formatInt(shown.price.amount),
+                      })}
             </p>
           </div>
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold">
+          {shown.unlockLeague !== undefined && (
+            <span
+              className={`rounded-full px-3 py-1 ${league >= shown.unlockLeague ? 'bg-lime/15 text-lime' : 'bg-white/10 text-white/70'}`}
+              data-testid="cosmetic-league-req"
+            >
+              {t('collection.requirementLeague', { league: leagueName(shown.unlockLeague) })} ·{' '}
+              {t('collection.yourLeague', { league: leagueName(league) })}
+            </span>
+          )}
           {shown.unlockLevel > 1 && (
             <span
               className={`rounded-full px-3 py-1 ${level >= shown.unlockLevel ? 'bg-lime/15 text-lime' : 'bg-white/10 text-white/70'}`}

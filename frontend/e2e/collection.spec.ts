@@ -37,18 +37,24 @@ async function expectCharacter(page: Page, id: string) {
 }
 
 test.describe('Skins and collection', () => {
-  test('buy a character for coins → it becomes the cat and its world, kept after reload, starter can be equipped back', async ({
+  test('free character: equipped without buying → it becomes the cat and its world, kept after reload, starter can be equipped back', async ({
     page,
   }) => {
     const uid = 700001601;
-    const user = await player(page, uid, 52_000, 20_000); // уровень 3
+    const user = await player(page, uid, 52_000, 20_000); // лига Silver
     await expectCharacter(page, 'neon_punk');
 
     await page.getByTestId('nav-shop').click();
     await expect(page.getByTestId('shop-skins')).toBeVisible();
+    // первые 3 — у всех, 4-й — награда за Silver, 5-й ждёт Gold, остальные — за звёзды
     await expect(page.getByTestId('cosmetic-neon_punk')).toHaveAttribute('data-state', 'equipped');
-    await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'available');
-    await expect(page.getByTestId('cosmetic-sakura_blossom')).toHaveAttribute('data-state', 'locked');
+    await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'owned');
+    await expect(page.getByTestId('cosmetic-sakura_blossom')).toHaveAttribute('data-state', 'owned');
+    await expect(page.getByTestId('cosmetic-astro_cat')).toHaveAttribute('data-state', 'owned');
+    await expect(page.getByTestId('cosmetic-mecha')).toHaveAttribute('data-state', 'locked');
+    await expect(page.getByTestId('cosmetic-mecha')).toContainText('Лига Gold');
+    await expect(page.getByTestId('cosmetic-forest_spirit')).toHaveAttribute('data-state', 'available');
+    await expect(page.getByTestId('cosmetic-forest_spirit')).toContainText('199');
     // в коллекции только новые персонажи
     await expect(
       page.locator('[data-testid="shop-skins"] [data-testid^="cosmetic-"][data-state]'),
@@ -60,17 +66,19 @@ test.describe('Skins and collection', () => {
     await page.getByTestId('cosmetic-desert_nomad').click();
     await expect(page.getByTestId('cosmetic-modal')).toBeVisible();
     await expect(page.getByTestId('cosmetic-name')).toHaveText('Пустынный Странник');
-    await page.getByTestId('cosmetic-buy').click();
+    await expect(page.getByTestId('skin-how-to')).toContainText('Бесплатный');
+    await expect(page.getByTestId('cosmetic-buy')).toHaveCount(0);
+    await page.getByTestId('cosmetic-equip').click();
     await expect(page.getByTestId('cosmetic-equipped')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'equipped');
 
     const after = await db.user.findUniqueOrThrow({ where: { id: user.id } });
     expect(after.equippedSkinId).toBe('desert_nomad');
-    expect(user.balance.toNumber() - after.balance.toNumber()).toBe(10_000);
-    // покупка — трата, а не заработок: уровень и лига не растут
-    expect(after.totalEarned.toNumber()).toBe(user.totalEarned.toNumber());
-    expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(1);
+    // бесплатно: ничего не списано, в базе ничего не выдаётся
+    expect(after.balance.toNumber()).toBeGreaterThanOrEqual(user.balance.toNumber());
+    expect(await db.transaction.count({ where: { userId: user.id, type: 'cosmetic_purchase' } })).toBe(0);
+    expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(0);
 
     await page.getByTestId('nav-office').click();
     await expectCharacter(page, 'desert_nomad');
@@ -86,7 +94,8 @@ test.describe('Skins and collection', () => {
     // вкладка «Коллекция»: вернуть стартового кнопкой на карточке
     await page.getByTestId('nav-collection').click();
     await expect(page.getByTestId('collection')).toBeVisible();
-    await expect(page.getByTestId('collection-subtitle')).toContainText('открыто 3');
+    // 3 бесплатных + награда за Silver + эффект «монетки»
+    await expect(page.getByTestId('collection-subtitle')).toContainText('открыто 5');
     await page.getByTestId('equip-neon_punk').click();
     await expect(page.getByTestId('cosmetic-neon_punk')).toHaveAttribute('data-state', 'equipped');
     await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'owned');
@@ -112,10 +121,19 @@ test.describe('Skins and collection', () => {
     await expect(page.getByTestId('cosmetic-buy')).toContainText('399');
     await page.keyboard.press('Escape');
 
-    // закрытый уровнем: замок и условие
-    await page.getByTestId('cosmetic-arctic_king').click();
-    await expect(sheet.getByTestId('skin-how-to')).toContainText('31');
+    // бывший скин за монеты — теперь за звёзды, без условия по уровню
+    await page.getByTestId('cosmetic-royal_emperor').click();
+    await expect(sheet.getByTestId('skin-how-to')).toContainText('499');
+    await expect(page.getByTestId('cosmetic-buy')).toContainText('499');
+    await page.keyboard.press('Escape');
+
+    // награда за лигу, лига ещё не та: замок и условие
+    await page.getByTestId('cosmetic-crystal_prince').click();
+    await expect(sheet).toContainText('Награда за лигу');
+    await expect(sheet.getByTestId('skin-how-to')).toContainText('Platinum');
+    await expect(sheet.getByTestId('cosmetic-league-req')).toContainText('Ваша лига: Silver');
     await expect(page.getByTestId('cosmetic-locked')).toBeDisabled();
+    await expect(page.getByTestId('cosmetic-locked')).toContainText('Platinum');
     await page.keyboard.press('Escape');
 
     // предпросмотр не надевает и ничего не меняет на главной
@@ -123,30 +141,45 @@ test.describe('Skins and collection', () => {
     await expectCharacter(page, 'neon_punk');
   });
 
-  test('locked characters cannot be bought; a new level unlocks them', async ({ page }) => {
+  test('league character: closed until the league; the new league gives it for free and offers to wear it', async ({
+    page,
+  }) => {
     const uid = 700001602;
-    const user = await player(page, uid, 52_000, 5_000_000); // уровень 3, денег много
+    const user = await player(page, uid, 52_000, 5_000_000); // лига Silver, денег много
     await page.getByTestId('nav-shop').click();
-    await page.getByTestId('cosmetic-sakura_blossom').click();
+    await page.getByTestId('cosmetic-mecha').click();
     await expect(page.getByTestId('cosmetic-locked')).toBeDisabled();
-    await expect(page.getByTestId('cosmetic-locked')).toContainText('5');
+    await expect(page.getByTestId('cosmetic-locked')).toContainText('Gold');
+    await expect(page.getByTestId('cosmetic-buy')).toHaveCount(0);
     await page.keyboard.press('Escape');
-    expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(0);
 
-    await setPlayer(uid, { totalEarned: 350_000, leagueLevel: 1 }); // уровень 5
+    // игрок дошёл до Gold: сцена новой лиги показывает персонажа-награду
+    await setPlayer(uid, { totalEarned: 1_200_000, leagueLevel: 2 });
+    await markLeagueSeen(page, uid, 1);
     await page.reload();
-    await page.getByTestId('nav-shop').click();
-    await expect(page.getByTestId('cosmetic-sakura_blossom')).toHaveAttribute('data-state', 'available');
-    await expect(page.getByTestId('cosmetic-astro_cat')).toHaveAttribute('data-state', 'locked');
-    await page.getByTestId('cosmetic-sakura_blossom').click();
-    await page.getByTestId('cosmetic-buy').click();
-    await expect(page.getByTestId('cosmetic-equipped')).toBeVisible();
+    await expect(page.getByTestId('league-up')).toBeVisible();
+    await expect(page.getByTestId('league-up-name')).toHaveAttribute('aria-label', 'Gold');
+    await expect(page.getByTestId('league-up-reward-name')).toHaveText('Меха');
+    await page.getByTestId('league-up-equip').click();
+    await expect(page.getByTestId('league-up')).toHaveCount(0);
+    await expectCharacter(page, 'mecha');
+
+    const after = await db.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(after.equippedSkinId).toBe('mecha');
+    // награда — бесплатно и без записи в базе: владение по лиге (баланс за это время мог только вырасти)
+    expect(after.balance.toNumber()).toBeGreaterThanOrEqual(user.balance.toNumber());
+    expect(await db.transaction.count({ where: { userId: user.id, type: 'cosmetic_purchase' } })).toBe(0);
+    expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(0);
+    await page.getByTestId('nav-collection').click();
+    await expect(page.getByTestId('cosmetic-mecha')).toHaveAttribute('data-state', 'equipped');
+    await expect(page.getByTestId('cosmetic-crystal_prince')).toHaveAttribute('data-state', 'locked');
   });
 
-  test('not enough coins: the buy button is disabled', async ({ page }) => {
-    await player(page, 700001603, 52_000, 100);
+  test('not enough coins for a tap effect: the buy button is disabled', async ({ page }) => {
+    await player(page, 700001603, 52_000, 100); // уровень 3 ≥ 2 для «Сердечек», монет мало
     await page.getByTestId('nav-shop').click();
-    await page.getByTestId('cosmetic-desert_nomad').click();
+    await page.getByTestId('shop-tabs-cosmetics').click();
+    await page.getByTestId('cosmetic-hearts').click();
     await expect(page.getByTestId('cosmetic-buy')).toBeDisabled();
     await expect(page.getByTestId('cosmetic-modal')).toContainText('Не хватает монет');
   });
@@ -296,12 +329,13 @@ test.describe('Skins and collection', () => {
       route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"INTERNAL"}' }),
     );
     await page.getByTestId('nav-shop').click();
-    await page.getByTestId('cosmetic-desert_nomad').click();
+    await page.getByTestId('shop-tabs-cosmetics').click();
+    await page.getByTestId('cosmetic-hearts').click();
     await page.getByTestId('cosmetic-buy').click();
     await expect(page.getByTestId('toast-error')).toBeVisible();
     await expect(page.getByTestId('cosmetic-buy')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'available');
+    await expect(page.getByTestId('cosmetic-hearts')).toHaveAttribute('data-state', 'available');
     expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(0);
     await page.unroute('**/api/collection/*/buy');
 
@@ -313,6 +347,6 @@ test.describe('Skins and collection', () => {
     await expect(page.getByTestId('collection-error')).toBeVisible({ timeout: 30_000 });
     await page.unroute('**/api/collection');
     await page.getByTestId('collection-retry').click();
-    await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'available');
+    await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'owned');
   });
 });

@@ -34,6 +34,16 @@ export const SHOP: Record<ShopProductId, ProductConfig> = {
   skin_shadow_drifter: cosmetic('shadow_drifter'),
   skin_cyber_samurai: cosmetic('cyber_samurai'),
   skin_galaxy_emperor: cosmetic('galaxy_emperor'),
+  skin_forest_spirit: cosmetic('forest_spirit'),
+  skin_ocean_guardian: cosmetic('ocean_guardian'),
+  skin_inferno: cosmetic('inferno'),
+  skin_toxic: cosmetic('toxic'),
+  skin_stealth_assassin: cosmetic('stealth_assassin'),
+  skin_dark_reaper: cosmetic('dark_reaper'),
+  skin_arctic_king: cosmetic('arctic_king'),
+  skin_vampire_lord: cosmetic('vampire_lord'),
+  skin_lunar_witch: cosmetic('lunar_witch'),
+  skin_royal_emperor: cosmetic('royal_emperor'),
   effect_matrix: cosmetic('matrix'),
 };
 

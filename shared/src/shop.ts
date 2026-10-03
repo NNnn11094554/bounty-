@@ -11,6 +11,16 @@ export const SHOP_PRODUCT_IDS = [
   'skin_shadow_drifter',
   'skin_cyber_samurai',
   'skin_galaxy_emperor',
+  'skin_forest_spirit',
+  'skin_ocean_guardian',
+  'skin_inferno',
+  'skin_toxic',
+  'skin_stealth_assassin',
+  'skin_dark_reaper',
+  'skin_arctic_king',
+  'skin_vampire_lord',
+  'skin_lunar_witch',
+  'skin_royal_emperor',
   'effect_matrix',
 ] as const;
 export type ShopProductId = (typeof SHOP_PRODUCT_IDS)[number];
