@@ -175,6 +175,7 @@ describe('achievements, profile and settings API', () => {
       vibration: true,
       animations: 'reduced',
       notifications: false,
+      devMode: false,
     });
     const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17041n } });
     expect(canNotify(user)).toBe(false);

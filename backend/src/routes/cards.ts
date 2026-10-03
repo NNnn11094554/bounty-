@@ -50,7 +50,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
         if (level === 0) throw new ApiError('NOT_FOUND', 'Card not found');
         throw new ApiError('LOCKED', 'Card is no longer available', { reason: 'inactive' });
       }
-      if (card.isLimited) {
+      if (card.isLimited && !progress.devMode) {
         const window = limitedWindow(card, catalog, now);
         if (!window.active) {
           throw new ApiError('LOCKED', 'Card is not available now', {
@@ -87,7 +87,7 @@ export async function cardRoutes(app: FastifyInstance): Promise<void> {
       const combo = await registerComboCard(tx, updated, card.id, now);
 
       progress.levels.set(card.id, next);
-      progress.cooldowns.set(card.id, cooldownUntil);
+      if (!progress.devMode) progress.cooldowns.set(card.id, cooldownUntil);
       // карточка и те, что открываются её уровнем
       const affected = visibleCards(
         catalog,

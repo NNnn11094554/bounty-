@@ -27,11 +27,20 @@ export function parseSettings(raw: unknown): PlayerSettings {
     vibration: typeof s.vibration === 'boolean' ? s.vibration : DEFAULT_SETTINGS.vibration,
     animations: s.animations === 'reduced' ? 'reduced' : 'full',
     notifications: typeof s.notifications === 'boolean' ? s.notifications : DEFAULT_SETTINGS.notifications,
+    devMode: s.devMode === true,
   };
 }
 
 export function isAdmin(user: Pick<User, 'telegramId'>): boolean {
   return env.adminIds.has(user.telegramId);
+}
+
+/**
+ * Режим разработчика действует: игрок — админ (ADMIN_TELEGRAM_IDS) и сам включил его в настройках. Если
+ * его уберут из админов, режим сразу перестаёт действовать, даже если флаг остался в настройках.
+ */
+export function devModeOn(user: Pick<User, 'telegramId' | 'settings'>): boolean {
+  return isAdmin(user) && parseSettings(user.settings).devMode;
 }
 
 function paidBoost(boost: PaidBoost, level: number) {

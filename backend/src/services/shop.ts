@@ -122,7 +122,7 @@ export async function createInvoice(
   });
   if (recent >= MAX_PENDING_PER_10_MIN) throw new ApiError('RATE_LIMITED', 'Too many unpaid invoices');
   const cosmeticId = SHOP[productId].cosmeticId;
-  if (cosmeticId && (await ownedCosmetics(prisma, user.id)).includes(cosmeticId)) {
+  if (cosmeticId && (await ownedCosmetics(prisma, user)).includes(cosmeticId)) {
     throw new ApiError('CONFLICT', 'Already owned');
   }
   const grant = grantFor(productId, user);

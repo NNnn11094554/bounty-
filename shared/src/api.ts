@@ -45,6 +45,11 @@ export interface PlayerSettings {
   vibration: boolean;
   animations: 'full' | 'reduced';
   notifications: boolean;
+  /**
+   * Режим разработчика (только для админов, ADMIN_TELEGRAM_IDS): все скины и эффекты открыты, карточки
+   * без условий, окон и откатов. Цены и баланс — как обычно (монеты — через админку).
+   */
+  devMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: PlayerSettings = {
@@ -53,6 +58,7 @@ export const DEFAULT_SETTINGS: PlayerSettings = {
   vibration: true,
   animations: 'full',
   notifications: true,
+  devMode: false,
 };
 
 export interface PlayerProfile {

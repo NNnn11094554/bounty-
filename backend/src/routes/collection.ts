@@ -17,7 +17,7 @@ const Params = z.object({ id: z.string().min(1).max(40) });
 export async function collectionRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/collection', async (request): Promise<CollectionResponse> => {
     const player = await requirePlayer(request);
-    return collectionOf(player, await ownedCosmetics(prisma, player.id));
+    return collectionOf(player, await ownedCosmetics(prisma, player));
   });
 
   app.post('/api/collection/:id/buy', async (request): Promise<CollectionActionResponse> => {
@@ -30,7 +30,7 @@ export async function collectionRoutes(app: FastifyInstance): Promise<void> {
       request.log.info({ userId: user.id, cosmeticId: id }, 'cosmetic bought');
       return {
         state: buildPlayerState(updated, now),
-        ...collectionOf(updated, await ownedCosmetics(tx, user.id)),
+        ...collectionOf(updated, await ownedCosmetics(tx, updated)),
       };
     });
   });
@@ -44,7 +44,7 @@ export async function collectionRoutes(app: FastifyInstance): Promise<void> {
       const updated = await equipCosmetic(tx, user, id);
       return {
         state: buildPlayerState(updated, now),
-        ...collectionOf(updated, await ownedCosmetics(tx, user.id)),
+        ...collectionOf(updated, await ownedCosmetics(tx, updated)),
       };
     });
   });

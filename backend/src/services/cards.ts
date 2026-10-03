@@ -12,6 +12,7 @@ import {
 } from '../game/config/cards.js';
 import { LEAGUES } from '../game/config/leagues.js';
 import { prisma } from '../lib/db.js';
+import { devModeOn } from './state.js';
 import type { Tx } from './userLock.js';
 
 /** Карточка каталога: экономика из БД (правится в админке), числа — обычные number. */
@@ -241,6 +242,8 @@ export interface PlayerProgress {
   friends: number;
   tasksDone: Set<string>;
   leagueLevel: number;
+  /** режим разработчика: условия, окна лимитированных карточек и откаты не действуют */
+  devMode: boolean;
 }
 
 export async function loadProgress(db: Tx | typeof prisma, user: User): Promise<PlayerProgress> {
@@ -249,7 +252,7 @@ export async function loadProgress(db: Tx | typeof prisma, user: User): Promise<
     db.referral.count({ where: { inviterId: user.id } }),
     db.userTask.findMany({ where: { userId: user.id, status: 'DONE' }, select: { taskId: true } }),
   ]);
-  return progressFrom(cards, friends, new Set(tasks.map((t) => t.taskId)), user.leagueLevel);
+  return progressFrom(cards, friends, new Set(tasks.map((t) => t.taskId)), user.leagueLevel, devModeOn(user));
 }
 
 export function progressFrom(
@@ -257,13 +260,16 @@ export function progressFrom(
   friends: number,
   tasksDone: Set<string>,
   leagueLevel: number,
+  devMode = false,
 ): PlayerProgress {
   return {
     levels: new Map(cards.map((c) => [c.cardId, c.level])),
-    cooldowns: new Map(cards.map((c) => [c.cardId, c.cooldownUntil])),
+    // в режиме разработчика откатов нет
+    cooldowns: devMode ? new Map() : new Map(cards.map((c) => [c.cardId, c.cooldownUntil])),
     friends,
     tasksDone,
     leagueLevel,
+    devMode,
   };
 }
 
@@ -284,7 +290,7 @@ export function cardLock(
   titles: ReadonlyMap<string, { ru: string; en: string }> = new Map(),
 ): CardLock | null {
   const c = card.condition;
-  if (!c || (progress.levels.get(card.id) ?? 0) > 0) return null;
+  if (!c || progress.devMode || (progress.levels.get(card.id) ?? 0) > 0) return null;
   switch (c.type) {
     case 'card': {
       const current = progress.levels.get(c.cardId) ?? 0;
@@ -340,7 +346,7 @@ export function cardView(
     cooldownUntil: cooldown && cooldown > now ? cooldown.getTime() : null,
     cooldownSec: card.cooldownSec,
     lock: cardLock(card, progress, byId, titles),
-    available: card.isActive && (!window || window.active),
+    available: card.isActive && (!window || window.active || progress.devMode),
     limited: window
       ? { until: window.until?.getTime() ?? null, nextFrom: window.nextFrom?.getTime() ?? null }
       : null,
@@ -362,7 +368,7 @@ export function visibleCards(
     if (!only(card)) return false;
     if ((progress.levels.get(card.id) ?? 0) > 0) return true;
     if (!card.isActive) return false;
-    return !card.isLimited || limitedWindow(card, catalog, now).active;
+    return !card.isLimited || progress.devMode || limitedWindow(card, catalog, now).active;
   });
 }
 
