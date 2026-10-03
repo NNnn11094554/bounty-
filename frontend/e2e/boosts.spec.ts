@@ -8,7 +8,7 @@ test.describe('Boosts', () => {
     await expect(page.getByTestId('office')).toBeVisible();
     await setPlayer(uid, { energy: 100, energyUpdatedAt: new Date() });
     await page.reload();
-    await expect(page.getByTestId('energy-value')).toHaveText(/^10\d \/ 1000$/);
+    await expect(page.getByTestId('energy-value')).toHaveText(/^10\d \/ 5000$/);
 
     await page.getByTestId('open-boosts').click();
     await expect(page.getByTestId('boosts')).toBeVisible();
@@ -16,7 +16,7 @@ test.describe('Boosts', () => {
     await page.getByTestId('boost-full-energy').click();
     await page.getByTestId('boost-confirm').click();
     await expect(page.getByTestId('boosts')).toBeHidden();
-    await expect(page.getByTestId('energy-value')).toHaveText('1000 / 1000');
+    await expect(page.getByTestId('energy-value')).toHaveText('5000 / 5000');
 
     await page.getByTestId('open-boosts').click();
     await expect(page.getByTestId('boost-full-energy')).toContainText(/мин/);

@@ -1,6 +1,7 @@
 import type { User } from '@prisma/client';
 import type { Locale } from '@meowgul/shared';
 import type { ValidatedInitData } from '../auth/initData.js';
+import { maxEnergy } from '../game/config/game.js';
 import { dayKey } from '../game/dayKey.js';
 import { prisma } from '../lib/db.js';
 
@@ -38,7 +39,18 @@ export async function upsertTelegramUser(
   }
   // createMany + skipDuplicates: параллельный первый вход того же игрока не падает на уникальности
   const created = await prisma.user.createMany({
-    data: [{ telegramId, ...data, energyUpdatedAt: now, lastSyncAt: now, lastSeenAt: now, lastTapAt: now }],
+    data: [
+      {
+        telegramId,
+        ...data,
+        // новый игрок начинает с полной энергией (значение по умолчанию в базе — старый максимум)
+        energy: maxEnergy(1),
+        energyUpdatedAt: now,
+        lastSyncAt: now,
+        lastSeenAt: now,
+        lastTapAt: now,
+      },
+    ],
     skipDuplicates: true,
   });
   const user = await prisma.user.findUniqueOrThrow({ where: { telegramId } });

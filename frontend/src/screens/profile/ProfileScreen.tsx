@@ -4,8 +4,6 @@ import {
   cosmeticById,
   formatInt,
   formatShort,
-  headquartersById,
-  hqIcon,
   MAX_LEVEL,
   playerLevel,
   type Achievement,
@@ -65,7 +63,6 @@ export function ProfileScreen() {
   const league = leagueAt(config.leagues, player.leagueLevel);
   const level = playerLevel(tapEngine.totalEarnedNow());
   const skin = cosmeticById(player.cosmetics.skin);
-  const hq = headquartersById(player.profile.hqId);
   const total = player.achievements.total;
   const since = new Date(player.profile.createdAt).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', {
     day: 'numeric',
@@ -113,16 +110,6 @@ export function ProfileScreen() {
             <LeagueAvatar league={league} size={32} />
             <span className="truncate text-sm font-extrabold">{league.name}</span>
           </button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-night-900/60 px-3 py-2">
-            {hq ? (
-              <>
-                <CardIcon icon={hqIcon(hq)} size={32} />
-                <span className="truncate text-sm font-extrabold">{hq.name[locale]}</span>
-              </>
-            ) : (
-              <span className="truncate text-sm font-bold text-white/45">{t('settings.hq.none')}</span>
-            )}
-          </div>
         </div>
       </section>
 

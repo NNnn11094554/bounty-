@@ -50,7 +50,7 @@ describe('boosts', () => {
     const res = await c.post('/api/boost/full-energy');
     expect(res.statusCode).toBe(200);
     const { state } = res.json<StateResponse>();
-    expect(state.energy).toBe(1000);
+    expect(state.energy).toBe(5000);
     expect(state.boosts.fullEnergy.left).toBe(5);
     expect(state.boosts.fullEnergy.cooldownUntil).toBeGreaterThan(Date.now() + 3500_000);
     const again = await c.post('/api/boost/full-energy');
@@ -99,7 +99,7 @@ describe('boosts', () => {
     expect(r1.tapValue).toBe(2);
     expect(r1.balance).toBe(8000);
     const r2 = (await c.post('/api/boost/energy-limit')).json<StateResponse>().state;
-    expect(r2.maxEnergy).toBe(1500);
+    expect(r2.maxEnergy).toBe(5500);
     expect(r2.balance).toBe(6000);
     expect(r2.totalEarned).toBe(10_000); // траты не уменьшают «всего заработано»
     const tx = await prisma.transaction.findMany({

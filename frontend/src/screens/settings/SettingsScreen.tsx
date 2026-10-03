@@ -1,17 +1,13 @@
-import { formatInt, headquartersById, hqIcon, HQ_REWARD, type PlayerSettings } from '@meowgul/shared';
-import { motion } from 'framer-motion';
+import type { PlayerSettings } from '@meowgul/shared';
 import { useEffect, useState, type ReactNode } from 'react';
 import { endpoints } from '../../api/endpoints';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
-import { CardIcon } from '../../components/cards/CardIcon';
-import { HqPicker } from '../../components/HqPicker';
 import { Segmented } from '../../components/Segmented';
 import { Toggle } from '../../components/Toggle';
-import { runAction } from '../../game/actions';
 import { changeSettings } from '../../game/settings';
 import { tapEngine } from '../../game/tapEngine';
-import { useLocale, useT } from '../../i18n';
+import { useT } from '../../i18n';
 import { APP_VERSION } from '../../lib/version';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
@@ -42,14 +38,10 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 
 const DELETE_WAIT_SEC = 3;
 
-/** Настройки: язык, звук, вибрация, анимации, уведомления, штаб-квартира, удаление аккаунта. */
+/** Настройки: язык, звук, вибрация, анимации, уведомления, удаление аккаунта. */
 export function SettingsScreen() {
   const t = useT();
-  const locale = useLocale();
   const player = useGame((s) => s.player);
-  const [hqOpen, setHqOpen] = useState(false);
-  const [hqChoice, setHqChoice] = useState<string | null>(null);
-  const [hqBusy, setHqBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [wait, setWait] = useState(DELETE_WAIT_SEC);
@@ -64,23 +56,7 @@ export function SettingsScreen() {
 
   if (!player) return null;
   const s = player.profile.settings;
-  const hq = headquartersById(player.profile.hqId);
   const set = (patch: Partial<PlayerSettings>) => void changeSettings(patch);
-
-  const saveHq = async () => {
-    if (!hqChoice || hqChoice === player.profile.hqId) {
-      setHqOpen(false);
-      return;
-    }
-    setHqBusy(true);
-    const res = await runAction({ request: () => endpoints.chooseHq(hqChoice) });
-    setHqBusy(false);
-    if (!res) return;
-    haptic.notify('success');
-    const chosen = headquartersById(hqChoice);
-    if (chosen) toast.success(t('settings.hq.saved', { name: chosen.name[locale] }));
-    setHqOpen(false);
-  };
 
   const deleteAccount = async () => {
     setDeleting(true);
@@ -154,32 +130,6 @@ export function SettingsScreen() {
         </Row>
       </Group>
 
-      <Group title={t('settings.hq')}>
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.98 }}
-          onClick={() => {
-            setHqChoice(player.profile.hqId);
-            setHqOpen(true);
-          }}
-          className="flex w-full items-center gap-3 px-4 py-3 text-left"
-          data-testid="settings-hq"
-        >
-          {hq ? (
-            <CardIcon icon={hqIcon(hq)} size={40} />
-          ) : (
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-lg">?</span>
-          )}
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-extrabold">
-              {hq ? hq.name[locale] : t('settings.hq.none')}
-            </span>
-            {!hq && <span className="block text-xs font-bold text-gold">+{formatInt(HQ_REWARD)}</span>}
-          </span>
-          <span className="text-xl text-white/40">›</span>
-        </motion.button>
-      </Group>
-
       {player.profile.isAdmin && (
         <Group title="Admin">
           <a
@@ -206,23 +156,6 @@ export function SettingsScreen() {
       <p className="mt-6 text-center text-xs font-bold text-white/30">
         Meowgul · {t('settings.version', { v: APP_VERSION })}
       </p>
-
-      <BottomSheet open={hqOpen} onClose={() => setHqOpen(false)} testId="hq-sheet">
-        <div className="px-4 pb-5 pt-1">
-          <h3 className="mb-3 text-center text-lg font-black">{t('settings.hq')}</h3>
-          <HqPicker value={hqChoice} onChange={setHqChoice} />
-          <Button
-            block
-            className="mt-4"
-            loading={hqBusy}
-            disabled={!hqChoice}
-            onClick={() => void saveHq()}
-            data-testid="hq-save"
-          >
-            {t('common.ok')}
-          </Button>
-        </div>
-      </BottomSheet>
 
       <BottomSheet open={deleteOpen} onClose={() => !deleting && setDeleteOpen(false)} testId="delete-sheet">
         <div className="flex flex-col items-center px-5 pb-6 pt-2 text-center">

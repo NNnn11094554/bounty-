@@ -65,7 +65,6 @@ describe('Earn tasks', () => {
     await seedTasks();
     const tasks = await prisma.task.findMany({ orderBy: { id: 'asc' } });
     expect(tasks.map((t) => [t.id, t.isActive])).toEqual([
-      ['choose_hq', true],
       ['connect_wallet', true],
       ['invite_3', true],
       ['tg_channel', false],
@@ -74,7 +73,6 @@ describe('Earn tasks', () => {
     const list = (await c.get('/api/tasks')).json<TasksResponse>();
     // задание «Подключи кошелёк» есть в базе, но скрыто, пока TON_WALLET_ENABLED = false
     expect(list.tasks.map((t) => [t.id, t.section])).toEqual([
-      ['choose_hq', 'LIST'],
       ['invite_3', 'LIST'],
       ...(TON_WALLET_ENABLED ? [['connect_wallet', 'AIRDROP']] : []),
     ]);

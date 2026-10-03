@@ -1,4 +1,4 @@
-import type { AuthResponse, StateResponse, TasksResponse } from '@meowgul/shared';
+import { START_BONUS, type AuthResponse, type StateResponse, type TasksResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import type { Transformer } from 'grammy';
 import type { UserFromGetMe } from 'grammy/types';
@@ -300,20 +300,20 @@ describe('headquarters', () => {
     await seedTasks();
   });
 
-  it('choosing HQ finishes onboarding and pays the task reward once', async () => {
+  it('finishing onboarding pays the start bonus once; headquarters are gone', async () => {
     const c = client(app, tgUser(17001));
     const auth = (await c.post('/api/auth')).json<AuthResponse>();
-    expect(auth.state.profile).toMatchObject({ onboardingDone: false, hqId: null });
-    const first = (await c.post('/api/hq', { hqId: 'paw_city' })).json<StateResponse>();
-    expect(first.state.profile).toMatchObject({ onboardingDone: true, hqId: 'paw_city' });
-    expect(first.state.balance).toBe(5_000);
-    const tasks = (await c.get('/api/tasks')).json<TasksResponse>();
-    expect(tasks.tasks.find((t) => t.id === 'choose_hq')?.status).toBe('done');
+    expect(auth.state.profile.onboardingDone).toBe(false);
+    expect(auth.state.profile).not.toHaveProperty('hqId');
+    const first = (await c.post('/api/onboarding/complete')).json<StateResponse>();
+    expect(first.state.profile.onboardingDone).toBe(true);
+    expect(first.state.balance).toBe(START_BONUS);
 
-    // сменить можно, но награды больше нет
-    const second = (await c.post('/api/hq', { hqId: 'moon_harbor' })).json<StateResponse>();
-    expect(second.state.profile.hqId).toBe('moon_harbor');
-    expect(second.state.balance).toBe(5_000);
-    expect((await c.post('/api/hq', { hqId: 'atlantis' })).statusCode).toBe(400);
+    // повторно — без награды
+    const second = (await c.post('/api/onboarding/complete')).json<StateResponse>();
+    expect(second.state.balance).toBe(START_BONUS);
+    const tasks = (await c.get('/api/tasks')).json<TasksResponse>();
+    expect(tasks.tasks.find((t) => t.id === 'choose_hq')).toBeUndefined();
+    expect((await c.post('/api/hq', { hqId: 'paw_city' })).statusCode).toBe(404);
   });
 });

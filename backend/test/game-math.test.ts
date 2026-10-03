@@ -17,9 +17,9 @@ const base = {
 
 describe('energy', () => {
   it('max energy grows by 500 per Energy limit level', () => {
-    expect(maxEnergy(1)).toBe(1000);
-    expect(maxEnergy(2)).toBe(1500);
-    expect(maxEnergy(16)).toBe(8500);
+    expect(maxEnergy(1)).toBe(5000);
+    expect(maxEnergy(2)).toBe(5500);
+    expect(maxEnergy(16)).toBe(12500);
     expect(tapValue(1)).toBe(1);
     expect(tapValue(17)).toBe(17);
   });
@@ -43,10 +43,10 @@ describe('energy', () => {
     );
     expect(e3.energy).toBe(103); // за целую секунду ровно 3 единицы, без потерь
     const full = currentEnergy(
-      { energy: 990, energyUpdatedAt: t0, energyLimitLevel: 1 },
+      { energy: 4990, energyUpdatedAt: t0, energyLimitLevel: 1 },
       new Date(t0.getTime() + 60_000),
     );
-    expect(full.energy).toBe(1000);
+    expect(full.energy).toBe(5000);
   });
 });
 

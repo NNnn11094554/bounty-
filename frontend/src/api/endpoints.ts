@@ -60,7 +60,7 @@ export const endpoints = {
   tonProofPayload: () => api<TonProofPayloadResponse>('/api/wallet/proof-payload'),
   connectWallet: (body: WalletConnectRequest) => api<StateResponse>('/api/wallet', { method: 'POST', body }),
   disconnectWallet: () => api<StateResponse>('/api/wallet', { method: 'DELETE' }),
-  chooseHq: (hqId: string) => api<StateResponse>('/api/hq', { method: 'POST', body: { hqId } }),
+  completeOnboarding: () => api<StateResponse>('/api/onboarding/complete', { method: 'POST' }),
   profile: () => api<ProfileResponse>('/api/profile'),
   achievementsSeen: (ids: string[]) =>
     api<StateResponse>('/api/achievements/seen', { method: 'POST', body: { ids }, silent: true }),

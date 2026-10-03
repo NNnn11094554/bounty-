@@ -91,7 +91,6 @@ async function details(id: number, before?: string): Promise<AdminPlayerDetails>
     referrer: u.referrer ? { id: u.referrer.id, name: u.referrer.firstName || '—' } : null,
     walletAddress: u.walletAddress ? friendlyAddress(u.walletAddress) : null,
     achievements,
-    hqId: u.hqId,
     purchases: purchases.map((p) => ({
       id: p.id,
       productId: p.productId,

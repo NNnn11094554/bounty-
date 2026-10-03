@@ -5,7 +5,7 @@
 export const GAME = {
   energy: {
     /** максимум энергии = base + perLevel × (уровень Energy limit − 1) */
-    base: 1000,
+    base: 5000,
     perLevel: 500,
     /** восстановление, ед/сек */
     regenPerSec: 3,

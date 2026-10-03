@@ -65,7 +65,6 @@ export interface PlayerProfile {
   languageCode: Locale;
   isPremium: boolean;
   isAdmin: boolean;
-  hqId: string | null;
   onboardingDone: boolean;
   settings: PlayerSettings;
   tutorialsSeen: string[];

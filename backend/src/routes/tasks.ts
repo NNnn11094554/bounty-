@@ -58,8 +58,8 @@ async function checkInternal(tx: Tx, task: Task, user: User, now: Date): Promise
       return;
     }
     case 'CHOOSE_HQ':
-      if (!user.hqId) throw new ApiError('NOT_COMPLETED', 'Headquarters is not chosen');
-      return;
+      // штаб-квартир в игре больше нет — задание не выполнить
+      throw new ApiError('NOT_COMPLETED', 'Headquarters were removed');
     case 'CONNECT_WALLET':
       if (!user.walletAddress) throw new ApiError('NOT_COMPLETED', 'Wallet is not connected');
       return;
