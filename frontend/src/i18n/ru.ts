@@ -315,9 +315,10 @@ export const ru = {
   'settings.delete.cancel': 'Оставить аккаунт',
   'settings.version': 'Версия {v}',
   'settings.admin': 'Админ-панель',
+  'settings.developer': 'Разработчик',
   'settings.devMode': 'Режим разработчика',
   'settings.devMode.hint':
-    'Для теста: все скины и эффекты открыты, карточки без условий и откатов. Видно только вам',
+    'Для теста: все скины и эффекты открыты, карточки без условий и откатов. Есть только у вашего аккаунта',
   'settings.devMode.on': 'Режим разработчика включён',
   'settings.devMode.off': 'Режим разработчика выключен',
   'event.happyHour': 'Счастливый час ×{x}',

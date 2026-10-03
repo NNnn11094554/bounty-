@@ -15,7 +15,7 @@ import { toCoins } from '../lib/money.js';
 import { COUNTED_METRICS, countedMetrics, rowMetrics } from '../services/achievements.js';
 import { clearLeaderboardCache } from '../services/leaderboard.js';
 import { requirePlayer } from '../services/player.js';
-import { buildPlayerState, isAdmin, parseSettings } from '../services/state.js';
+import { buildPlayerState, isDeveloper, parseSettings } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
 
@@ -85,7 +85,9 @@ export async function profileRoutes(app: FastifyInstance): Promise<void> {
   app.patch('/api/settings', async (request): Promise<StateResponse> => {
     const patch = SettingsBody.parse(request.body);
     const player = await requirePlayer(request);
-    if (patch.devMode !== undefined && !isAdmin(player)) throw new ApiError('FORBIDDEN', 'Admins only');
+    if (patch.devMode !== undefined && !isDeveloper(player)) {
+      throw new ApiError('FORBIDDEN', 'Developer only');
+    }
     return withUserLock(player.id, async (tx, locked) => {
       const now = new Date();
       const settings = { ...parseSettings(locked.settings), ...patch };

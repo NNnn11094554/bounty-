@@ -314,9 +314,10 @@ export const en: Record<MessageKey, string> = {
   'settings.delete.cancel': 'Keep my account',
   'settings.version': 'Version {v}',
   'settings.admin': 'Admin panel',
+  'settings.developer': 'Developer',
   'settings.devMode': 'Developer mode',
   'settings.devMode.hint':
-    'For testing: all skins and effects unlocked, cards without conditions or cooldowns. Only you see this',
+    'For testing: all skins and effects unlocked, cards without conditions or cooldowns. Only your account has it',
   'settings.devMode.on': 'Developer mode is on',
   'settings.devMode.off': 'Developer mode is off',
   'event.happyHour': 'Happy hour ×{x}',

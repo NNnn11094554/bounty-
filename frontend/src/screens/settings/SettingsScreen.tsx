@@ -149,6 +149,11 @@ export function SettingsScreen() {
           >
             {t('settings.admin')} →
           </a>
+        </Group>
+      )}
+
+      {player.profile.isDeveloper && (
+        <Group title={t('settings.developer')}>
           <Row label={t('settings.devMode')} hint={t('settings.devMode.hint')}>
             <Toggle
               label={t('settings.devMode')}

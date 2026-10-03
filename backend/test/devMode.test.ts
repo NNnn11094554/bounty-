@@ -9,13 +9,15 @@ import type {
 import { COSMETICS } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { env, resolveDeveloperId } from '../src/env.js';
 import { CARDS } from '../src/game/config/cards.js';
 import { prisma } from '../src/lib/db.js';
 import { client, createApp, resetDb, tgUser } from './helpers.js';
 
-const ADMIN_ID = 999000999; // ADMIN_TELEGRAM_IDS из test/setup.ts
+// ADMIN_TELEGRAM_IDS из test/setup.ts — админ один, DEVELOPER_TELEGRAM_ID не задан → режим у него
+const ADMIN_ID = 999000999;
 
-describe('developer mode (admins only)', () => {
+describe('developer mode (one account only)', () => {
   let app: FastifyInstance;
   beforeAll(async () => {
     app = await createApp();
@@ -34,6 +36,29 @@ describe('developer mode (admins only)', () => {
     return c;
   }
   const code = (res: { json: () => unknown }) => (res.json() as ApiErrorBody).error.code;
+
+  it('belongs to exactly one account: DEVELOPER_TELEGRAM_ID, else the only admin, else nobody', () => {
+    expect(resolveDeveloperId('42', new Set([1n, 2n]))).toBe(42n);
+    expect(resolveDeveloperId(undefined, new Set([7n]))).toBe(7n);
+    expect(resolveDeveloperId(undefined, new Set([7n, 8n]))).toBeNull();
+    expect(resolveDeveloperId(undefined, new Set())).toBeNull();
+    expect(env.developerId).toBe(BigInt(ADMIN_ID));
+  });
+
+  it('another admin (not the owner) cannot use it, and an old flag gives nothing', async () => {
+    const c = await login(ADMIN_ID);
+    await c.patch('/api/settings', { devMode: true });
+    const saved = env.developerId;
+    env.developerId = 123n; // владелец режима — другой аккаунт
+    try {
+      expect((await c.get('/api/state')).json<StateResponse>().state.profile.isDeveloper).toBe(false);
+      expect(code(await c.patch('/api/settings', { devMode: true }))).toBe('FORBIDDEN');
+      expect((await c.get('/api/collection')).json<CollectionResponse>().owned).toHaveLength(2);
+    } finally {
+      env.developerId = saved;
+    }
+    expect((await c.get('/api/state')).json<StateResponse>().state.profile.isDeveloper).toBe(true);
+  });
 
   it('a regular player cannot turn it on', async () => {
     const c = await login(18001);

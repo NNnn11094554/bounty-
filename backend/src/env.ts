@@ -22,6 +22,11 @@ const schema = z
     API_URL: z.string().url().default('http://localhost:3000'),
     CORS_ORIGINS: z.string().optional(),
     ADMIN_TELEGRAM_IDS: z.string().default(''),
+    /** единственный аккаунт с режимом разработчика; не задан — единственный админ (если он один) */
+    DEVELOPER_TELEGRAM_ID: z
+      .string()
+      .regex(/^\d+$/, 'DEVELOPER_TELEGRAM_ID — числовой Telegram ID')
+      .optional(),
     CHANNEL_ID: z.string().optional(),
     CHANNEL_URL: z.string().url().optional(),
     DAILY_RESET_UTC_HOUR: z.coerce.number().int().min(0).max(23).default(16),
@@ -41,6 +46,18 @@ const schema = z
       }
     }
   });
+
+/**
+ * Кому доступен режим разработчика — ровно одному аккаунту: DEVELOPER_TELEGRAM_ID, а если он не задан и
+ * админ один — ему. Несколько админов без DEVELOPER_TELEGRAM_ID — никому.
+ */
+export function resolveDeveloperId(
+  explicit: string | undefined,
+  adminIds: ReadonlySet<bigint>,
+): bigint | null {
+  if (explicit) return BigInt(explicit);
+  return adminIds.size === 1 ? [...adminIds][0]! : null;
+}
 
 function load() {
   // пустая переменная (KEY= в .env) — то же, что не заданная
@@ -74,6 +91,7 @@ function load() {
     isProd: e.NODE_ENV === 'production',
     hasRealBotToken: Boolean(e.BOT_TOKEN),
     adminIds,
+    developerId: resolveDeveloperId(e.DEVELOPER_TELEGRAM_ID, adminIds),
     corsOrigins,
   };
 }

@@ -46,8 +46,8 @@ export interface PlayerSettings {
   animations: 'full' | 'reduced';
   notifications: boolean;
   /**
-   * Режим разработчика (только для админов, ADMIN_TELEGRAM_IDS): все скины и эффекты открыты, карточки
-   * без условий, окон и откатов. Цены и баланс — как обычно (монеты — через админку).
+   * Режим разработчика (только для одного аккаунта — DEVELOPER_TELEGRAM_ID): все скины и эффекты открыты,
+   * карточки без условий, окон и откатов. Цены и баланс — как обычно (монеты — через админку).
    */
   devMode: boolean;
 }
@@ -71,6 +71,8 @@ export interface PlayerProfile {
   languageCode: Locale;
   isPremium: boolean;
   isAdmin: boolean;
+  /** владелец режима разработчика (один аккаунт на всю игру) */
+  isDeveloper: boolean;
   onboardingDone: boolean;
   settings: PlayerSettings;
   tutorialsSeen: string[];

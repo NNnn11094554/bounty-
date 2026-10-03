@@ -15,6 +15,7 @@ const state = {
     languageCode: 'ru',
     isPremium: false,
     isAdmin: false,
+    isDeveloper: false,
     onboardingDone: false,
     settings: {
       language: null,

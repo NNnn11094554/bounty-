@@ -34,6 +34,9 @@ services:
       # API_URL можно не задавать: на Render берётся RENDER_EXTERNAL_URL сервиса
       - key: ADMIN_TELEGRAM_IDS
         sync: false
+      # режим разработчика — только этот Telegram ID (не задан: единственный админ, если он один)
+      - key: DEVELOPER_TELEGRAM_ID
+        sync: false
       - key: CHANNEL_ID
         sync: false
       - key: CHANNEL_URL
