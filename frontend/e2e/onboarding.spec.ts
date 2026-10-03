@@ -12,7 +12,7 @@ test.describe('Onboarding', () => {
       await page.screenshot({ path: `${shots}/17-onboarding.png` });
     }
     await page.getByTestId('onboarding-next').click();
-    await expect(page.getByTestId('onboarding-slide-1')).toContainText('Покупай карточки');
+    await expect(page.getByTestId('onboarding-slide-1')).toContainText('Собирай крипто-активы');
     await page.getByTestId('onboarding-next').click();
     await expect(page.getByTestId('onboarding-slide-2')).toContainText('+5 000');
     // штаб-квартир больше нет: последний слайд сразу открывает игру со стартовым бонусом

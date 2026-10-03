@@ -58,6 +58,28 @@ describe('skin catalog ↔ visuals', () => {
     }
   });
 
+  it('every character has a face rig: eyes inside the head, the head turns around the neck', () => {
+    for (const { id } of SKINS) {
+      const { face, head, headBottom } = skinArt(id);
+      expect(face.eyes.length, id).toBeGreaterThanOrEqual(1);
+      expect(face.eyes.length, id).toBeLessThanOrEqual(2);
+      const [hx, hy, hrx, hry] = face.head;
+      for (const [x, y, rx, ry] of face.eyes) {
+        expect(rx).toBeGreaterThan(0.015);
+        expect(ry).toBeGreaterThan(0.015);
+        // глаз целиком внутри непрозрачной части головы (до 80% эллипса): при наклоне не двоится
+        const far = ((Math.abs(x - hx) + rx) / hrx) ** 2 + (Math.abs(y - hy) / hry) ** 2;
+        expect(far, id).toBeLessThan(0.8 ** 2);
+        // глаза — в верхней части персонажа, ниже макушки и выше подбородка
+        expect(y).toBeGreaterThan(head[1] * 0.8);
+        expect(y).toBeLessThan(headBottom);
+      }
+      expect(face.neck).toEqual([head[0], headBottom]);
+      expect(face.lid).toMatch(/^#[0-9a-f]{6}$/);
+      expect(face.lash).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
   it('unknown and old skin ids fall back to the default character (no old assets are ever requested)', () => {
     expect(skinAsset('nope', 'character')).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/character.webp`);
     for (const old of Object.keys(LEGACY_SKINS)) {

@@ -138,6 +138,25 @@ export interface SkinArt {
    * персонаж на экране стоял точно там, где стоял в своём мире, и закрывал своё место на картинке.
    */
   scene: { aspect: number; char: [number, number, number, number] };
+  /** лицо для «живого» персонажа (scripts/skins/face.py) */
+  face: SkinFace;
+}
+
+/**
+ * Лицо персонажа: всё в долях картинки (x и rx — от ширины, y и ry — от высоты).
+ * Глаза моргают и смотрят по сторонам, голова чуть наклоняется вокруг шеи — тело при этом неподвижно.
+ */
+export interface SkinFace {
+  /** эллипсы глаз [x, y, rx, ry] */
+  eyes: Array<[number, number, number, number]>;
+  /** цвет века (мех над глазом) — подложка под текстуру века */
+  lid: string;
+  /** линия сомкнутых ресниц */
+  lash: string;
+  /** эллипс головы [x, y, rx, ry]: слой наклона головы */
+  head: [number, number, number, number];
+  /** точка поворота головы — шея */
+  neck: [number, number];
 }
 
 export interface Rect {

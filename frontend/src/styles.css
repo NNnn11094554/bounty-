@@ -323,7 +323,10 @@ img {
   }
 }
 
-/* Спокойные анимации скинов: бесшовные циклы (начало и конец совпадают), только transform */
+/*
+ * Спокойные анимации скинов: бесшовные циклы (начало и конец совпадают), только transform и только от
+ * ступней — грудь поднимается и опускается, поза чуть меняется, но персонаж стоит на месте.
+ */
 .hero-idle {
   animation: idle-breathe 4.2s ease-in-out infinite;
   will-change: transform;
@@ -338,15 +341,15 @@ img {
   }
 }
 .idle-float {
-  animation: idle-float 5.2s ease-in-out infinite;
+  animation: idle-deep 5.2s ease-in-out infinite;
 }
-@keyframes idle-float {
+@keyframes idle-deep {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    transform: scale(1, 1) rotate(0deg);
   }
   50% {
-    transform: translate3d(0, -2.4%, 0) rotate(-0.6deg);
+    transform: scale(1.008, 1.018) rotate(-0.35deg);
   }
 }
 .idle-sway {
@@ -355,13 +358,13 @@ img {
 @keyframes idle-sway {
   0%,
   100% {
-    transform: rotate(-0.9deg) scale(1, 1);
+    transform: rotate(-0.5deg) scale(1, 1);
   }
   25% {
     transform: rotate(0deg) scale(1.004, 1.01);
   }
   50% {
-    transform: rotate(0.9deg) scale(1, 1);
+    transform: rotate(0.5deg) scale(1, 1);
   }
   75% {
     transform: rotate(0deg) scale(1.004, 1.01);
@@ -373,17 +376,17 @@ img {
 @keyframes idle-hover {
   0%,
   100% {
-    transform: translate3d(0, -0.6%, 0) rotate(0.5deg);
+    transform: scale(1, 1) rotate(0.3deg);
   }
   50% {
-    transform: translate3d(0, -1.8%, 0) rotate(-0.5deg);
+    transform: scale(1.006, 1.012) rotate(-0.3deg);
   }
 }
 .idle-flicker {
   animation: idle-breathe 3.4s ease-in-out infinite;
 }
 .idle-bob {
-  animation: idle-bob 1.9s ease-in-out infinite;
+  animation: idle-bob 2.6s ease-in-out infinite;
 }
 @keyframes idle-bob {
   0%,
@@ -391,14 +394,90 @@ img {
     transform: scale(1, 1) rotate(0deg);
   }
   25% {
-    transform: scale(1.004, 0.992) rotate(0.6deg);
+    transform: scale(1.004, 0.996) rotate(0.35deg);
   }
   50% {
-    transform: scale(1, 1.008) rotate(0deg);
+    transform: scale(1, 1.01) rotate(0deg);
   }
   75% {
-    transform: scale(1.004, 0.992) rotate(-0.6deg);
+    transform: scale(1.004, 0.996) rotate(-0.35deg);
   }
+}
+/*
+ * Лицо: голова чуть наклоняется вокруг шеи (смена позы в покое, data-pose от сцены), радужка смещается
+ * внутри глаза (взгляд --gx/--gy от −1 до 1), веко из меха над глазом опускается сверху (--lid от 0 до 1).
+ */
+.hero-head {
+  transition: transform 1.1s cubic-bezier(0.45, 0, 0.25, 1);
+  will-change: transform;
+}
+.hero-stage[data-pose='tilt-l'] .hero-head {
+  transform: rotate(-1.6deg);
+}
+.hero-stage[data-pose='tilt-r'] .hero-head {
+  transform: rotate(1.4deg);
+}
+/* посмотреть на лапы: голова чуть вниз и вбок */
+.hero-stage[data-pose='paws'] .hero-head {
+  transform: rotate(1.2deg) translateY(0.5%);
+}
+.hero-stage[data-pose='up'] .hero-head {
+  transform: rotate(-0.8deg) translateY(-0.3%);
+}
+.eye-iris {
+  background-position: calc(var(--ax) + var(--gx, 0) * var(--reach))
+    calc(var(--ay) + var(--gy, 0) * var(--reach));
+  mask-image: radial-gradient(closest-side, #000 72%, transparent 98%);
+  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 98%);
+  transition: background-position 0.22s cubic-bezier(0.3, 0, 0.2, 1);
+}
+.eye-lid {
+  background-repeat: no-repeat;
+  mask-image: radial-gradient(closest-side, #000 84%, transparent 100%);
+  -webkit-mask-image: radial-gradient(closest-side, #000 84%, transparent 100%);
+  transform-origin: 50% 0;
+  transform: scaleY(var(--lid, 0));
+  transition: transform 0.22s ease-out;
+}
+/* тень к краю века и линия сомкнутых ресниц */
+.eye-lid::after {
+  content: '';
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: -34%;
+  bottom: 13%;
+  border-radius: 50%;
+  border-bottom: 2.2px solid var(--lash);
+  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, 0.22));
+}
+/* край века темнее — сливается с контуром глаза, без «наклейки» */
+.eye-lid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    closest-side,
+    transparent 55%,
+    color-mix(in srgb, var(--lash) 45%, transparent) 100%
+  );
+}
+.hero-stage {
+  --lid: 0;
+}
+/* усталость (нет энергии) — веки чуть прикрыты, сон — почти закрыты, прищур после тапа — наполовину */
+.hero-stage[data-sleepy='true'] {
+  --lid: 0.32;
+}
+.hero-stage[data-squint='true'] {
+  --lid: 0.42;
+}
+.hero-stage[data-mood='sleepy'] {
+  --lid: 0.7;
+}
+[data-motion='reduced'] .hero-head,
+[data-motion='reduced'] .eye-iris {
+  transition: none;
 }
 /* сон: дыхание медленнее, персонаж тускнеет */
 [data-mood='sleepy'] .hero-idle {

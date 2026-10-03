@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { markLeagueSeen, setPlayer } from './db';
 
-/** Главный сценарий из ТЗ: вход → тап → покупка карточки → ежедневка → приглашение друга. */
+/** Главный сценарий из ТЗ: вход → тап → покупка актива → ежедневка → приглашение друга. */
 test('main flow: login, tap, buy an asset, claim the daily reward, invite a friend', async ({ page }) => {
   const uid = 700000990;
   await page.goto(`/?uid=${uid}&name=Игрок`);
