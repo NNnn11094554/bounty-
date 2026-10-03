@@ -5,6 +5,7 @@ import {
   DEFAULT_SETTINGS,
   type PlayerSettings,
   type PlayerState,
+  knownEquipped,
 } from '@meowgul/shared';
 import { env } from '../env.js';
 import { dailyBoostUsage, fullEnergyCooldownUntil } from '../game/boosts.js';
@@ -77,7 +78,7 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
     turboUntil: user.turboUntil && user.turboUntil > now ? user.turboUntil.getTime() : null,
     incomeBoostUntil:
       user.incomeBoostUntil && user.incomeBoostUntil > now ? user.incomeBoostUntil.getTime() : null,
-    cosmetics: { skin: user.equippedSkinId, effect: user.equippedEffectId },
+    cosmetics: knownEquipped(user.equippedSkinId, user.equippedEffectId),
     totalTaps: Number(user.totalTaps),
     boosts: boostsState(user, now),
     daily: dailyState(user, now),

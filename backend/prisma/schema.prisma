@@ -66,7 +66,7 @@ model User {
   incomeBoostUntil DateTime?
 
   /// коллекция: надетый скин кота и эффект тапа (стартовые есть у всех)
-  equippedSkinId   String @default("black_crown")
+  equippedSkinId   String @default("neon_punk")
   equippedEffectId String @default("coins")
 
   suspiciousScore Int     @default(0)

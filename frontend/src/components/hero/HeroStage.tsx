@@ -1,11 +1,18 @@
 import { formatShort, type Locale } from '@meowgul/shared';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../../animations';
 import { catMood, type CatEvent } from '../../game/catMood';
 import { CatMotion } from '../../game/catMotion';
 import { centerOf, confetti } from '../../game/effects';
 import { onFrame } from '../../game/frameLoop';
-import { EFFECT_PARTICLE, skinRig, skinVars, type ParticleKind } from '../../game/skins';
+import {
+  EFFECT_PARTICLE,
+  skinArt,
+  skinId as knownSkin,
+  skinStyle,
+  skinVars,
+  type ParticleKind,
+} from '../../game/skins';
 import { playSound } from '../../lib/sound';
 import { haptic } from '../../telegram/webapp';
 import { HeroFigure } from './HeroFigure';
@@ -64,22 +71,21 @@ function hintSeen(): boolean {
 }
 
 /**
- * Главная сцена: живой кот — он и есть кнопка игры. Тап по коту → существующая логика награды
- * (handler.tap → tapEngine: энергия, баланс, множители) → реакция кота и эффекты.
+ * Главная сцена: надетый персонаж — он и есть кнопка игры. Тап по нему → существующая логика награды
+ * (handler.tap → tapEngine: энергия, баланс, множители) → реакция персонажа и эффекты.
  *
- * Движение без рывков: спокойные покачивания (поза, дыхание, голова, хвост) — CSS-анимации на разных
- * слоях с разной длительностью; реакции на тап — пружины CatMotion на своих слоях (без наложения
- * анимаций друг на друга: тап только добавляет скорость, отклонение ограничено, кот всегда
- * возвращается точно в исходную позу). Позиция кота не меняется, всё — transform/opacity.
+ * Движение без рывков: спокойная анимация скина — бесшовный CSS-цикл на своём слое; реакции на тап —
+ * пружины CatMotion на другом слое (без наложения анимаций друг на друга: тап только добавляет скорость,
+ * отклонение ограничено, персонаж всегда возвращается точно в исходную позу). Позиция не меняется,
+ * всё — transform/opacity. Смена скина — персонаж мягко проявляется, обработчики и физика остаются.
  */
 export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId, effectId, onPress }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const headRef = useRef<HTMLDivElement>(null);
-  const tailRef = useRef<HTMLDivElement>(null);
-  const earRef = useRef<HTMLDivElement>(null);
-  const footRef = useRef<HTMLDivElement>(null);
-  const lidsRef = useRef<SVGSVGElement>(null);
+  // корпус надетого персонажа; при смене скина элемент новый — ref всегда указывает на последний
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const setBody = useCallback((el: HTMLDivElement | null) => {
+    if (el) bodyRef.current = el;
+  }, []);
   const hitRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
@@ -91,12 +97,13 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   localeRef.current = locale;
   const effectRef = useRef<ParticleKind>(EFFECT_PARTICLE[effectId] ?? 'coin');
   effectRef.current = EFFECT_PARTICLE[effectId] ?? 'coin';
-  const skinRef = useRef(skinId);
-  skinRef.current = skinId;
-  const rig = skinRig(skinId);
-  const rigRef = useRef(rig);
-  rigRef.current = rig;
-  const L = heroLayout(width, height, rig.aspect);
+  const skin = knownSkin(skinId);
+  const art = skinArt(skin);
+  const artRef = useRef(art);
+  artRef.current = art;
+  const burstRef = useRef<ParticleKind>(skinStyle(skin).burst);
+  burstRef.current = skinStyle(skin).burst;
+  const L = heroLayout(width, height, art.aspect, art.body);
   // раскладка — через ref: при смене размера (свернулась лига, Telegram развернул окно) обработчики,
   // физика и начатое нажатие остаются
   const layoutRef = useRef(L);
@@ -104,14 +111,9 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
 
   useEffect(() => {
     const root = rootRef.current;
-    const bodyEl = bodyRef.current;
-    const headEl = headRef.current;
-    const tailEl = tailRef.current;
-    const earEl = earRef.current;
-    const footEl = footRef.current;
     const hit = hitRef.current;
     const fx = fxRef.current;
-    if (!root || !bodyEl || !headEl || !tailEl || !earEl || !footEl || !hit || !fx) return;
+    if (!root || !hit || !fx) return;
     const reduced = () => isReducedMotion();
 
     // ── физика реакций: кадры идут, только пока пружины не успокоились ──
@@ -122,11 +124,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     let last = 0;
     const apply = () => {
       const t = motion.transforms();
-      bodyEl.style.transform = t.body;
-      headEl.style.transform = t.head;
-      tailEl.style.transform = t.tail;
-      earEl.style.transform = t.ear;
-      footEl.style.transform = t.foot;
+      if (bodyRef.current) bodyRef.current.style.transform = t.body;
       // объём: угол поворота — переменными, по ним CSS двигает перспективу, глубину слоёв, свет и тень
       if (t.yaw !== yawNow || t.pitch !== pitchNow) {
         yawNow = t.yaw;
@@ -155,7 +153,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         raf = requestAnimationFrame(frame);
       }
     };
-    // отложенные толчки пружин (серия притопов, двойное подёргивание уха); снимаются при размонтировании
+    // отложенные толчки пружин (серия подскоков); снимаются при размонтировании
     const pending = new Set<number>();
     const later = (fn: () => void, ms: number) => {
       const id = window.setTimeout(() => {
@@ -165,10 +163,10 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       }, ms);
       pending.add(id);
     };
-    /** n притопов кроссовкой в ритм */
-    const stomps = (n: number) => {
+    /** n подскоков в ритм */
+    const hops = (n: number, power = 0.8) => {
       if (reduced()) return;
-      for (let i = 0; i < n; i++) later(() => motion.stomp(i === n - 1 ? 1 : 0.8), i * 280);
+      for (let i = 0; i < n; i++) later(() => motion.hop(i === n - 1 ? power : power * 0.75), i * 300);
     };
 
     // пулы переиспользуемых элементов — никаких тысяч DOM-нод при яростном тапании
@@ -268,7 +266,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     };
     const headPoint = () => {
       const c = layoutRef.current.cat;
-      return { x: c.left + c.width * rigRef.current.head.x, y: c.top + c.height * rigRef.current.head.y };
+      return { x: c.left + c.width * artRef.current.head[0], y: c.top + c.height * artRef.current.head[1] };
     };
     const coinSalute = () => {
       const c = catCenter();
@@ -295,18 +293,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       playSound('coin');
     };
 
-    // ── огоньки и аура: короткая вспышка с перерывом ──
-    let ledAt = 0;
-    const ledFlash = () => {
-      const now = performance.now();
-      if (reduced() || now - ledAt < 140) return;
-      ledAt = now;
-      root
-        .querySelectorAll<HTMLElement>('.hero-led')
-        .forEach((el) =>
-          el.animate([{ opacity: 0.95 }, { opacity: 0.4 }], { duration: 300, easing: 'ease-out' }),
-        );
-    };
+    // ── аура: короткая вспышка с перерывом ──
     let auraAt = 0;
     const auraFlash = () => {
       const now = performance.now();
@@ -316,42 +303,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       aura.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: 420, easing: 'ease-out' });
     };
 
-    // ── веки: одна анимация за раз (новая отменяет прежнюю — без конфликтов) ──
     let mood: '' | 'sleepy' | 'excited' = '';
-    let lidAnims: Animation[] = [];
-    let lidAt = 0;
-    const lids = (eyes: number[]) =>
-      Array.from(lidsRef.current?.querySelectorAll<SVGElement>('.hero-lid, .hero-lash') ?? []).filter((el) =>
-        eyes.includes(Number(el.dataset.eye)),
-      );
-    /** shut — насколько закрыть (1 — полностью), close/hold/open — мс */
-    const eyelids = (eyes: number[], shut: number, close: number, hold: number, open: number) => {
-      if (reduced() || mood === 'sleepy') return;
-      lidAnims.forEach((a) => a.cancel());
-      lidAnims = [];
-      lidAt = performance.now();
-      const duration = close + hold + open;
-      const a = close / duration;
-      const b = (close + hold) / duration;
-      const lash = shut > 0.8 ? 1 : 0;
-      for (const el of lids(eyes)) {
-        const frames: Keyframe[] = el.classList.contains('hero-lash')
-          ? [{ opacity: 0 }, { opacity: lash, offset: a }, { opacity: lash, offset: b }, { opacity: 0 }]
-          : [
-              { transform: 'scaleY(0)' },
-              { transform: `scaleY(${shut})`, offset: a },
-              { transform: `scaleY(${shut})`, offset: b },
-              { transform: 'scaleY(0)' },
-            ];
-        lidAnims.push(el.animate(frames, { duration, easing: 'ease-in-out' }));
-      }
-    };
-    const blink = () => eyelids([0, 1], 1, 70, 0, 90);
-    const squint = () => {
-      if (performance.now() - lidAt > 700) eyelids([0, 1], 0.45, 110, 140, 160);
-    };
-    const wink = () => eyelids([0], 1, 90, 220, 140);
-
     let moodTimer = 0;
     const setMood = (next: typeof mood, ms = 0) => {
       mood = next;
@@ -364,60 +316,47 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const head = headPoint();
       switch (reaction) {
         case 'happy':
-          squint();
-          motion.swish(45);
-          motion.nod(14);
-          motion.twitch(1, 0.7);
-          stomps(2);
+          motion.hop(0.8);
+          motion.wiggle(14);
           break;
         case 'excited':
           setMood('excited', 2600);
-          squint();
-          motion.swish(60);
-          stomps(3);
+          hops(2);
           auraFlash();
-          ledFlash();
           spawnParticles(head.x, head.y, 5, 'star', 1.6);
           break;
         case 'special':
         case 'heart':
           setMood('excited', 3000);
-          squint();
-          motion.nod(-20);
-          motion.swish(70);
+          motion.hop(1);
           auraFlash();
           spawnParticles(head.x, head.y, 8, 'heart', 1.8);
           break;
         case 'celebrate':
           setMood('excited', 3500);
-          squint();
-          motion.swish(70);
-          stomps(4);
+          hops(3, 1);
           confetti(centerOf(root), 60);
           spawnParticles(head.x, head.y, 8, 'gold', 1.8);
           break;
         case 'surprised':
-          motion.twitch(1, 1.2);
-          motion.nod(24);
-          motion.swish(60);
-          blink();
+          motion.hop(1.2);
+          motion.wiggle(-24);
           break;
         case 'annoyed':
-          motion.twitch(-1, 1.2);
-          motion.nod(-16);
+          motion.wiggle(-22);
+          later(() => motion.wiggle(18), 180);
           break;
         case 'sleepy':
           setMood('sleepy');
-          motion.lookAt(0, 0);
+          motion.orbitTo(0, -1.2);
           break;
       }
       kick();
     };
 
-    // ── взгляд: голова чуть поворачивается к пальцу/курсору, через 2,6 с — обратно ──
+    // ── взгляд: персонаж чуть разворачивается к пальцу/курсору, через 2,6 с — обратно ──
     let gazeTimer = 0;
-    let glancing = false;
-    /** рамка самого кота на экране (зона тапа шире — с запасом для пальца) */
+    /** рамка самого персонажа на экране (зона тапа шире — с запасом для пальца) */
     const catRectNow = () => {
       const r = root.getBoundingClientRect();
       const c = layoutRef.current.cat;
@@ -428,12 +367,10 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const rect = catRectNow();
       const dx = Math.max(-1, Math.min(1, (clientX - (rect.left + rect.width / 2)) / (rect.width * 1.2)));
       const dy = Math.max(-1, Math.min(1, (clientY - (rect.top + rect.height * 0.25)) / rect.height));
-      motion.lookAt(dx * 2.6 + dy * 0.8, dx * 1.2);
       motion.orbitTo(dx * 6, dy * -1.2);
       kick();
       window.clearTimeout(gazeTimer);
       gazeTimer = window.setTimeout(() => {
-        motion.lookAt(0, 0);
         motion.orbitTo(0, 0);
         kick();
       }, 2600);
@@ -460,7 +397,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     };
     const onStreak = (n: number) => {
       if (n === 5) react('happy');
-      else if (n === 10) react(skinRef.current === 'queen' ? 'heart' : 'excited');
+      else if (n === 10) react('excited');
       else if (n === 20) react('special');
       else if (n > 20 && n % 25 === 0) react(Math.random() < 0.5 ? 'heart' : 'excited');
     };
@@ -492,7 +429,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const x = e.clientX - rootRect.left;
       const y = e.clientY - rootRect.top;
       const side = Math.max(-1, Math.min(1, ((e.clientX - catRect.left) / catRect.width - 0.5) * 2));
-      const onHead = (e.clientY - catRect.top) / catRect.height < rigRef.current.headBottom;
+      const onHead = (e.clientY - catRect.top) / catRect.height < artRef.current.headBottom;
       const now = performance.now();
       lastActivity = now;
       lookAt(e.clientX, e.clientY);
@@ -525,8 +462,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const tier = streak >= 10 ? 3 : streak >= 4 ? 2 : 1;
       const strength = tier === 3 ? 1.35 : tier === 2 ? 1.18 : 1;
       motion.tap(reduced() ? 0 : strength, side, onHead);
-      // в серии кот притопывает в такт — каждый второй тап
-      if (tier >= 2 && streak % 2 === 0 && !reduced()) motion.stomp(tier === 3 ? 0.9 : 0.7);
+      // в серии персонаж пружинит в такт — каждый третий тап
+      if (tier >= 2 && streak % 3 === 0 && !reduced()) motion.hop(tier === 3 ? 0.7 : 0.5);
       kick();
       spawnFloat(
         x,
@@ -536,12 +473,9 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       );
       spawnFlash(x, y, tier === 3 ? 1.5 : 1.15);
       spawnRing(x, y, tier === 3 ? 1.35 : 1);
-      // Легендарная Корона: своя реакция — двойная волна
-      if (skinRef.current === 'legendary_crown') spawnRing(x, y, 1.7);
       spawnParticles(x, y, tier + 1);
-      if (tier === 3) spawnParticles(x, y, 1, 'gold', 1.4);
-      if (onHead || tier >= 2) squint();
-      ledFlash();
+      // всплеск в стиле персонажа: лепесток, искра, снежинка…
+      spawnParticles(x, y, tier === 3 ? 2 : 1, burstRef.current, 1.3);
       if (tier >= 2) auraFlash();
       feel(now, streak === 10);
       playSound('tap');
@@ -571,93 +505,36 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     root.addEventListener('click', noMenu);
     window.addEventListener('pointermove', onMove, { passive: true });
 
-    // моргание раз в 3–7 секунд
-    let blinkTimer = 0;
-    const scheduleBlink = () => {
-      blinkTimer = window.setTimeout(
-        () => {
-          if (!document.hidden && performance.now() - lidAt > 1200) blink();
-          scheduleBlink();
-        },
-        3000 + Math.random() * 4000,
-      );
-    };
-    scheduleBlink();
-
     // спокойные действия в простое (не чаще раза в 6 с) и засыпание
-    type Idle = 'glance' | 'blink' | 'wink' | 'swish' | 'nod' | 'look' | 'ear' | 'stomp';
-    const IDLE: Idle[] = [
-      'glance',
-      'stomp',
-      'blink',
-      'swish',
-      'ear',
-      'glance',
-      'wink',
-      'stomp',
-      'nod',
-      'look',
-    ];
+    type Idle = 'glance' | 'hop' | 'wiggle' | 'glow';
+    const IDLE: Idle[] = ['glance', 'hop', 'glow', 'wiggle', 'glance', 'hop'];
     let idleTimer = 0;
     let lastIdle = -1;
     const idleAction = (a: Idle) => {
       switch (a) {
         case 'glance': {
-          if (glancing) break;
-          glancing = true;
           const dir = Math.random() < 0.5 ? -1 : 1;
-          motion.lookAt(dir * 2.2, dir * 1.1);
+          motion.orbitTo(dir * 5, -0.6);
           window.clearTimeout(gazeTimer);
           gazeTimer = window.setTimeout(() => {
-            glancing = false;
-            motion.lookAt(0, 0);
+            motion.orbitTo(0, 0);
             kick();
           }, 1700);
           break;
         }
-        case 'blink':
-          blink();
-          window.setTimeout(blink, 260);
+        case 'hop':
+          hops(2, 0.6);
           break;
-        case 'wink':
-          wink();
+        case 'wiggle':
+          motion.wiggle(Math.random() < 0.5 ? -14 : 14);
           break;
-        case 'swish':
-          motion.swish(55);
-          break;
-        case 'nod':
-          motion.nod(-14);
-          break;
-        case 'look':
-          motion.lookAt(0, 0);
-          blink();
-          break;
-        case 'ear':
-          motion.twitch(-1);
-          later(() => motion.twitch(-1, 0.7), 220);
-          break;
-        case 'stomp':
-          stomps(3);
+        case 'glow':
+          auraFlash();
           break;
       }
       kick();
     };
-    // ухо иногда дёргается само по себе — как у настоящего кота
-    let earTimer = 0;
-    const scheduleEar = () => {
-      earTimer = window.setTimeout(
-        () => {
-          if (!document.hidden && !reduced() && mood !== 'sleepy') {
-            motion.twitch(Math.random() < 0.7 ? -1 : 1, 0.6 + Math.random() * 0.5);
-            kick();
-          }
-          scheduleEar();
-        },
-        3_500 + Math.random() * 6_500,
-      );
-    };
-    scheduleEar();
-    // в покое кот медленно поворачивается то чуть в одну, то в другую сторону — живой объём
+    // в покое персонаж медленно поворачивается то чуть в одну, то в другую сторону — живой объём
     let orbitTimer = 0;
     const scheduleOrbit = () => {
       orbitTimer = window.setTimeout(
@@ -740,14 +617,11 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       stopFrame();
       offMood();
       window.clearTimeout(idleTimer);
-      window.clearTimeout(earTimer);
       window.clearTimeout(orbitTimer);
       pending.forEach((id) => window.clearTimeout(id));
-      window.clearTimeout(blinkTimer);
       window.clearTimeout(moodTimer);
       window.clearTimeout(gazeTimer);
       if (raf) cancelAnimationFrame(raf);
-      lidAnims.forEach((a) => a.cancel());
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pointermove', onMove);
       root.removeEventListener('pointerdown', onDown);
@@ -759,21 +633,18 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     };
   }, []);
 
-  const head = { x: L.cat.left + L.cat.width * rig.head.x, y: L.cat.top + L.cat.height * rig.head.y };
+  const head = { x: L.cat.left + L.cat.width * art.head[0], y: L.cat.top + L.cat.height * art.head[1] };
   return (
     <div
       ref={rootRef}
       className="hero-stage relative select-none"
-      style={{ width, height, ...skinVars(skinId) }}
+      style={{ width, height, ...skinVars(skin) }}
       data-testid="hero"
-      data-skin={skinId}
+      data-skin={skin}
     >
-      <div className="absolute" style={{ left: L.cat.left, top: L.cat.top }}>
-        <HeroFigure
-          skinId={skinId}
-          height={L.cat.height}
-          refs={{ body: bodyRef, head: headRef, ear: earRef, tail: tailRef, foot: footRef, lids: lidsRef }}
-        />
+      {/* смена скина: новый персонаж мягко проявляется на том же месте */}
+      <div key={skin} className="hero-enter absolute" style={{ left: L.cat.left, top: L.cat.top }}>
+        <HeroFigure skinId={skin} height={L.cat.height} bodyRef={setBody} />
       </div>
       <div
         className="hero-zzz pointer-events-none absolute text-2xl font-black text-white/80"
@@ -791,7 +662,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         <div
           ref={hintRef}
           className="hero-hint pointer-events-none absolute"
-          style={{ left: L.cat.left + L.cat.width * 0.5, top: L.cat.top + L.cat.height * 0.5 }}
+          style={{ left: L.cat.left + L.cat.width * art.body, top: L.cat.top + L.cat.height * 0.5 }}
           data-testid="cat-hint"
           aria-hidden
         >
@@ -800,7 +671,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         </div>
       )}
       <div ref={fxRef} className="pointer-events-none absolute inset-0 overflow-visible" />
-      {/* зона тапа — кот целиком с запасом по бокам, чтобы палец попадал и у самого края */}
+      {/* зона тапа — персонаж целиком с запасом по бокам, чтобы палец попадал и у самого края */}
       <div
         ref={hitRef}
         className="hero-hit absolute"

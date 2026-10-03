@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { HeroStage, type TapHandler } from '../../components/hero/HeroStage';
+import { SkinScene } from '../../components/hero/SkinScene';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
 import { BoltIcon, CoinIcon, GearIcon, PawIcon, RocketIcon } from '../../components/icons';
@@ -86,7 +87,7 @@ function QuickAction({
   );
 }
 
-/** Главный экран: игрок и уровень, баланс, лига, живой кот, энергия и быстрые кнопки (Mine, Earn, бусты). */
+/** Главный экран: игрок и уровень, баланс, лига, надетый персонаж в своём мире, энергия и быстрые кнопки. */
 export function OfficeScreen({
   onOpenBoosts,
   onOpenLeagues,
@@ -202,7 +203,11 @@ export function OfficeScreen({
 
       <PlayerStats />
 
-      <section className="office-arc relative mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-4 short:mt-2.5 short:pt-2.5">
+      <section className="office-arc relative isolate mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-4 short:mt-2.5 short:pt-2.5">
+        {/* мир надетого персонажа: фон, свет и атмосфера; смена скина — сцена мягко проявляется */}
+        <div className="absolute inset-0 -z-10 overflow-hidden rounded-t-[40px]">
+          <SkinScene key={player.cosmetics.skin} skinId={player.cosmetics.skin} testId="skin-scene" />
+        </div>
         <div className="flex items-center justify-center gap-2.5" data-testid="balance" data-coin-target>
           <CoinIcon size={34} className="short:h-7 short:w-7" />
           <RollingNumber

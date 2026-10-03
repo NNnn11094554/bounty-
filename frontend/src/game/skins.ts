@@ -1,8 +1,8 @@
 import { cosmeticById, DEFAULT_SKIN_ID, type Rarity } from '@meowgul/shared';
 import type { CSSProperties } from 'react';
-import layout from './heroLayout.json';
+import art from './skinArt.json';
 
-/** Частицы вокруг кота и из-под пальца. */
+/** Частицы из-под пальца (эффект тапа) и всплески реакций кота. */
 export type ParticleKind =
   | 'heart'
   | 'spark'
@@ -18,55 +18,180 @@ export type ParticleKind =
   | 'bolt';
 
 /**
- * Скин — внешний вид кота: картинки слоёв (собирает scripts/hero), «скелет» (rig: где голова, хвост,
- * глаза — по нему двигаются слои) и оформление вокруг: цвет ауры и огоньков, частицы. Тап, анимации,
- * награды и эффекты одинаковы для всех котов: новый кот = картинки + rig + строка здесь.
+ * Атмосфера сцены: лёгкие частицы поверх фона (только transform и opacity, на слабых устройствах — меньше).
+ * rain — косой дождь, snow — снег, petals — лепестки, embers — искры огня вверх, stars — мерцание,
+ * bubbles — пузырьки, fireflies — светлячки, sparks — быстрые искры вверх, sand — песок по ветру,
+ * spores — кислотные споры, feathers — перья, shards — кристаллы, bats — летучие мыши, smoke — дымка,
+ * magic — искры чар.
+ */
+export type AmbientKind =
+  | 'rain'
+  | 'snow'
+  | 'petals'
+  | 'embers'
+  | 'stars'
+  | 'bubbles'
+  | 'fireflies'
+  | 'sparks'
+  | 'sand'
+  | 'spores'
+  | 'feathers'
+  | 'shards'
+  | 'bats'
+  | 'smoke'
+  | 'magic';
+
+/**
+ * Спокойная анимация персонажа (бесшовный цикл, только transform от ступней):
+ * breathe — дыхание, float — парит в невесомости, sway — покачивание с ноги на ногу,
+ * hover — висит на реакторах/чарах с лёгким креном, flicker — дыхание с пульсом свечения, bob — кивает в ритм.
+ */
+export type IdleKind = 'breathe' | 'float' | 'sway' | 'hover' | 'flicker' | 'bob';
+
+/**
+ * Скин — отдельный персонаж: картинка (scripts/skins), сцена-фон, атмосфера, спокойная анимация и
+ * всплеск на тап. Тап, награды и физика реакции общие для всех: новый персонаж = картинки + строка здесь.
  */
 export interface SkinStyle {
-  /** скелет персонажа (CAT_RIGS) */
-  rig: RigId;
-  /** основной цвет неона: аура, огоньки, кольцо кнопки */
+  /** основной цвет: аура, свет на полу, кольца тапа, частицы атмосферы */
   accent: string;
   /** второй цвет: блики и переливы */
   accent2: string;
-  /** частицы, парящие вокруг кота (null — без частиц) */
-  particle: ParticleKind | null;
+  ambient: AmbientKind;
+  idle: IdleKind;
+  /** частица всплеска на каждый тап поверх эффекта тапа */
+  burst: ParticleKind;
 }
 
 export const SKIN_STYLES: Record<string, SkinStyle> = {
-  black_crown: { rig: 'street', accent: '#2f7bff', accent2: '#7fd8ff', particle: null },
-  pink_angel: { rig: 'street', accent: '#ff7ac8', accent2: '#ffd1ec', particle: 'heart' },
-  cyber: { rig: 'street', accent: '#19e3ff', accent2: '#7ffff0', particle: 'spark' },
-  crypto_king: { rig: 'street', accent: '#ff9d2e', accent2: '#ffd36b', particle: 'coin' },
-  samurai: { rig: 'street', accent: '#ff2e3e', accent2: '#ff9a9a', particle: 'petal' },
-  neon_tokyo: { rig: 'street', accent: '#e84dff', accent2: '#ff7ad9', particle: 'note' },
-  shadow: { rig: 'street', accent: '#7a2cff', accent2: '#b06bff', particle: 'smoke' },
-  galaxy: { rig: 'street', accent: '#6f5bff', accent2: '#2ed3c6', particle: 'star' },
-  golden_boss: { rig: 'street', accent: '#ffc93c', accent2: '#fff1a8', particle: 'gold' },
-  hacker: { rig: 'street', accent: '#39ff88', accent2: '#b6ffd2', particle: 'code' },
-  diamond: { rig: 'street', accent: '#9fdcff', accent2: '#ffffff', particle: 'diamond' },
-  queen: { rig: 'street', accent: '#ff3f7a', accent2: '#ffd27a', particle: 'heart' },
-  legendary_crown: { rig: 'street', accent: '#4d7bff', accent2: '#ff4fd8', particle: 'neon' },
+  neon_punk: { accent: '#22d3ff', accent2: '#ff3fd8', ambient: 'rain', idle: 'bob', burst: 'neon' },
+  desert_nomad: { accent: '#ffb35c', accent2: '#ffe0a3', ambient: 'sand', idle: 'sway', burst: 'gold' },
+  sakura_blossom: {
+    accent: '#ff8ac0',
+    accent2: '#ffe0ee',
+    ambient: 'petals',
+    idle: 'breathe',
+    burst: 'petal',
+  },
+  astro_cat: { accent: '#8ec5ff', accent2: '#ffffff', ambient: 'stars', idle: 'float', burst: 'star' },
+  mecha: { accent: '#4db8ff', accent2: '#e6f4ff', ambient: 'sparks', idle: 'hover', burst: 'bolt' },
+  crystal_prince: {
+    accent: '#b48bff',
+    accent2: '#8fe3ff',
+    ambient: 'shards',
+    idle: 'hover',
+    burst: 'diamond',
+  },
+  forest_spirit: {
+    accent: '#a5e85d',
+    accent2: '#ffd36b',
+    ambient: 'fireflies',
+    idle: 'sway',
+    burst: 'spark',
+  },
+  ocean_guardian: {
+    accent: '#3fd0ff',
+    accent2: '#2a6bff',
+    ambient: 'bubbles',
+    idle: 'float',
+    burst: 'diamond',
+  },
+  inferno: { accent: '#ff7a1a', accent2: '#ffd23c', ambient: 'embers', idle: 'flicker', burst: 'gold' },
+  toxic: { accent: '#59ff3f', accent2: '#d4ff3f', ambient: 'spores', idle: 'flicker', burst: 'spark' },
+  stealth_assassin: {
+    accent: '#ff3b6b',
+    accent2: '#ffb7d5',
+    ambient: 'petals',
+    idle: 'sway',
+    burst: 'petal',
+  },
+  dark_reaper: { accent: '#8a3bff', accent2: '#c9a4ff', ambient: 'smoke', idle: 'sway', burst: 'smoke' },
+  arctic_king: { accent: '#7fd0ff', accent2: '#ffffff', ambient: 'snow', idle: 'breathe', burst: 'diamond' },
+  vampire_lord: { accent: '#ff2b4a', accent2: '#ff9a7a', ambient: 'bats', idle: 'breathe', burst: 'heart' },
+  lunar_witch: { accent: '#b45bff', accent2: '#e6d6ff', ambient: 'magic', idle: 'float', burst: 'star' },
+  royal_emperor: { accent: '#ffc93c', accent2: '#ff5a3c', ambient: 'sparks', idle: 'breathe', burst: 'gold' },
+  angel_guardian: {
+    accent: '#ffe7a3',
+    accent2: '#9fd8ff',
+    ambient: 'feathers',
+    idle: 'float',
+    burst: 'star',
+  },
+  shadow_drifter: { accent: '#a24bff', accent2: '#6a8bff', ambient: 'rain', idle: 'sway', burst: 'smoke' },
+  cyber_samurai: { accent: '#ff2a3c', accent2: '#ff9aa8', ambient: 'petals', idle: 'sway', burst: 'petal' },
+  galaxy_emperor: { accent: '#7a5cff', accent2: '#ff4fd8', ambient: 'stars', idle: 'float', burst: 'star' },
 };
 
-const known = (id: string | undefined) => (id && SKIN_STYLES[id] ? id : DEFAULT_SKIN_ID);
+/** Геометрия картинки персонажа (собирает scripts/skins): пропорции, голова, центр тела. */
+export interface SkinArt {
+  /** ширина / высота картинки персонажа */
+  aspect: number;
+  /** центр головы: доли ширины и высоты */
+  head: [number, number];
+  /** вертикаль центра тела (доля ширины): по ней персонаж ставится в центр сцены */
+  body: number;
+  /** нижний край головы (доля высоты): выше — тап по голове */
+  headBottom: number;
+  /** где персонаж стоял на фоне сцены (доли картинки фона): фон выравнивается так же */
+  anchor: [number, number];
+}
+
+const ART = art as unknown as Record<string, SkinArt>;
+
+const known = (id: string | undefined) => (id && SKIN_STYLES[id] && ART[id] ? id : DEFAULT_SKIN_ID);
+
+export function skinId(id: string | undefined): string {
+  return known(id);
+}
 
 export function skinStyle(id: string | undefined): SkinStyle {
   return SKIN_STYLES[known(id)]!;
 }
 
+export function skinArt(id: string | undefined): SkinArt {
+  return ART[known(id)]!;
+}
+
 export function skinRarity(id: string | undefined): Rarity {
-  return cosmeticById(id ?? '')?.rarity ?? 'COMMON';
+  return cosmeticById(known(id))?.rarity ?? 'EPIC';
 }
 
-export type HeroPart = 'body' | 'head' | 'ear' | 'tail' | 'foot' | 'thumb';
+export type SkinFile = 'character' | 'background' | 'preview';
 
-/** Картинки скина, собранные scripts/hero: слои тела, головы, уха, хвоста и кроссовки (главный экран) и превью целиком. */
-export function heroAsset(id: string | undefined, part: HeroPart): string {
-  return `/assets/generated/hero/${known(id)}-${part}.webp`;
+/** Картинка скина: AVIF и WebP (браузер выберет сам через <picture>). */
+export function skinAsset(id: string | undefined, file: SkinFile, format: 'avif' | 'webp' = 'webp'): string {
+  return `/assets/skins/${known(id)}/${file}.${format}`;
 }
 
-/** CSS-переменные цветов скина для ауры, огоньков и кнопки. */
+/**
+ * Картинка скина фоном div (а не <img>: долгое нажатие в WebView не откроет меню картинки): CSS-переменные
+ * для класса .skin-img — AVIF через image-set, где браузер это умеет, иначе WebP.
+ */
+export function skinImage(id: string | undefined, file: SkinFile): CSSProperties {
+  return {
+    ['--img-avif' as string]: `url(${skinAsset(id, file, 'avif')})`,
+    ['--img-webp' as string]: `url(${skinAsset(id, file, 'webp')})`,
+  };
+}
+
+/** Браузер выберет AVIF (image-set с type() — Chrome 113+, Safari 17+), иначе WebP. */
+let avif: boolean | null = null;
+function avifPreferred(): boolean {
+  if (avif === null) {
+    avif =
+      typeof CSS !== 'undefined' &&
+      typeof CSS.supports === 'function' &&
+      CSS.supports('background-image', 'image-set(url("a.avif") type("image/avif"))');
+  }
+  return avif;
+}
+
+/** Портрет (голова и плечи на фоне сцены) — аватары, мелкие значки. */
+export function skinIcon(id: string | undefined): string {
+  return `/assets/skins/${known(id)}/icon.webp`;
+}
+
+/** CSS-переменные цветов скина: аура, свет, кольца тапа, частицы. */
 export function skinVars(id: string | undefined): CSSProperties {
   const s = skinStyle(id);
   return { ['--accent' as string]: s.accent, ['--accent2' as string]: s.accent2 };
@@ -90,50 +215,57 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   MYTHIC: '#ff4fa3',
 };
 
-const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(2)}%`;
-
-/** Скелет персонажа: геометрия слоёв в долях его рамки. По нему двигаются голова, ухо, хвост, кроссовка, веки и огоньки. */
-export interface CatRig {
-  /** ширина / высота кота */
-  aspect: number;
-  viewBox: string;
-  tailOrigin: string;
-  headOrigin: string;
-  /** основание подвижного уха и носок притопывающей кроссовки */
-  earOrigin: string;
-  footOrigin: string;
-  /** голова: доли ширины и высоты (облачко эмоций, граница «тап по голове») */
-  head: { x: number; y: number };
-  /** нижний край головы (доля высоты): выше — тап по голове */
-  headBottom: number;
-  eyes: Array<{ cx: number; cy: number; rx: number; ry: number; rot: number }>;
-  leds: Array<{ left: string; top: string; size: string }>;
-}
-
-function rigFromLayout(l: typeof layout): CatRig {
-  const c = l.cat;
-  return {
-    aspect: c.width / c.height,
-    viewBox: `0 0 ${c.width} ${c.height}`,
-    tailOrigin: `${pct(l.tailPivot[0]! - c.left, c.width)} ${pct(l.tailPivot[1]! - c.top, c.height)}`,
-    headOrigin: `${pct(l.headPivot[0]! - c.left, c.width)} ${pct(l.headPivot[1]! - c.top, c.height)}`,
-    earOrigin: `${pct(l.earPivot[0]! - c.left, c.width)} ${pct(l.earPivot[1]! - c.top, c.height)}`,
-    footOrigin: `${pct(l.footPivot[0]! - c.left, c.width)} ${pct(l.footPivot[1]! - c.top, c.height)}`,
-    head: { x: (l.head[0]! - c.left) / c.width, y: (l.head[1]! - c.top) / c.height },
-    headBottom: (l.headPivot[1]! - c.top) / c.height,
-    eyes: l.eyes.map((e) => ({ ...e, cx: e.cx - c.left, cy: e.cy - c.top })),
-    leds: l.leds.map((d) => ({
-      left: pct(d.x - c.left, c.width),
-      top: pct(d.y - c.top, c.height),
-      size: pct(d.r * 2, c.width),
-    })),
+/**
+ * Слабое устройство или упрощённые анимации: сцена без медленного «дыхания» фона и с меньшим числом
+ * частиц. Решение принимается один раз за запуск (характеристики устройства не меняются).
+ */
+let lite: boolean | null = null;
+export function liteDevice(): boolean {
+  if (lite !== null) return lite;
+  const nav = (typeof navigator !== 'undefined' ? navigator : {}) as Navigator & {
+    deviceMemory?: number;
+    connection?: { saveData?: boolean };
   };
+  lite =
+    (nav.hardwareConcurrency !== undefined && nav.hardwareConcurrency <= 4) ||
+    (nav.deviceMemory !== undefined && nav.deviceMemory <= 3) ||
+    nav.connection?.saveData === true;
+  return lite;
 }
 
-/** Скелеты персонажей. Сейчас один — кот в стритвире; новые коты добавляют свой (свой heroLayout). */
-export const CAT_RIGS = { street: rigFromLayout(layout) } satisfies Record<string, CatRig>;
-export type RigId = keyof typeof CAT_RIGS;
+/** Только для тестов: сбросить определение слабого устройства. */
+export function resetLiteDevice(value: boolean | null = null): void {
+  lite = value;
+}
 
-export function skinRig(id: string | undefined): CatRig {
-  return CAT_RIGS[skinStyle(id).rig];
+const preloaded = new Map<string, Promise<void>>();
+
+/**
+ * Загрузить и декодировать картинки скина заранее (персонаж и фон), чтобы смена прошла без «мигания».
+ * Никогда не падает и не ждёт дольше timeoutMs: медленная сеть не блокирует надевание.
+ */
+export function preloadSkin(id: string, timeoutMs = 1500): Promise<void> {
+  const key = known(id);
+  let p = preloaded.get(key);
+  if (!p) {
+    const load = (src: string) =>
+      new Promise<void>((resolve) => {
+        if (typeof Image === 'undefined') return resolve();
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => {
+          const done = img.decode ? img.decode().catch(() => undefined) : Promise.resolve();
+          void done.then(() => resolve());
+        };
+        img.onerror = () => resolve();
+        img.src = src;
+      });
+    const format = avifPreferred() ? 'avif' : 'webp';
+    p = Promise.all([
+      load(skinAsset(key, 'character', format)),
+      load(skinAsset(key, 'background', format)),
+    ]).then(() => undefined);
+    preloaded.set(key, p);
+  }
+  return Promise.race([p, new Promise<void>((r) => setTimeout(r, timeoutMs))]);
 }

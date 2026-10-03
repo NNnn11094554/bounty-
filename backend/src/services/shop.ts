@@ -101,9 +101,10 @@ const INVOICE_TEXT: Record<ShopProductId, Record<Locale, (g: Grant) => [string, 
       `Your cards’ passive income doubles for ${'hours' in g ? g.hours : 24} h. Stacks with an active boost`,
     ],
   },
-  skin_diamond: cosmeticText('diamond'),
-  skin_queen: cosmeticText('queen'),
-  skin_legendary_crown: cosmeticText('legendary_crown'),
+  skin_angel_guardian: cosmeticText('angel_guardian'),
+  skin_shadow_drifter: cosmeticText('shadow_drifter'),
+  skin_cyber_samurai: cosmeticText('cyber_samurai'),
+  skin_galaxy_emperor: cosmeticText('galaxy_emperor'),
   effect_matrix: cosmeticText('matrix'),
 };
 

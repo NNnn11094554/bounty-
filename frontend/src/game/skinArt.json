@@ -1,0 +1,162 @@
+{
+  "angel_guardian": {
+    "aspect": 0.8164,
+    "head": [0.6753, 0.1958],
+    "body": 0.6107,
+    "headBottom": 0.372,
+    "anchor": [0.4419, 0.9585],
+    "source": "sheet"
+  },
+  "arctic_king": {
+    "aspect": 0.7167,
+    "head": [0.6322, 0.1873],
+    "body": 0.5024,
+    "headBottom": 0.3559,
+    "anchor": [0.3502, 0.9857],
+    "source": "sheet"
+  },
+  "astro_cat": {
+    "aspect": 0.6137,
+    "head": [0.5698, 0.1737],
+    "body": 0.5043,
+    "headBottom": 0.33,
+    "anchor": [0.4651, 0.9704],
+    "source": "card"
+  },
+  "crystal_prince": {
+    "aspect": 0.6141,
+    "head": [0.6514, 0.1853],
+    "body": 0.5602,
+    "headBottom": 0.3521,
+    "anchor": [0.4598, 1],
+    "source": "card"
+  },
+  "cyber_samurai": {
+    "aspect": 0.6241,
+    "head": [0.6424, 0.1664],
+    "body": 0.5728,
+    "headBottom": 0.3162,
+    "anchor": [0.4705, 0.9924],
+    "source": "sheet"
+  },
+  "dark_reaper": {
+    "aspect": 0.812,
+    "head": [0.6001, 0.189],
+    "body": 0.5359,
+    "headBottom": 0.3591,
+    "anchor": [0.3851, 0.9628],
+    "source": "sheet"
+  },
+  "desert_nomad": {
+    "aspect": 0.7385,
+    "head": [0.6539, 0.1787],
+    "body": 0.5691,
+    "headBottom": 0.3396,
+    "anchor": [0.4262, 1],
+    "source": "card"
+  },
+  "forest_spirit": {
+    "aspect": 0.7527,
+    "head": [0.6073, 0.1843],
+    "body": 0.5615,
+    "headBottom": 0.3502,
+    "anchor": [0.4586, 1],
+    "source": "card"
+  },
+  "galaxy_emperor": {
+    "aspect": 0.6633,
+    "head": [0.6517, 0.1911],
+    "body": 0.5679,
+    "headBottom": 0.3631,
+    "anchor": [0.4336, 0.9638],
+    "source": "sheet"
+  },
+  "inferno": {
+    "aspect": 0.741,
+    "head": [0.6867, 0.1944],
+    "body": 0.5564,
+    "headBottom": 0.3694,
+    "anchor": [0.4091, 1],
+    "source": "card"
+  },
+  "lunar_witch": {
+    "aspect": 0.9709,
+    "head": [0.5225, 0.1818],
+    "body": 0.4646,
+    "headBottom": 0.3455,
+    "anchor": [0.4474, 1],
+    "source": "card"
+  },
+  "mecha": {
+    "aspect": 0.8209,
+    "head": [0.6339, 0.1956],
+    "body": 0.5689,
+    "headBottom": 0.3716,
+    "anchor": [0.4148, 0.9607],
+    "source": "sheet"
+  },
+  "neon_punk": {
+    "aspect": 0.7054,
+    "head": [0.6674, 0.1891],
+    "body": 0.5582,
+    "headBottom": 0.3593,
+    "anchor": [0.4527, 0.9585],
+    "source": "sheet"
+  },
+  "ocean_guardian": {
+    "aspect": 0.93,
+    "head": [0.5934, 0.1909],
+    "body": 0.4636,
+    "headBottom": 0.3628,
+    "anchor": [0.4449, 0.9607],
+    "source": "sheet"
+  },
+  "royal_emperor": {
+    "aspect": 0.8776,
+    "head": [0.4664, 0.1916],
+    "body": 0.4346,
+    "headBottom": 0.3641,
+    "anchor": [0.4693, 1],
+    "source": "sheet"
+  },
+  "sakura_blossom": {
+    "aspect": 0.6992,
+    "head": [0.6449, 0.1852],
+    "body": 0.5015,
+    "headBottom": 0.3518,
+    "anchor": [0.4243, 0.9887],
+    "source": "card"
+  },
+  "shadow_drifter": {
+    "aspect": 0.6414,
+    "head": [0.6231, 0.1875],
+    "body": 0.5429,
+    "headBottom": 0.3563,
+    "anchor": [0.4334, 1],
+    "source": "sheet"
+  },
+  "stealth_assassin": {
+    "aspect": 0.7409,
+    "head": [0.6893, 0.1883],
+    "body": 0.556,
+    "headBottom": 0.3577,
+    "anchor": [0.4327, 0.9659],
+    "source": "sheet"
+  },
+  "toxic": {
+    "aspect": 0.7107,
+    "head": [0.6936, 0.1896],
+    "body": 0.5473,
+    "headBottom": 0.3602,
+    "anchor": [0.4207, 1],
+    "source": "card"
+  },
+  "vampire_lord": {
+    "aspect": 0.9174,
+    "head": [0.5896, 0.1758],
+    "body": 0.5067,
+    "headBottom": 0.3339,
+    "anchor": [0.4304, 1],
+    "source": "card"
+  }
+}

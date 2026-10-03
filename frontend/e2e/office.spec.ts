@@ -137,7 +137,7 @@ test.describe('Office', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
-  test('50 rapid taps: the cat returns exactly to its pose and does not drift', async ({ page }) => {
+  test('50 rapid taps: the character returns exactly to its pose and does not drift', async ({ page }) => {
     await page.goto('/?uid=700000207&name=Барабанщик');
     await expect(page.getByTestId('hero')).toBeVisible();
     await page.waitForTimeout(800);
@@ -157,15 +157,15 @@ test.describe('Office', () => {
       .poll(
         () =>
           page.evaluate(() =>
-            [...document.querySelectorAll<HTMLElement>('.hero-react, .hero-part')]
+            [...document.querySelectorAll<HTMLElement>('.hero-react')]
               .map((el) => el.style.transform)
               .join(''),
           ),
         { timeout: 6000 },
       )
       .toBe('');
-    // корпус, хвост, кроссовка, голова и ухо
-    await expect(page.locator('.hero-react, .hero-part')).toHaveCount(5);
+    // один персонаж — один слой реакции (смена скина не оставляет старых)
+    await expect(page.locator('.hero-react')).toHaveCount(1);
     const after = (await figure.boundingBox())!;
     expect(Math.abs(after.x - before.x)).toBeLessThan(0.5);
     expect(Math.abs(after.y - before.y)).toBeLessThan(0.5);

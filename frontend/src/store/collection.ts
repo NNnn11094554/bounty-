@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { ApiError } from '../api/client';
 import { endpoints } from '../api/endpoints';
 import { catMood } from '../game/catMood';
+import { preloadSkin } from '../game/skins';
 import { tapEngine } from '../game/tapEngine';
 import { useShop, type BuyResult } from './shop';
 
@@ -40,7 +41,7 @@ function errorOf(err: unknown): CollectionError {
   return 'failed';
 }
 
-/** Коллекция игрока: источник истины — сервер (владение, уровень, цена проверяются там). */
+/** Коллекция игрока: источник истины — сервер (владение, уровень, цена и надетый скин хранятся там). */
 export const useCollection = create<CollectionStore>((set, get) => ({
   owned: [],
   status: 'idle',
@@ -69,7 +70,11 @@ export const useCollection = create<CollectionStore>((set, get) => ({
         return result;
       }
       await tapEngine.flush();
-      applyAction(await endpoints.buyCosmetic(id), set);
+      // купленное сразу надевается: картинки нового персонажа грузятся параллельно с запросом
+      const pre = cosmeticById(id)?.kind === 'skin' ? preloadSkin(id) : null;
+      const res = await endpoints.buyCosmetic(id);
+      await pre;
+      applyAction(res, set);
       catMood.emit('purchase');
       return 'ok';
     } catch (err) {
@@ -82,7 +87,11 @@ export const useCollection = create<CollectionStore>((set, get) => ({
     if (get().busy) return 'failed';
     set({ busy: id });
     try {
-      applyAction(await endpoints.equipCosmetic(id), set);
+      // персонаж и его мир грузятся параллельно с запросом: смена проходит без «мигания»
+      const pre = cosmeticById(id)?.kind === 'skin' ? preloadSkin(id) : null;
+      const res = await endpoints.equipCosmetic(id);
+      await pre;
+      applyAction(res, set);
       catMood.emit('equip');
       return 'ok';
     } catch (err) {
