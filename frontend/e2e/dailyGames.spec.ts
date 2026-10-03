@@ -49,8 +49,8 @@ test.describe('Daily combo and cipher', () => {
     await typeMorse(page, ['--', '.', '---', '.--']);
     await expect(page.getByText('Шифр разгадан: +1 000 000!')).toBeVisible();
     await expect(page.getByTestId('cipher-solved')).toBeVisible();
-    // 1 000 000 + достижения: шифр 50 000, заработок 10 000 + 50 000, лиги Silver…Diamond 97 000
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^1\s207\s0\d\d$/);
+    // 1 000 000 + достижения: шифр 50 000, заработок 10 000 + 50 000, лига Silver 2 000 (Gold — от 10 млн)
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^1\s112\s0\d\d$/);
   });
 
   test('cipher mode: taps do not earn coins, exit returns to tapping', async ({ page }) => {

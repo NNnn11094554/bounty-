@@ -20,6 +20,7 @@ export type TxType =
   | 'achievement_reward'
   | 'golden_coin'
   | 'hq_reward'
+  | 'start_bonus'
   | 'shop_purchase'
   | 'shop_refund'
   | 'cosmetic_purchase'

@@ -119,6 +119,46 @@ export async function seedCards(opts: { force?: boolean } = {}): Promise<number>
   return changed;
 }
 
+/**
+ * Версия экономики карточек. Когда цифры в конфиге меняются так, что это должно коснуться уже
+ * работающей игры (цены, доход), версию повышают: при следующем старте сервер один раз перезаписывает
+ * карточки в БД из конфига и пересчитывает доход в час всех игроков по купленным уровням.
+ * 2 — потолок дохода MAX_LEVEL_PROFIT и долгая окупаемость дорогих тиров.
+ */
+export const CARDS_ECONOMY_VERSION = 2;
+const ECONOMY_KEY = 'cardsEconomyVersion';
+
+export async function syncCardEconomy(): Promise<{ users: number } | null> {
+  const saved = await prisma.appSetting.findUnique({ where: { key: ECONOMY_KEY } });
+  const current = typeof saved?.value === 'number' ? saved.value : 1;
+  if (current >= CARDS_ECONOMY_VERSION) return null;
+  await seedCards({ force: true });
+  const catalog = new Map((await getCatalog()).map((c) => [c.id, c]));
+  const owned = await prisma.userCard.findMany({ select: { userId: true, cardId: true, level: true } });
+  const totals = new Map<number, number>();
+  for (const { userId, cardId, level } of owned) {
+    const card = catalog.get(cardId);
+    if (!card || level <= 0) continue;
+    totals.set(userId, (totals.get(userId) ?? 0) + cardTotalProfit(card, level));
+  }
+  // доход в час = сумма прибыли купленных уровней по новым цифрам (у кого карточек нет — 0)
+  await prisma.user.updateMany({ where: { id: { notIn: [...totals.keys()] } }, data: { profitPerHour: 0n } });
+  const entries = [...totals.entries()];
+  for (let i = 0; i < entries.length; i += 500) {
+    await prisma.$transaction(
+      entries
+        .slice(i, i + 500)
+        .map(([id, pph]) => prisma.user.update({ where: { id }, data: { profitPerHour: BigInt(pph) } })),
+    );
+  }
+  await prisma.appSetting.upsert({
+    where: { key: ECONOMY_KEY },
+    create: { key: ECONOMY_KEY, value: CARDS_ECONOMY_VERSION },
+    update: { value: CARDS_ECONOMY_VERSION },
+  });
+  return { users: totals.size };
+}
+
 export function invalidateCatalog(): void {
   cache = null;
 }

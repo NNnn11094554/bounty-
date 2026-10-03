@@ -34,7 +34,7 @@ describe('POST /api/tap', () => {
     const body = res.json<TapResponse>();
     expect(body).toMatchObject({ accepted: 40, duplicate: false });
     expect(body.state.balance).toBe(40);
-    expect(body.state.energy).toBe(960);
+    expect(body.state.energy).toBe(4960);
     expect(body.state.tapSeq).toBe(1);
     expect(body.state.totalTaps).toBe(40);
     const tx = await prisma.transaction.findMany({ where: { type: 'tap' } });

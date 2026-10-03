@@ -1,8 +1,7 @@
-import { headquartersById, hqColors, hqIcon, playerLevel } from '@meowgul/shared';
+import { playerLevel } from '@meowgul/shared';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
-import { CardIcon } from '../../components/cards/CardIcon';
 import { HeroStage, type TapHandler } from '../../components/hero/HeroStage';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
@@ -109,7 +108,6 @@ export function OfficeScreen({
   const progressRef = useRef<HTMLDivElement>(null);
   const pawRef = useRef<HTMLDivElement>(null);
 
-  const hq = headquartersById(player?.profile.hqId);
   const leagues = useMemo(() => config?.leagues ?? [], [config]);
   const leagueLevel = player?.leagueLevel ?? 0;
   const league = leagues.length ? leagueAt(leagues, leagueLevel) : null;
@@ -162,12 +160,7 @@ export function OfficeScreen({
 
   return (
     <div className="flex h-full flex-col" data-testid="office">
-      <header
-        className="flex items-center gap-2.5 px-4 pb-2 pt-3 short:pb-1.5 short:pt-2"
-        style={
-          hq ? { background: `linear-gradient(90deg, ${hqColors(hq)[0]}2e, transparent 75%)` } : undefined
-        }
-      >
+      <header className="flex items-center gap-2.5 px-4 pb-2 pt-3 short:pb-1.5 short:pt-2">
         <motion.button
           type="button"
           whileTap={onOpenProfile ? { scale: 0.97 } : undefined}
@@ -190,11 +183,7 @@ export function OfficeScreen({
                 testId="player-level"
               />
             </span>
-            <span className="block truncate text-xs font-bold text-white/50" data-testid="player-hq">
-              {hq ? t('office.ceoAt', { hq: hq.name[locale] }) : t('office.ceo')}
-            </span>
           </span>
-          {hq && <CardIcon icon={hqIcon(hq)} size={34} />}
         </motion.button>
         {header}
         {onOpenSettings && (

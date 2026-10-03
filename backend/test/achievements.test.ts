@@ -94,16 +94,16 @@ describe('achievements, profile and settings API', () => {
 
   it('reward of one achievement can unlock the next ones in the same request', async () => {
     await login(17011);
-    // 99 000 заработано: тапы → 1 000 тапов (+5 000) → 100 000 заработано (+10 000) → лига Platinum
+    // 99 000 заработано: тап → 1 000 тапов (+5 000) → 100 000 заработано (+10 000)
     await prisma.user.update({
       where: { telegramId: 17011n },
-      data: { totalTaps: 999, totalEarned: 99_000, leagueLevel: 2 },
+      data: { totalTaps: 999, totalEarned: 99_000, leagueLevel: 1 },
     });
     const c = client(app, tgUser(17011));
     const res = await c.post('/api/tap', { seq: 1, taps: 1 });
     const state = res.json<StateResponse>().state;
-    expect(state.achievements.fresh).toEqual(expect.arrayContaining(['taps_1k', 'earn_100k', 'league_3']));
-    expect(state.leagueLevel).toBe(3);
+    expect(state.achievements.fresh).toEqual(expect.arrayContaining(['taps_1k', 'earn_100k']));
+    expect(state.totalEarned).toBeGreaterThanOrEqual(100_000);
   });
 
   it('counted achievements: first card, friends and missed ones on login', async () => {

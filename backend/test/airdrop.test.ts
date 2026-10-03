@@ -62,18 +62,19 @@ describe('airdrop without a wallet; TON wallet hidden behind a flag', () => {
     await seedTasks();
     const c = client(app, tgUser(18003));
     const auth = (await c.post('/api/auth')).json<AuthResponse>();
-    expect(auth.state.achievements.total).toBe(ACHIEVEMENTS.length - 1);
+    // скрыты два: за кошелёк и за штаб-квартиру (штаб-квартир больше нет)
+    expect(auth.state.achievements.total).toBe(ACHIEVEMENTS.length - 2);
     const tasks = (await c.get('/api/tasks')).json<TasksResponse>().tasks;
     expect(tasks.some((t) => t.type === 'CONNECT_WALLET')).toBe(false);
     expect(await prisma.task.findUnique({ where: { id: 'connect_wallet' } })).not.toBeNull();
     // будущая интеграция на месте: payload для ton_proof по-прежнему выдаётся
     expect((await c.get('/api/wallet/proof-payload')).statusCode).toBe(200);
-    // достижение за кошелёк, полученное раньше, не превращает счётчик в «N+1 из N»
+    // скрытые достижения, полученные раньше, не превращают счётчик в «N+1 из N»
     await prisma.user.update({
       where: { telegramId: 18003n },
-      data: { achievementIds: ['wallet_connected'], newAchievementIds: [] },
+      data: { achievementIds: ['wallet_connected', 'hq_chosen'], newAchievementIds: [] },
     });
     const state = (await c.get('/api/state')).json<StateResponse>().state;
-    expect(state.achievements).toMatchObject({ unlocked: 0, total: ACHIEVEMENTS.length - 1 });
+    expect(state.achievements).toMatchObject({ unlocked: 0, total: ACHIEVEMENTS.length - 2 });
   });
 });

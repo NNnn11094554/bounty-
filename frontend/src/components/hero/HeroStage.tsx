@@ -55,22 +55,6 @@ const HINT_KEY = 'meowgul.catHint';
 
 type Reaction = 'happy' | 'excited' | 'special' | 'heart' | 'celebrate' | 'surprised' | 'annoyed' | 'sleepy';
 
-const EMOJI: Record<Reaction, string> = {
-  happy: '😸',
-  excited: '🤩',
-  special: '😻',
-  heart: '😻',
-  celebrate: '🥳',
-  surprised: '🙀',
-  annoyed: '😾',
-  sleepy: '💤',
-};
-const TEXT: Partial<Record<Reaction, Record<Locale, string>>> = {
-  special: { ru: 'Мур!', en: 'Purr!' },
-  celebrate: { ru: 'Новый уровень!', en: 'Level up!' },
-  excited: { ru: 'Ещё!', en: 'More!' },
-};
-
 function hintSeen(): boolean {
   try {
     return localStorage.getItem(HINT_KEY) === 'done';
@@ -98,7 +82,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   const lidsRef = useRef<SVGSVGElement>(null);
   const hitRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<HTMLDivElement>(null);
-  const bubbleRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
@@ -128,8 +111,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     const footEl = footRef.current;
     const hit = hitRef.current;
     const fx = fxRef.current;
-    const bubble = bubbleRef.current;
-    if (!root || !bodyEl || !headEl || !tailEl || !earEl || !footEl || !hit || !fx || !bubble) return;
+    if (!root || !bodyEl || !headEl || !tailEl || !earEl || !footEl || !hit || !fx) return;
     const reduced = () => isReducedMotion();
 
     // ── физика реакций: кадры идут, только пока пружины не успокоились ──
@@ -370,31 +352,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     };
     const wink = () => eyelids([0], 1, 90, 220, 140);
 
-    // ── облачко эмоции у головы ──
-    let bubbleUntil = 0;
-    const showBubble = (reaction: Reaction, force = false) => {
-      const now = performance.now();
-      if (!force && now < bubbleUntil - 900) return;
-      bubbleUntil = now + 1700;
-      const text = TEXT[reaction]?.[localeRef.current];
-      bubble.innerHTML = '';
-      const emoji = document.createElement('span');
-      emoji.className = 'emoji';
-      emoji.textContent = EMOJI[reaction];
-      bubble.appendChild(emoji);
-      if (text) bubble.appendChild(document.createTextNode(text));
-      bubble.dataset.reaction = reaction;
-      bubble.getAnimations().forEach((a) => a.cancel());
-      bubble.animate(
-        [
-          { opacity: 0, transform: 'scale(0.6) translateY(6px)' },
-          { opacity: 1, transform: 'scale(1) translateY(0)', offset: 0.16 },
-          { opacity: 1, transform: 'scale(1)', offset: 0.82 },
-          { opacity: 0, transform: 'scale(0.96) translateY(-6px)' },
-        ],
-        { duration: 1700, easing: 'ease-out' },
-      );
-    };
     let moodTimer = 0;
     const setMood = (next: typeof mood, ms = 0) => {
       mood = next;
@@ -405,7 +362,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
 
     const react = (reaction: Reaction) => {
       const head = headPoint();
-      showBubble(reaction, reaction !== 'happy');
       switch (reaction) {
         case 'happy':
           squint();
@@ -725,7 +681,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       if (!document.hidden && !onPressRef.current) {
         if (quiet > SLEEP_AFTER_MS) {
           if (mood !== 'sleepy') react('sleepy');
-          else showBubble('sleepy', true);
         } else if (quiet > IDLE_QUIET_MS && !reduced()) {
           let i = Math.floor(Math.random() * IDLE.length);
           if (i === lastIdle) i = (i + 1) % IDLE.length;
@@ -805,7 +760,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   }, []);
 
   const head = { x: L.cat.left + L.cat.width * rig.head.x, y: L.cat.top + L.cat.height * rig.head.y };
-  const fontSize = Math.max(13, Math.round(L.cat.height * 0.045));
   return (
     <div
       ref={rootRef}
@@ -833,17 +787,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       >
         <span className="rounded-full bg-black/55 px-3 py-1">{sleepyLabel}</span>
       </div>
-      <div
-        ref={bubbleRef}
-        className="cat-bubble pointer-events-none"
-        style={{
-          fontSize,
-          left: head.x + L.cat.width * 0.18,
-          top: Math.max(0, head.y - L.cat.height * 0.13),
-        }}
-        data-testid="cat-bubble"
-        aria-hidden
-      />
       {!hintSeen() && (
         <div
           ref={hintRef}

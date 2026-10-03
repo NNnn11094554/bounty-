@@ -58,7 +58,6 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
       languageCode: user.languageCode === 'ru' ? 'ru' : 'en',
       isPremium: user.isPremium,
       isAdmin: isAdmin(user),
-      hqId: user.hqId,
       onboardingDone: user.onboardingDone,
       settings: parseSettings(user.settings),
       tutorialsSeen: user.tutorialsSeen,

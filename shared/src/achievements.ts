@@ -137,9 +137,12 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   a('wallet_connected', 'special', 'wallet', 1, 10_000, 'wallet/check/5', ['Кошелёк на месте', 'Wallet ready'], ['Подключи кошелёк TON', 'Connect a TON wallet']),
 ];
 
-/** Достижения, которые сейчас можно получить (кошелёк TON временно скрыт — TON_WALLET_ENABLED). */
+/**
+ * Достижения, которые сейчас можно получить: кошелёк TON временно скрыт (TON_WALLET_ENABLED),
+ * штаб-квартир в игре больше нет.
+ */
 export const VISIBLE_ACHIEVEMENTS: readonly Achievement[] = ACHIEVEMENTS.filter(
-  (a) => TON_WALLET_ENABLED || a.metric !== 'wallet',
+  (a) => (TON_WALLET_ENABLED || a.metric !== 'wallet') && a.metric !== 'hq',
 );
 
 export function achievementById(id: string): Achievement | undefined {

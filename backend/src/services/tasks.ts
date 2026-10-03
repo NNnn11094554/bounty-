@@ -79,6 +79,7 @@ export async function listTasks(user: User, now: Date): Promise<TaskView[]> {
   const walletConnected = Boolean(user.walletAddress);
   return tasks
     .filter((t) => TON_WALLET_ENABLED || t.type !== 'CONNECT_WALLET') // кошелёк временно скрыт
+    .filter((t) => t.type !== 'CHOOSE_HQ') // штаб-квартир в игре больше нет
     .map((t) => taskView(t, byTask.get(t.id) ?? null, { friends, now, walletConnected }));
 }
 

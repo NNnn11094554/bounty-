@@ -1,4 +1,4 @@
-import { formatInt, headquartersById, HQ_REWARD } from '@meowgul/shared';
+import { formatInt, START_BONUS } from '@meowgul/shared';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -6,12 +6,11 @@ import { isReducedMotion } from '../../animations';
 import { Button } from '../../components/Button';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CharacterImage } from '../../components/CharacterImage';
-import { HqPicker } from '../../components/HqPicker';
 import { CoinIcon } from '../../components/icons';
 import { endpoints } from '../../api/endpoints';
 import { runAction } from '../../game/actions';
 import { centerOf, confetti, flyCoins } from '../../game/effects';
-import { useLocale, useT, type MessageKey } from '../../i18n';
+import { useT, type MessageKey } from '../../i18n';
 import { playSound } from '../../lib/sound';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
@@ -113,21 +112,19 @@ const SLIDES: ReadonlyArray<{ title: MessageKey; text: MessageKey; visual: () =>
   { title: 'onboarding.friends.title', text: 'onboarding.friends.text', visual: () => <FriendsVisual /> },
 ];
 
-/** Первый вход: три слайда обучения и выбор штаб-квартиры (+5 000). */
+/** Первый вход: три слайда обучения; «Начать» открывает Офис и начисляет стартовый бонус (+5 000). */
 export function Onboarding() {
   const t = useT();
-  const locale = useLocale();
   const open = useGame((s) => s.onboarding);
   useBlockingOverlay(open);
   const finish = useGame((s) => s.finishOnboarding);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [hqId, setHqId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const onHq = step >= SLIDES.length;
+  const last = step === SLIDES.length - 1;
 
   const go = (next: number) => {
-    if (next < 0 || next > SLIDES.length) return;
+    if (next < 0 || next >= SLIDES.length) return;
     haptic.select();
     setDirection(next > step ? 1 : -1);
     setStep(next);
@@ -137,24 +134,23 @@ export function Onboarding() {
     else if (info.offset.x > 60) go(step - 1);
   };
 
-  const confirm = async (origin: HTMLElement) => {
-    if (!hqId || busy) return;
+  const start = async (origin: HTMLElement) => {
+    if (busy) return;
     setBusy(true);
-    const res = await runAction({ request: () => endpoints.chooseHq(hqId) });
+    const res = await runAction({ request: () => endpoints.completeOnboarding() });
     setBusy(false);
     if (!res) return;
     const point = centerOf(origin);
     haptic.notify('success');
     playSound('reward');
     confetti(point, 120);
-    const name = headquartersById(hqId)?.name[locale] ?? '';
-    toast.reward(t('hq.done', { name }));
+    toast.reward(t('onboarding.done', { reward: formatInt(START_BONUS) }));
     finish();
     // монеты летят в баланс уже открывшегося Офиса
     window.setTimeout(() => flyCoins(point, 16), 350);
   };
 
-  const slide = SLIDES[step];
+  const slide = SLIDES[step]!;
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -167,10 +163,11 @@ export function Onboarding() {
         >
           <div className="mx-auto flex h-full w-full max-w-[520px] flex-col px-5 pb-4">
             <div className="flex h-12 items-center justify-end">
-              {!onHq && (
+              {!last && (
                 <button
                   type="button"
-                  onClick={() => go(SLIDES.length)}
+                  onClick={(e) => void start(e.currentTarget)}
+                  disabled={busy}
                   className="px-2 py-1 text-sm font-extrabold text-white/55"
                   data-testid="onboarding-skip"
                 >
@@ -178,81 +175,52 @@ export function Onboarding() {
                 </button>
               )}
             </div>
-
-            {slide ? (
-              <>
+            <motion.div
+              className="flex min-h-0 flex-1 touch-pan-y flex-col items-center justify-center text-center"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={onDragEnd}
+            >
+              <AnimatePresence mode="wait" custom={direction}>
                 <motion.div
-                  className="flex min-h-0 flex-1 touch-pan-y flex-col items-center justify-center text-center"
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.2}
-                  onDragEnd={onDragEnd}
+                  key={step}
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0, x: direction * 60 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: direction * -60 }}
+                  transition={{ duration: 0.25 }}
+                  data-testid={`onboarding-slide-${step}`}
                 >
-                  <AnimatePresence mode="wait" custom={direction}>
-                    <motion.div
-                      key={step}
-                      className="flex flex-col items-center"
-                      initial={{ opacity: 0, x: direction * 60 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: direction * -60 }}
-                      transition={{ duration: 0.25 }}
-                      data-testid={`onboarding-slide-${step}`}
-                    >
-                      {slide.visual()}
-                      <h1 className="mt-8 text-[28px] font-black leading-tight">{t(slide.title)}</h1>
-                      <p className="mt-3 max-w-[320px] text-[15px] font-semibold leading-snug text-white/65">
-                        {t(slide.text)}
-                      </p>
-                    </motion.div>
-                  </AnimatePresence>
+                  {slide.visual()}
+                  <h1 className="mt-8 text-[28px] font-black leading-tight">{t(slide.title)}</h1>
+                  <p className="mt-3 max-w-[320px] text-[15px] font-semibold leading-snug text-white/65">
+                    {t(slide.text)}
+                  </p>
                 </motion.div>
-                <div className="mb-4 flex justify-center gap-2" aria-hidden>
-                  {SLIDES.map((_, i) => (
-                    <motion.span
-                      key={i}
-                      className="h-2 rounded-full bg-white/25"
-                      animate={{
-                        width: i === step ? 24 : 8,
-                        backgroundColor: i === step ? '#ffc93c' : 'rgba(255,255,255,0.25)',
-                      }}
-                    />
-                  ))}
-                </div>
-                <Button
-                  block
-                  className="h-14 text-base"
-                  onClick={() => go(step + 1)}
-                  data-testid="onboarding-next"
-                >
-                  {step === SLIDES.length - 1 ? t('onboarding.toHq') : t('onboarding.next')}
-                </Button>
-              </>
-            ) : (
-              <motion.div
-                className="flex min-h-0 flex-1 flex-col"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                data-testid="onboarding-hq"
-              >
-                <h1 className="text-center text-[26px] font-black leading-tight">{t('hq.title')}</h1>
-                <p className="mx-auto mt-2 max-w-[320px] text-center text-sm font-semibold leading-snug text-white/65">
-                  {t('hq.text')}
-                </p>
-                <div className="mt-4 min-h-0 flex-1 overflow-y-auto pb-2">
-                  <HqPicker value={hqId} onChange={setHqId} />
-                </div>
-                <Button
-                  block
-                  className="mt-3 h-14 text-base"
-                  disabled={!hqId}
-                  loading={busy}
-                  onClick={(e) => void confirm(e.currentTarget)}
-                  data-testid="hq-confirm"
-                >
-                  {t('hq.confirm', { reward: formatInt(HQ_REWARD) })}
-                </Button>
-              </motion.div>
-            )}
+              </AnimatePresence>
+            </motion.div>
+            <div className="mb-4 flex justify-center gap-2" aria-hidden>
+              {SLIDES.map((_, i) => (
+                <motion.span
+                  key={i}
+                  className="h-2 rounded-full bg-white/25"
+                  animate={{
+                    width: i === step ? 24 : 8,
+                    backgroundColor: i === step ? '#ffc93c' : 'rgba(255,255,255,0.25)',
+                  }}
+                />
+              ))}
+            </div>
+            <Button
+              block
+              className="h-14 text-base"
+              loading={busy}
+              onClick={(e) => (last ? void start(e.currentTarget) : go(step + 1))}
+              data-testid="onboarding-next"
+            >
+              {last ? t('onboarding.start', { reward: formatInt(START_BONUS) }) : t('onboarding.next')}
+            </Button>
           </div>
         </motion.div>
       )}

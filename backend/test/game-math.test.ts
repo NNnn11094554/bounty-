@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { maxEnergy, tapValue } from '../src/game/config/game.js';
-import { leagueForTotal } from '../src/game/config/leagues.js';
+import { LEAGUES, leagueForTotal } from '../src/game/config/leagues.js';
 import { dayKey, nextResetAt, previousDayKey } from '../src/game/dayKey.js';
 import { currentEnergy } from '../src/game/energy.js';
 import { accruePassive } from '../src/game/passive.js';
@@ -17,9 +17,9 @@ const base = {
 
 describe('energy', () => {
   it('max energy grows by 500 per Energy limit level', () => {
-    expect(maxEnergy(1)).toBe(1000);
-    expect(maxEnergy(2)).toBe(1500);
-    expect(maxEnergy(16)).toBe(8500);
+    expect(maxEnergy(1)).toBe(5000);
+    expect(maxEnergy(2)).toBe(5500);
+    expect(maxEnergy(16)).toBe(12500);
     expect(tapValue(1)).toBe(1);
     expect(tapValue(17)).toBe(17);
   });
@@ -43,10 +43,10 @@ describe('energy', () => {
     );
     expect(e3.energy).toBe(103); // за целую секунду ровно 3 единицы, без потерь
     const full = currentEnergy(
-      { energy: 990, energyUpdatedAt: t0, energyLimitLevel: 1 },
+      { energy: 4990, energyUpdatedAt: t0, energyLimitLevel: 1 },
       new Date(t0.getTime() + 60_000),
     );
-    expect(full.energy).toBe(1000);
+    expect(full.energy).toBe(5000);
   });
 });
 
@@ -124,8 +124,12 @@ describe('leagues and day keys', () => {
     expect(leagueForTotal(0)).toBe(0);
     expect(leagueForTotal(4_999)).toBe(0);
     expect(leagueForTotal(5_000)).toBe(1);
-    expect(leagueForTotal(1_000_000)).toBe(4);
-    expect(leagueForTotal(5_000_000_000)).toBe(9);
+    expect(leagueForTotal(LEAGUES[4]!.threshold)).toBe(4);
+    expect(leagueForTotal(LEAGUES[4]!.threshold - 1)).toBe(3);
+    expect(leagueForTotal(LEAGUES[9]!.threshold - 1)).toBe(8);
+    expect(leagueForTotal(LEAGUES[9]!.threshold)).toBe(9);
+    // высшая лига — долгая цель: ~3 месяца плотной игры
+    expect(LEAGUES[9]!.threshold).toBe(200_000_000_000);
   });
   it('resets the game day at 16:00 UTC', () => {
     expect(dayKey(new Date('2026-10-01T15:59:59Z'), 16)).toBe('2026-09-30');

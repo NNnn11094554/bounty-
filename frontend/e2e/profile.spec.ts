@@ -52,11 +52,11 @@ test.describe('Profile, achievements and settings', () => {
     expect(user.newAchievementIds).toEqual([]);
   });
 
-  test('settings: language, sound, animations and headquarters are saved', async ({ page }) => {
+  test('settings: language, sound and animations are saved; no headquarters', async ({ page }) => {
     const uid = 700001202;
     await page.goto(`/?uid=${uid}&name=Настройщик`);
     await expect(page.getByTestId('office')).toBeVisible();
-    // первая штаб-квартира и её достижения поднимут в Silver — сцену лиги проверяет leagues.spec
+    // сцену новой лиги проверяет leagues.spec
     await markLeagueSeen(page, uid, 1);
     await page.getByTestId('open-settings').click();
     const settings = page.getByTestId('settings');
@@ -71,18 +71,16 @@ test.describe('Profile, achievements and settings', () => {
     await expect(page.getByTestId('settings-sound')).toHaveAttribute('aria-checked', 'false');
     await page.getByTestId('settings-animations-reduced').click();
 
-    await page.getByTestId('settings-hq').click();
-    await page.getByTestId('hq-moon_harbor').click();
-    await page.getByTestId('hq-save').click();
-    await expect(page.getByText('Headquarters: Moon Harbor')).toBeVisible();
+    await expect(page.getByTestId('settings-hq')).toHaveCount(0);
+    await expect(settings).not.toContainText('Headquarters');
 
     await expect
       .poll(async () => (await db.user.findUniqueOrThrow({ where: { telegramId: BigInt(uid) } })).settings)
       .toMatchObject({ language: 'en', sound: false, animations: 'reduced' });
 
-    // после перезахода — всё на английском, штаб-квартира сохранена
+    // после перезахода — всё на английском
     await page.reload();
-    await expect(page.getByTestId('player-hq')).toHaveText('CEO · Moon Harbor');
+    await expect(page.getByTestId('office')).toBeVisible();
     await page.getByTestId('open-settings').click();
     await expect(page.getByTestId('settings-sound')).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('settings-animations-reduced')).toHaveAttribute('aria-checked', 'true');

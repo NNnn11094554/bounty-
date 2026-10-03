@@ -30,12 +30,16 @@ describe('cards config', () => {
     expect(report.errors).toEqual([]);
   });
 
-  it('payback grows from ~5 h to 100+ h by level 10', () => {
+  it('payback grows from ~5 h to 100+ h by level 10; expensive tiers pay back longer', () => {
     for (const card of CARDS) {
       expect(levelPayback(card, 1)).toBeGreaterThanOrEqual(3);
-      expect(levelPayback(card, 1)).toBeLessThanOrEqual(12);
+      expect(levelPayback(card, 1)).toBeLessThanOrEqual(250);
       expect(levelPayback(card, Math.min(10, card.maxLevel))).toBeGreaterThanOrEqual(100);
     }
+    // ни один уровень ни одной карточки не даёт больше 2 млн/ч (раньше доходило до 30 млн)
+    for (const card of CARDS)
+      for (let level = 1; level <= card.maxLevel; level++)
+        expect(cardLevelProfit(card, level)).toBeLessThanOrEqual(2_000_000);
   });
 
   it('uses the documented formulas', () => {

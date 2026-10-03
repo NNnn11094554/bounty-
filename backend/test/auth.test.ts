@@ -30,8 +30,8 @@ describe('POST /api/auth', () => {
     });
     expect(body.state).toMatchObject({
       balance: 0,
-      energy: 1000,
-      maxEnergy: 1000,
+      energy: 5000,
+      maxEnergy: 5000,
       tapValue: 1,
       leagueLevel: 0,
     });

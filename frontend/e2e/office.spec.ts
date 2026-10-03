@@ -9,14 +9,14 @@ test.describe('Office', () => {
   test('tapping earns coins, spends energy and survives a reload', async ({ page }) => {
     await page.goto('/?uid=700000201&name=Тапер');
     await expect(page.getByTestId('office')).toBeVisible();
-    await expect(page.getByTestId('energy-value')).toHaveText('1000 / 1000');
+    await expect(page.getByTestId('energy-value')).toHaveText('5000 / 5000');
 
     const box = (await page.getByTestId('cat-hit').boundingBox())!;
     for (let i = 0; i < 15; i++) {
       await page.mouse.click(box.x + box.width / 2 + (i % 5) * 6, box.y + box.height / 2 - (i % 3) * 6);
     }
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '15');
-    await expect(page.getByTestId('energy-value')).toHaveText(/^98[5-9] \/ 1000$/);
+    await expect(page.getByTestId('energy-value')).toHaveText(/^498[5-9] \/ 5000$/);
 
     // ждём синхронизацию пачки и перезагружаем — монеты сохранены на сервере
     await page.waitForResponse((r) => r.url().includes('/api/tap') && r.ok(), { timeout: 8000 });
@@ -94,7 +94,7 @@ test.describe('Office', () => {
       );
     }
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '100');
-    await expect(page.getByTestId('energy-value')).toHaveText(/^9[0-9]{2} \/ 1000$/);
+    await expect(page.getByTestId('energy-value')).toHaveText(/^49[0-9]{2} \/ 5000$/);
     // всплывающие «+1», кольца и частицы берутся из пула — DOM не растёт от тапов
     const nodesAfter = await cat.evaluate((el) => el.querySelectorAll('*').length);
     expect(nodesAfter).toBeLessThanOrEqual(nodesBefore + 4);

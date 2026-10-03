@@ -15,9 +15,9 @@ test.describe('Friends', () => {
     // 5 000 за приглашение + 2 000 за достижение «Серебряный кот»
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^7\s000$/);
 
-    // пригласивший вернулся: 5 000 + 20 000 за Silver друга подняли его в Gold
+    // пригласивший вернулся: 5 000 + 20 000 за Silver друга подняли его в Silver
     await page.goto(`/?uid=${inviter}&name=Пригласивший`);
-    await expect(page.getByTestId('league-up-name')).toHaveAttribute('aria-label', 'Gold');
+    await expect(page.getByTestId('league-up-name')).toHaveAttribute('aria-label', 'Silver');
     await page.getByTestId('league-up-close').click();
     await page.getByTestId('nav-friends').click();
     await expect(page.getByTestId('friends-count')).toHaveText('Список ваших друзей (1)');

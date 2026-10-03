@@ -128,7 +128,6 @@ export interface AdminPlayerDetails extends AdminPlayerRow {
   referrer: { id: number; name: string } | null;
   walletAddress: string | null;
   achievements: number;
-  hqId: string | null;
   /** покупки в магазине за Stars (последние 20) */
   purchases: AdminPurchase[];
   transactions: AdminTransaction[];

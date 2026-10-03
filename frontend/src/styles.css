@@ -766,37 +766,6 @@ textarea {
   opacity: 0;
 }
 
-/* Облачко эмоции у головы кота (не на лице); место задаёт сцена */
-.cat-bubble {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px 4px 8px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #14101f;
-  font-weight: 900;
-  white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  transform-origin: 0% 100%;
-  will-change: transform, opacity;
-}
-.cat-bubble::after {
-  content: '';
-  position: absolute;
-  left: 10px;
-  bottom: -6px;
-  border: 7px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.96);
-  border-bottom: 0;
-}
-.cat-bubble .emoji {
-  font-size: 1.35em;
-  line-height: 1;
-}
-
 /* Упрощённые анимации: кот неподвижен, без парящих частиц */
 [data-motion='reduced'] .hero-pose,
 [data-motion='reduced'] .hero-breath,
