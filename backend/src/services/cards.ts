@@ -12,7 +12,7 @@ import {
   type CardConfig,
 } from '../game/config/cards.js';
 import { LEAGUES } from '../game/config/leagues.js';
-import { LEGACY_CARD_IDS } from '../game/config/legacyCards.js';
+import { LEGACY_CARD_ID } from '../game/config/legacyCards.js';
 import { dayKey } from '../game/dayKey.js';
 import { prisma } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
@@ -142,13 +142,15 @@ export const CARDS_ECONOMY_VERSION = 4;
 const ECONOMY_KEY = 'cardsEconomyVersion';
 
 /**
- * Убрать карточки первой экономики (LEGACY_CARD_IDS): каждому владельцу — доход по ним до этой минуты
+ * Убрать карточки первой экономики (LEGACY_CARD_ID, кроме активов текущего конфига): каждому владельцу —
+ * доход по ним до этой минуты
  * (как при любой операции) и все монеты, потраченные на их уровни, обратно на баланс (не в «всего
  * заработано» — лига от возврата не растёт). Затем карточки удаляются, а комбо сегодняшнего и будущих
  * дней, где они были, выбирается заново. Повторный запуск ничего не делает.
  */
 export async function retireLegacyCards(now = new Date()): Promise<{ users: number; refunded: number }> {
-  const rows = await prisma.card.findMany({ where: { id: { in: [...LEGACY_CARD_IDS] } } });
+  const current = new Set(CARDS.map((c) => c.id));
+  const rows = (await prisma.card.findMany()).filter((r) => LEGACY_CARD_ID.test(r.id) && !current.has(r.id));
   if (rows.length === 0) return { users: 0, refunded: 0 };
   const legacy = new Map(rows.map((r) => [r.id, cardFromRow(r)]));
   const ids = [...legacy.keys()];

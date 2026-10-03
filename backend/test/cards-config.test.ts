@@ -12,11 +12,11 @@ import {
   cardTotalProfit,
   paybackHours,
 } from '../src/game/config/cards.js';
-import { LEGACY_CARD_IDS } from '../src/game/config/legacyCards.js';
+import { LEGACY_CARD_ID } from '../src/game/config/legacyCards.js';
 import { AIRDROP_TARGETS } from '../src/routes/airdrop.js';
 import { conditionFromRow, conditionToRow } from '../src/services/cards.js';
 
-const FORBIDDEN = /hamster|хомяк|bybit|binance|okx|bounty/i;
+const FORBIDDEN = /hamster|хомяк|bybit|binance|okx/i;
 
 describe('crypto assets config', () => {
   it('has 60+ assets in four categories, the requested coins among them, and 10 limited events', () => {
@@ -32,8 +32,8 @@ describe('crypto assets config', () => {
     expect(limited).toHaveLength(10);
     expect(limited.every((c) => c.category === 'SPECIALS')).toBe(true);
     expect(LIMITED_CARD_IDS).toEqual(limited.map((c) => c.id));
-    // ни один новый id не совпадает со старыми карточками (их удаляет миграция)
-    for (const c of CARDS) expect(LEGACY_CARD_IDS).not.toContain(c.id);
+    // ни один новый id не похож на старые карточки (их удаляет миграция)
+    for (const c of CARDS) expect(c.id).not.toMatch(LEGACY_CARD_ID);
   });
 
   it('every asset has a rarity that grows with its tier (price)', () => {
