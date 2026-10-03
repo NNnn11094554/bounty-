@@ -44,7 +44,7 @@ HIRES = {
     'astro_cat': (1030, (639, 734, 884, 1006)),
 }
 # расширение сцены по краям (доли исходной картинки): в игре сцена выше и шире, чем картинка персонажа
-SCENE_PAD = {'left': 0.3, 'right': 0.3, 'top': 0.45, 'bottom': 0.35}
+SCENE_PAD = {'left': 0.4, 'right': 0.4, 'top': 0.9, 'bottom': 0.5}
 # сколько пикселей вокруг силуэта тоже дорисовать (полупрозрачный край персонажа)
 HOLE_GROW = 9
 # доуточнение маски, где нейросеть пропустила часть персонажа (светящийся хвост на тёмном фоне):
@@ -247,7 +247,13 @@ def build(i):
     # у карточек высокого разрешения рамка толще: срезается 18 px, ещё 8 px под ней дорисовываются
     frame = corner_mask(h, w, 64 if hires else 60, strip=26 if hires else 4)
     hole = cv2.dilate(silhouette, np.ones((2 * HOLE_GROW + 1, 2 * HOLE_GROW + 1), np.uint8)) | inset | frame
-    filled = lama(up, hole)
+    # дорисовка — дольше всего: результат кэшируется (сбросить — удалить .work/<id>/filled.png)
+    filled_path = os.path.join(out, 'filled.png')
+    if os.path.exists(filled_path) and os.path.getmtime(filled_path) > os.path.getmtime(mask_path):
+        filled = cv2.imread(filled_path)
+    else:
+        filled = lama(up, hole)
+        cv2.imwrite(filled_path, filled)
     # у карточек высокого разрешения по краю — рамка со скруглёнными углами: в фон и превью она не идёт
     edge = 18 if hires else 0
     trim = lambda im: im[edge:, edge:w - edge] if edge else im
@@ -262,8 +268,10 @@ def build(i):
     scene_char = [(bx0 - edge + pl) / SW, (by0 - edge + pt) / SH, cw / SW, ch / SH]
 
     # карточка коллекции: исходная картинка, мини-превью дорисовано
-    card = lama(up, (cv2.dilate(inset, np.ones((15, 15), np.uint8)) & ~((m > 0.5) * 255).astype(np.uint8)) | frame)
-    cv2.imwrite(os.path.join(out, 'preview.png'), trim(card))
+    card_path = os.path.join(out, 'preview.png')
+    if not (os.path.exists(card_path) and os.path.getmtime(card_path) > os.path.getmtime(mask_path)):
+        card = lama(up, (cv2.dilate(inset, np.ones((15, 15), np.uint8)) & ~((m > 0.5) * 255).astype(np.uint8)) | frame)
+        cv2.imwrite(card_path, trim(card))
 
     # портрет: голова и плечи на фоне сцены
     size = int(min(ch * 0.46, cw * 1.0))
