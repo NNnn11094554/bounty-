@@ -129,7 +129,7 @@ describe('leagues and day keys', () => {
     expect(leagueForTotal(LEAGUES[9]!.threshold - 1)).toBe(8);
     expect(leagueForTotal(LEAGUES[9]!.threshold)).toBe(9);
     // высшая лига — долгая цель: ~3 месяца плотной игры
-    expect(LEAGUES[9]!.threshold).toBe(200_000_000_000);
+    expect(LEAGUES[9]!.threshold).toBe(700_000_000_000);
   });
   it('resets the game day at 16:00 UTC', () => {
     expect(dayKey(new Date('2026-10-01T15:59:59Z'), 16)).toBe('2026-09-30');

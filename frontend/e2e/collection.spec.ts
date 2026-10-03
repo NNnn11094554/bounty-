@@ -5,7 +5,7 @@ import { db, markLeagueSeen, setPlayer } from './db';
 async function player(page: Page, uid: number, totalEarned: number, balance: number) {
   await page.goto(`/?uid=${uid}&name=Коллекционер`);
   await expect(page.getByTestId('office')).toBeVisible();
-  await setPlayer(uid, { totalEarned, balance, leagueLevel: totalEarned >= 25_000 ? 2 : 1 });
+  await setPlayer(uid, { totalEarned, balance, leagueLevel: totalEarned >= 1_000_000 ? 2 : 1 });
   await markLeagueSeen(page, uid, 9);
   await page.reload();
   await expect(page.getByTestId('office')).toBeVisible();
@@ -17,7 +17,7 @@ test.describe('Skins and collection', () => {
     page,
   }) => {
     const uid = 700001601;
-    const user = await player(page, uid, 23_000, 20_000); // уровень 3
+    const user = await player(page, uid, 52_000, 20_000); // уровень 3
     await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'black_crown');
 
     await page.getByTestId('nav-shop').click();
@@ -66,7 +66,7 @@ test.describe('Skins and collection', () => {
 
   test('locked skins cannot be bought; a new level unlocks them', async ({ page }) => {
     const uid = 700001602;
-    const user = await player(page, uid, 23_000, 5_000_000); // уровень 3, денег много
+    const user = await player(page, uid, 52_000, 5_000_000); // уровень 3, денег много
     await page.getByTestId('nav-shop').click();
     await page.getByTestId('cosmetic-cyber').click();
     await expect(page.getByTestId('cosmetic-locked')).toBeDisabled();
@@ -75,7 +75,7 @@ test.describe('Skins and collection', () => {
 
     expect(await db.userCosmetic.count({ where: { userId: user.id } })).toBe(0);
 
-    await setPlayer(uid, { totalEarned: 211_100, leagueLevel: 3 }); // уровень 5
+    await setPlayer(uid, { totalEarned: 350_000, leagueLevel: 1 }); // уровень 5
     await page.reload();
     await page.getByTestId('nav-shop').click();
     await expect(page.getByTestId('cosmetic-cyber')).toHaveAttribute('data-state', 'available');
@@ -86,7 +86,7 @@ test.describe('Skins and collection', () => {
   });
 
   test('not enough coins: the buy button is disabled', async ({ page }) => {
-    await player(page, 700001603, 23_000, 100);
+    await player(page, 700001603, 52_000, 100);
     await page.getByTestId('nav-shop').click();
     await page.getByTestId('cosmetic-pink_angel').click();
     await expect(page.getByTestId('cosmetic-buy')).toBeDisabled();
@@ -112,7 +112,7 @@ test.describe('Skins and collection', () => {
 
   test('tap effects tab: buy and equip an effect', async ({ page }) => {
     const uid = 700001605;
-    const user = await player(page, uid, 23_000, 10_000); // уровень 3 ≥ 2 для «Сердечек»
+    const user = await player(page, uid, 52_000, 10_000); // уровень 3 ≥ 2 для «Сердечек»
     await page.getByTestId('nav-shop').click();
     await page.getByTestId('shop-tabs-cosmetics').click();
     await expect(page.getByTestId('shop-effects')).toBeVisible();
@@ -126,7 +126,7 @@ test.describe('Skins and collection', () => {
 
   test('server errors: the purchase is not shown as done, loading error offers a retry', async ({ page }) => {
     const uid = 700001606;
-    const user = await player(page, uid, 23_000, 20_000);
+    const user = await player(page, uid, 52_000, 20_000);
     await page.route('**/api/collection/*/buy', (route) =>
       route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"INTERNAL"}' }),
     );

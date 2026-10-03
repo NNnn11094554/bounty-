@@ -40,12 +40,14 @@ describe('collection: skins and tap effects', () => {
   }
   const code = (res: { json: () => unknown }) => (res.json() as { error: { code: string } }).error.code;
 
-  it('level formula: thresholds grow, level 3 ≈ 23k, 30 ≈ 120M', () => {
+  it('level formula: long progression — level 2 at 20k, 40 at 450B, 50 at 6T', () => {
     expect(playerLevel(0).level).toBe(1);
     expect(playerLevel(levelThreshold(3)).level).toBe(3);
     expect(playerLevel(levelThreshold(3) - 1).level).toBe(2);
-    expect(levelThreshold(3)).toBe(23_000);
-    expect(levelThreshold(30)).toBeGreaterThan(100_000_000);
+    expect(levelThreshold(2)).toBe(20_000);
+    expect(levelThreshold(40)).toBe(450_000_000_000);
+    expect(levelThreshold(50)).toBe(6_000_000_000_000);
+    for (let l = 2; l < 50; l++) expect(levelThreshold(l + 1)).toBeGreaterThan(levelThreshold(l));
     expect(playerLevel(1e15).level).toBe(50);
   });
 

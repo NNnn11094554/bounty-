@@ -13,7 +13,7 @@ const yesterday = previousDayKey(today);
 
 describe('daily reward math', () => {
   it('rewards follow the spec', () => {
-    expect(REWARDS.daily).toEqual([500, 1000, 2500, 5000, 15000, 25000, 100000, 500000, 1000000, 5000000]);
+    expect(REWARDS.daily).toEqual([500, 1000, 2000, 3500, 5000, 7500, 10000, 15000, 25000, 50000]);
   });
 
   it('starts from day 1', () => {
@@ -30,7 +30,7 @@ describe('daily reward math', () => {
   it('continues the streak from yesterday and wraps after day 10', () => {
     expect(
       dailyRewardStatus({ dailyRewardDay: 4, dailyRewardDayKey: yesterday, dailyStreak: 4 }, now),
-    ).toMatchObject({ day: 5, streak: 4, reward: 15_000, streakBroken: false });
+    ).toMatchObject({ day: 5, streak: 4, reward: 5_000, streakBroken: false });
     expect(
       dailyRewardStatus({ dailyRewardDay: 10, dailyRewardDayKey: yesterday, dailyStreak: 10 }, now),
     ).toMatchObject({ day: 1, streak: 10, reward: 500 });
@@ -48,7 +48,7 @@ describe('daily reward math', () => {
   it('reports today as claimed', () => {
     expect(
       dailyRewardStatus({ dailyRewardDay: 3, dailyRewardDayKey: today, dailyStreak: 3 }, now),
-    ).toMatchObject({ day: 3, claimedToday: true, reward: 2_500 });
+    ).toMatchObject({ day: 3, claimedToday: true, reward: 2_000 });
   });
 
   it('the day switches at the reset hour', () => {
@@ -94,7 +94,7 @@ describe('POST /api/daily-reward/claim', () => {
     const state = (await c.get('/api/state')).json<StateResponse>().state;
     expect(state.daily).toMatchObject({ day: 8, claimedToday: false, streakBroken: false });
     const day8 = (await c.post('/api/daily-reward/claim')).json<DailyClaimResponse>();
-    expect(day8).toMatchObject({ reward: 500_000, day: 8 });
+    expect(day8).toMatchObject({ reward: 15_000, day: 8 });
     const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     expect(after.dailyStreak).toBe(8);
     expect(after.bestDailyStreak).toBe(8);

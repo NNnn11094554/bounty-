@@ -22,7 +22,7 @@ async function typeMorse(page: Page, codes: string[]): Promise<void> {
 }
 
 test.describe('Daily combo and cipher', () => {
-  test('cipher: enter MEOW in Morse code and get 1 000 000', async ({ page }) => {
+  test('cipher: enter MEOW in Morse code and get an hour of income (min 10 000)', async ({ page }) => {
     const day = gameDay();
     await db.dailyCipher.upsert({
       where: { dayKey: day },
@@ -31,7 +31,7 @@ test.describe('Daily combo and cipher', () => {
     });
     const uid = 700000801;
     await page.goto(`/?uid=${uid}&name=Шифровальщик`);
-    await expect(page.getByTestId('cipher-banner')).toContainText('+1 000 000');
+    await expect(page.getByTestId('cipher-banner')).toContainText('+10 000');
     await markLeagueSeen(page, uid, 9);
     await page.getByTestId('cipher-enter').click();
     await expect(page.getByTestId('cipher-hint')).toHaveText('Главное слово кота');
@@ -47,10 +47,10 @@ test.describe('Daily combo and cipher', () => {
     await expect(page.getByTestId('morse-flash')).toHaveText('Такой буквы нет');
 
     await typeMorse(page, ['--', '.', '---', '.--']);
-    await expect(page.getByText('Шифр разгадан: +1 000 000!')).toBeVisible();
+    await expect(page.getByText('Шифр разгадан: +10 000!')).toBeVisible();
     await expect(page.getByTestId('cipher-solved')).toBeVisible();
-    // 1 000 000 + достижения: шифр 50 000, заработок 10 000 + 50 000, лига Silver 2 000 (Gold — от 10 млн)
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^1\s112\s0\d\d$/);
+    // 10 000 (час дохода, но не меньше 10 000) + достижения: шифр 50 000, лига Silver 2 000
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^62\s0\d\d$/);
   });
 
   test('cipher mode: taps do not earn coins, exit returns to tapping', async ({ page }) => {
@@ -90,7 +90,9 @@ test.describe('Daily combo and cipher', () => {
     await expect(page.getByTestId('cipher-letters')).toContainText('T');
   });
 
-  test('combo: upgrading the three cards reveals slots and pays 5 000 000', async ({ page }) => {
+  test('combo: upgrading the three cards reveals slots and pays 3 hours of income (min 50 000)', async ({
+    page,
+  }) => {
     const day = gameDay();
     const cardIds = ['mk_p2p', 'pr_blog', 'lg_aml'];
     await db.dailyCombo.upsert({
@@ -105,7 +107,7 @@ test.describe('Daily combo and cipher', () => {
     await markLeagueSeen(page, uid, 9);
     await page.reload();
     await page.getByTestId('open-mine').click();
-    await expect(page.getByTestId('combo')).toContainText('+5 000 000');
+    await expect(page.getByTestId('combo')).toContainText('+50 000');
     await expect(page.getByTestId('combo-slot-0')).toHaveText('?');
 
     const buy = async (category: string, id: string) => {
@@ -119,7 +121,7 @@ test.describe('Daily combo and cipher', () => {
     await expect(page.getByText('Карточка из комбо дня!')).toBeVisible();
     await buy('PR_TEAM', 'pr_blog');
     await buy('LEGAL', 'lg_aml');
-    await expect(page.getByTestId('combo-celebration')).toContainText('+5 000 000');
+    await expect(page.getByTestId('combo-celebration')).toContainText('+50 000');
     await expect(page.getByTestId('combo-done')).toBeVisible();
   });
 });

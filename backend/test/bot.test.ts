@@ -117,7 +117,7 @@ describe('bot', () => {
   it('welcome escapes the player name for HTML', () => {
     const text = BOT_TEXTS.ru.welcome('<Кот & Ко>');
     expect(text).toContain('<b>Мяу, &lt;Кот &amp; Ко&gt;!</b>');
-    expect(BOT_TEXTS.ru.welcome('Мурка')).toMatch(/6\s000\s000/);
+    expect(BOT_TEXTS.ru.welcome('Мурка')).toMatch(/4 часов дохода/);
   });
 
   it('webhook secret uses only characters Telegram accepts', () => {
