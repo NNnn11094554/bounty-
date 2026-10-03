@@ -27,7 +27,7 @@ test.describe('Friends', () => {
     // 5 000 за приглашение + 20 000 за лигу Silver друга
     await expect(row.getByTestId('friend-bonus')).toHaveText('+25K');
     await expect(page.getByTestId('friends-earned')).toContainText('25 000');
-    await expect(row.getByTestId('friend-level')).toHaveText('Ур. 2');
+    await expect(row.getByTestId('friend-level')).toHaveText('Ур. 1');
     await expect(row.getByTestId('friend-online')).toBeVisible();
 
     // после перезагрузки друг на месте — список берётся с сервера

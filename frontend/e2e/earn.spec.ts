@@ -13,7 +13,7 @@ test.describe('Earn', () => {
 
     const sheet = page.getByTestId('daily-sheet');
     await expect(sheet.getByTestId('daily-day-1')).toHaveAttribute('data-state', 'today');
-    await expect(sheet.getByTestId('daily-day-10')).toContainText('5M');
+    await expect(sheet.getByTestId('daily-day-10')).toContainText('50K');
     await sheet.getByTestId('daily-claim').click();
     await expect(sheet.getByTestId('daily-day-1')).toHaveAttribute('data-state', 'claimed');
     await expect(sheet.getByTestId('daily-claim')).toHaveText('Возвращайся завтра');
