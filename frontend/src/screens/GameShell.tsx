@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { lazy, startTransition, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
-import { DURATION, isReducedMotion } from '../animations';
+import { DURATION, EASING, isReducedMotion } from '../animations';
 import { AchievementPopup } from '../components/AchievementPopup';
 import { BottomNav } from '../components/BottomNav';
 import { ComboCelebration } from '../components/ComboCelebration';
@@ -38,8 +38,6 @@ const SettingsScreen = lazy(() =>
   import('./settings/SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
 );
 
-const TAB_ORDER: readonly Tab[] = ['office', 'friends', 'shop', 'airdrop', 'collection', 'profile'];
-
 function SubScreenView({ screen }: { screen: SubScreen }) {
   switch (screen) {
     case 'mine':
@@ -73,15 +71,12 @@ function TabView({ tab, open }: { tab: Tab; open: (screen: SubScreen) => void })
   }
 }
 
-/**
- * Сдвиг строкой transform, а не x: так framer-motion отдаёт анимацию браузеру (WAAPI) и она идёт на видеокарте
- * с частотой экрана, даже пока основной поток рисует новую вкладку.
- */
-const shift = (px: number) => `translate3d(${px}px, 0, 0)`;
+/** Кривая framer-motion из строки cubic-bezier(...) — те же токены, что в CSS. */
+const bezier = (css: string) => css.match(/[\d.]+/g)!.map(Number) as [number, number, number, number];
 
 /**
- * Содержимое вкладки рисуется кадром позже и прерываемо (startTransition): сначала стартует анимация
- * перехода, и пока React строит длинный список карточек, она не замирает.
+ * Содержимое экрана рисуется кадром позже и прерываемо (startTransition): переключатель внизу и выезд
+ * панели откликаются сразу, а длинный список строится, не задерживая касание.
  */
 function Deferred({ instant, children }: { instant: boolean; children: ReactNode }) {
   const [ready, setReady] = useState(instant);
@@ -104,16 +99,12 @@ export function GameShell() {
   useDayRollover();
   useLevelUp();
   const reduced = isReducedMotion();
-  const slide = reduced ? 0 : 48;
-
-  // направление слайда — по порядку вкладок в меню
-  const prevTab = useRef(tab);
-  // первая вкладка после входа появляется сразу, без отложенной отрисовки
-  const firstTab = useRef(tab);
-  const direction = TAB_ORDER.indexOf(tab) >= TAB_ORDER.indexOf(prevTab.current) ? 1 : -1;
+  // вкладка сразу после входа появляется без задержки и проявления; следующие переключения — с ними
+  const entered = useRef(false);
   useEffect(() => {
-    prevTab.current = tab;
-  }, [tab]);
+    entered.current = true;
+  }, []);
+  const instant = reduced || !entered.current;
 
   // экраны вкладок подгружаются заранее, пока игрок тапает
   useEffect(() => {
@@ -130,38 +121,41 @@ export function GameShell() {
   return (
     <div className="pt-safe pb-safe relative mx-auto flex h-full max-w-[520px] flex-col overflow-hidden">
       <main className="relative min-h-0 flex-1">
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
-          <motion.div
-            key={tab}
-            custom={direction}
-            className="absolute inset-0 will-change-transform"
-            variants={{
-              enter: (d: number) => ({ opacity: 0, transform: shift(d * slide) }),
-              center: { opacity: 1, transform: shift(0) },
-              exit: (d: number) => ({ opacity: 0, transform: shift(-d * slide) }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: DURATION.tabSwitch / 1000, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Suspense fallback={null}>
-              <Deferred instant={reduced || tab === firstTab.current}>
+        {/*
+          Вкладки переключают десятки раз за игру: старая исчезает сразу, новая проявляется за 150 мс только
+          прозрачностью (CSS, на видеокарте). Два экрана никогда не видны одновременно — нет «двойных» кадров.
+        */}
+        <div key={tab} className="absolute inset-0" data-tab={tab}>
+          <Suspense fallback={null}>
+            <Deferred instant={instant}>
+              <div className={instant ? 'h-full' : 'screen-in h-full'}>
                 <TabView tab={tab} open={push} />
-              </Deferred>
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+              </div>
+            </Deferred>
+          </Suspense>
+        </div>
+        {/* экран поверх вкладки — непрозрачная панель въезжает справа и уезжает туда же */}
         <AnimatePresence>
           {top && (
             <motion.div
               key={top}
               className="bg-space absolute inset-0 z-20 will-change-transform"
               data-subscreen={top}
-              initial={{ opacity: 0, transform: shift(slide) }}
-              animate={{ opacity: 1, transform: shift(0) }}
-              exit={{ opacity: 0, transform: shift(slide) }}
-              transition={{ duration: DURATION.tabSwitch / 1000, ease: [0.22, 1, 0.36, 1] }}
+              initial={reduced ? { opacity: 0 } : { transform: 'translate3d(100%, 0, 0)' }}
+              animate={reduced ? { opacity: 1 } : { transform: 'translate3d(0%, 0, 0)' }}
+              exit={
+                reduced
+                  ? { opacity: 0, transition: { duration: DURATION.tabFade / 1000 } }
+                  : {
+                      transform: 'translate3d(100%, 0, 0)',
+                      transition: { duration: DURATION.screenOut / 1000, ease: bezier(EASING.drawer) },
+                    }
+              }
+              transition={
+                reduced
+                  ? { duration: DURATION.tabFade / 1000 }
+                  : { duration: DURATION.screenIn / 1000, ease: bezier(EASING.drawer) }
+              }
             >
               <Suspense fallback={null}>
                 <Deferred instant={reduced}>

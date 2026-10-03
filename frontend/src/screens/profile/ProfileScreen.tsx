@@ -147,14 +147,9 @@ export function ProfileScreen() {
 
       <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('profile.stats')}</h2>
       <div className="grid grid-cols-2 gap-2" data-testid="profile-stats">
-        {STATS.map((s, i) => (
-          <motion.div
-            key={s.key}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-            className="rounded-2xl border border-line bg-night-700/80 px-3 py-2.5 shadow-card"
-          >
+        {/* профиль открывают часто: плитки без каскада появления — экран и так проявляется целиком */}
+        {STATS.map((s) => (
+          <div key={s.key} className="rounded-2xl border border-line bg-night-700/80 px-3 py-2.5 shadow-card">
             <p className="truncate text-xs font-bold text-white/50">{t(s.key)}</p>
             {data ? (
               <p className="mt-0.5 text-lg font-black tabular" data-testid={`stat-${s.field}`}>
@@ -163,7 +158,7 @@ export function ProfileScreen() {
             ) : (
               <div className="skeleton mt-1.5 h-5 w-16 rounded-lg" />
             )}
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -201,12 +196,12 @@ export function ProfileScreen() {
                 {items.map((a) => {
                   const done = Boolean(unlockedAt.get(a.id));
                   return (
-                    <motion.button
+                    // нажатие — CSS (.press): десятки кнопок без отдельной JS-анимации на каждую
+                    <button
                       key={a.id}
                       type="button"
-                      whileTap={{ scale: 0.94 }}
                       onClick={() => setOpen(a)}
-                      className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl p-1.5 ${
+                      className={`press flex min-w-0 flex-col items-center gap-1 rounded-2xl p-1.5 ${
                         done ? 'bg-gold/10' : ''
                       }`}
                       data-testid={`achievement-${a.id}`}
@@ -224,7 +219,7 @@ export function ProfileScreen() {
                       >
                         {a.name[locale]}
                       </span>
-                    </motion.button>
+                    </button>
                   );
                 })}
               </div>

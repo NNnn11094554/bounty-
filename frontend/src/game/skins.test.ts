@@ -75,8 +75,6 @@ describe('skin catalog ↔ visuals', () => {
         expect(y).toBeLessThan(headBottom);
       }
       expect(face.neck).toEqual([head[0], headBottom]);
-      expect(face.lid).toMatch(/^#[0-9a-f]{6}$/);
-      expect(face.lash).toMatch(/^#[0-9a-f]{6}$/);
     }
   });
 

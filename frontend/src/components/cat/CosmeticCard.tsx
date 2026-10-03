@@ -1,5 +1,4 @@
 import { formatShort, type CosmeticDef, type Rarity } from '@meowgul/shared';
-import { motion } from 'framer-motion';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { EFFECT_PARTICLE, RARITY_COLOR } from '../../game/skins';
 import { useLocale, useT, type MessageKey } from '../../i18n';
@@ -122,13 +121,12 @@ function SkinCard({ item, owned, equipped, level, onOpen, onEquip, busy }: Props
     }
   };
   return (
-    <motion.div
+    <div
       role="button"
       tabIndex={0}
-      whileTap={{ scale: 0.97 }}
       onClick={open}
       onKeyDown={onKey}
-      className="block w-full cursor-pointer text-left"
+      className="press block w-full cursor-pointer text-left"
       data-testid={`cosmetic-${item.id}`}
       data-state={state}
     >
@@ -182,7 +180,7 @@ function SkinCard({ item, owned, equipped, level, onOpen, onEquip, busy }: Props
           </div>
         </div>
       </RarityFrame>
-    </motion.div>
+    </div>
   );
 }
 
@@ -220,11 +218,10 @@ function EffectCard({ item, owned, equipped, level, onOpen }: Props) {
   else status = <span className="text-white/70">{t('collection.free')}</span>;
 
   return (
-    <motion.button
+    <button
       type="button"
-      whileTap={{ scale: 0.96 }}
       onClick={() => onOpen(item)}
-      className="block w-full text-left"
+      className="press block w-full text-left"
       data-testid={`cosmetic-${item.id}`}
       data-state={equipped ? 'equipped' : owned ? 'owned' : locked ? 'locked' : 'available'}
     >
@@ -245,6 +242,6 @@ function EffectCard({ item, owned, equipped, level, onOpen }: Props) {
           </div>
         </div>
       </RarityFrame>
-    </motion.button>
+    </button>
   );
 }

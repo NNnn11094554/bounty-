@@ -1,9 +1,8 @@
 """
-Лицо персонажей для «живого» кота: глаза (моргание, взгляд), цвет век и область головы (наклон головы).
+Лицо персонажей для «живого» кота: глаза (взгляд по сторонам) и область головы (наклон головы).
 Глаза размечены вручную по увеличенным кропам и проверены оверлеями (эллипсы в долях картинки персонажа:
 x, rx — от ширины, y, ry — от высоты). Скрипт добавляет к skinArt.json поле face:
   eyes  — [[x, y, rx, ry], …] (обычно два глаза; у персонажей в маске/капюшоне виден один);
-  lid   — цвет века: медиана меха над глазом; lash — тёмная линия ресниц (самые тёмные пиксели контура);
   head  — эллипс головы [x, y, rx, ry] (от макушки с ушами/короной до подбородка, глаза — целиком внутри)
           — слой наклона головы;
   neck  — точка поворота головы [x, y].
@@ -42,34 +41,12 @@ EYES = {
 }
 
 
-def hex_color(rgb):
-    return '#' + ''.join(f'{int(round(c)):02x}' for c in rgb)
-
-
 def main():
     art = json.loads(ART.read_text())
     for skin, eyes in EYES.items():
         im = np.asarray(Image.open(ROOT / 'public' / 'assets' / 'skins' / skin / 'character.webp').convert('RGBA'))
         H, W = im.shape[:2]
-        rgb, alpha = im[..., :3].astype(float), im[..., 3]
-        lids, lashes = [], []
-        for x, y, rx, ry in eyes:
-            cx, cy, ex, ey = x * W, y * H, rx * W, ry * H
-            # веко — мех прямо над глазом
-            y0, y1 = int(cy - ey * 1.55), int(cy - ey * 1.12)
-            x0, x1 = int(cx - ex * 0.55), int(cx + ex * 0.55)
-            patch = rgb[max(0, y0):max(1, y1), max(0, x0):x1][alpha[max(0, y0):max(1, y1), max(0, x0):x1] > 200]
-            if len(patch):
-                lids.append(np.median(patch, axis=0))
-            # ресницы — самые тёмные пиксели кольца вокруг глаза
-            yy, xx = np.mgrid[0:H, 0:W]
-            d = ((xx - cx) / ex) ** 2 + ((yy - cy) / ey) ** 2
-            ring = rgb[(d > 0.8) & (d < 1.3) & (alpha > 200)]
-            if len(ring):
-                lum = ring.mean(axis=1)
-                lashes.append(ring[lum <= np.percentile(lum, 12)].mean(axis=0))
-        lid = np.mean(lids, axis=0) if lids else np.array([120, 110, 130])
-        lash = np.mean(lashes, axis=0) * 0.8 if lashes else lid * 0.25
+        alpha = im[..., 3]
         a = art[skin]
         hx, hb = a['head'][0], a['headBottom']
         cols = slice(max(0, int((hx - 0.3) * W)), min(W, int((hx + 0.3) * W)))
@@ -90,8 +67,6 @@ def main():
             rx_px = max(rx_px, (abs(x - cx) + ex) * W / (0.75**2 - dy**2) ** 0.5)
         a['face'] = {
             'eyes': eyes,
-            'lid': hex_color(lid),
-            'lash': hex_color(lash),
             'head': [round(cx, 4), round(cy, 4), round(rx_px / W, 4), round(ry, 4)],
             'neck': [round(hx, 4), round(hb, 4)],
         }

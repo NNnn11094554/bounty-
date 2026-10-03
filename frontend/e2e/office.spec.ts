@@ -137,7 +137,9 @@ test.describe('Office', () => {
     expect(errors, errors.join('\n')).toEqual([]);
   });
 
-  test('50 rapid taps: the character does not move at all — only the face reacts', async ({ page }) => {
+  test('50 rapid taps: the character does not move at all — only the eyes look at the finger', async ({
+    page,
+  }) => {
     await page.goto('/?uid=700000207&name=Барабанщик');
     await expect(page.getByTestId('hero')).toBeVisible();
     await page.waitForTimeout(800);
@@ -151,7 +153,7 @@ test.describe('Office', () => {
         head: getComputedStyle(document.querySelector('.hero-head')!).transform,
         pose: (document.querySelector('[data-testid="hero"]') as HTMLElement).dataset.pose ?? '',
       }));
-    let squinted = false;
+    let glanced = false;
     for (let i = 0; i < 50; i++) {
       await page.mouse.click(
         hit.x + hit.width * (0.3 + (i % 5) * 0.1),
@@ -161,11 +163,16 @@ test.describe('Office', () => {
       if (i % 10 === 0) {
         // тап не двигает ни тело, ни голову: ни прыжка, ни наклона, ни сжатия
         expect(await pose()).toEqual({ body: '', head: 'none', pose: '' });
-        squinted ||= (await page.getByTestId('hero').getAttribute('data-squint')) === 'true';
+        // лицо отвечает взглядом в сторону пальца: радужка смещается внутри глаза
+        glanced ||= await page
+          .locator('.eye-iris-img')
+          .first()
+          .evaluate((el) => (el as HTMLElement).style.transform !== '');
       }
     }
-    // на тап отвечает лицо — короткий прищур
-    expect(squinted).toBe(true);
+    // на тап отвечает лицо — взгляд; глаза не закрываются (век нет)
+    expect(glanced).toBe(true);
+    await expect(page.locator('.eye-lid')).toHaveCount(0);
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '50');
     // слой реакции так и остался без трансформаций
     await expect

@@ -55,11 +55,6 @@ const SLEEP_AFTER_MS = 45_000;
 const IDLE_MIN_MS = 5_000;
 const IDLE_SPREAD_MS = 6_000;
 const IDLE_QUIET_MS = 3_000;
-/** моргание — раз в 2,4–6,4 секунды, иногда дважды подряд */
-const BLINK_MIN_MS = 2_400;
-const BLINK_SPREAD_MS = 4_000;
-/** прищур после тапа держится столько */
-const SQUINT_MS = 260;
 /** лёгкая вибрация не чаще раза в 70 мс */
 const HAPTIC_GAP_MS = 70;
 /** подсказка «тапни кота» — один раз, до первого тапа */
@@ -79,9 +74,9 @@ function hintSeen(): boolean {
  * Главная сцена: надетый персонаж — он и есть кнопка игры. Тап по нему → существующая логика награды
  * (handler.tap → tapEngine: энергия, баланс, множители) → лёгкая реакция лица и эффекты вокруг.
  *
- * Тап персонажа НЕ двигает: ни прыжков, ни сжатия, ни тряски. На тап отвечают только лицо (короткий
- * прищур, взгляд в сторону пальца) и интерфейс: «+N», круги, искры, частицы, аура.
- * Покой и тап разделены полностью: в покое персонаж дышит (CSS-цикл от ступней), моргает, водит глазами,
+ * Тап персонажа НЕ двигает: ни прыжков, ни сжатия, ни тряски. На тап отвечают только глаза (взгляд
+ * в сторону пальца) и интерфейс: «+N», круги, искры, частицы, аура. Глаза не закрываются.
+ * Покой и тап разделены полностью: в покое персонаж дышит (CSS-цикл от ступней), водит глазами,
  * иногда наклоняет голову или смотрит на лапы и медленно меняет позу (поворот в перспективе) — тапы эти
  * циклы не трогают. Всё — transform/opacity. Смена скина — персонаж мягко проявляется, обработчики остаются.
  */
@@ -102,6 +97,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   const art = skinArt(skin);
   const artRef = useRef(art);
   artRef.current = art;
+  /** новый скин — новые слои: текущий поворот ставится на них сразу */
+  const reapplyRef = useRef<() => void>();
   const burstRef = useRef<ParticleKind>(skinStyle(skin).burst);
   burstRef.current = skinStyle(skin).burst;
   const L = heroLayout(width, height, art.aspect, art.body);
@@ -125,13 +122,23 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     let last = 0;
     const apply = () => {
       const t = motion.transforms();
-      // объём: угол поворота — переменными, по ним CSS двигает перспективу, глубину слоёв, свет и тень
-      if (t.yaw !== yawNow || t.pitch !== pitchNow) {
-        yawNow = t.yaw;
-        pitchNow = t.pitch;
-        root.style.setProperty('--yaw', yawNow.toFixed(3));
-        root.style.setProperty('--pitch', pitchNow.toFixed(3));
-      }
+      // объём: transform прямо на слой поворота и на тень на полу — без CSS-переменных на всём персонаже
+      // (переменная на родителе пересчитывала бы стили каждого слоя внутри на каждом кадре)
+      const yaw = Math.round(t.yaw * 1000) / 1000;
+      const pitch = Math.round(t.pitch * 1000) / 1000;
+      if (yaw === yawNow && pitch === pitchNow) return;
+      yawNow = yaw;
+      pitchNow = pitch;
+      const still = !yaw && !pitch;
+      const orbit = root.querySelector<HTMLElement>('.hero-orbit');
+      const floor = root.querySelector<HTMLElement>('.hero-floor');
+      if (orbit) orbit.style.transform = still ? '' : `rotateY(${yaw}deg) rotateX(${pitch}deg)`;
+      if (floor)
+        floor.style.transform = still ? '' : `translate3d(${-0.9 * yaw}%, 0, 0) scaleX(${1 + pitch * 0.02})`;
+    };
+    reapplyRef.current = () => {
+      yawNow = Number.NaN;
+      apply();
     };
     const frame = (now: number) => {
       raf = 0;
@@ -153,21 +160,16 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         raf = requestAnimationFrame(frame);
       }
     };
-    // отложенные действия лица; снимаются при размонтировании
-    const pending = new Set<number>();
-    const later = (fn: () => void, ms: number) => {
-      const id = window.setTimeout(() => {
-        pending.delete(id);
-        fn();
-      }, ms);
-      pending.add(id);
-    };
-
-    // ── лицо: моргание, взгляд, прищур, наклон головы ──
-    /** взгляд: −1…1 по каждой оси (радужка смещается внутри глаза) */
+    // ── лицо: взгляд и наклон головы (глаза не закрываются) ──
+    /** взгляд: −1…1 по каждой оси — радужка смещается внутри глаза (transform прямо на картинке в окошке) */
     const gaze = (gx: number, gy: number) => {
-      root.style.setProperty('--gx', Math.max(-1, Math.min(1, gx)).toFixed(3));
-      root.style.setProperty('--gy', Math.max(-1, Math.min(1, gy)).toFixed(3));
+      const x = Math.max(-1, Math.min(1, gx));
+      const y = Math.max(-1, Math.min(1, gy));
+      root.querySelectorAll<HTMLElement>('.eye-iris').forEach((eye) => {
+        const reach = Number(eye.dataset.reach) || 0;
+        const img = eye.firstElementChild as HTMLElement | null;
+        if (img) img.style.transform = x || y ? `translate3d(${x * reach}px, ${y * reach}px, 0)` : '';
+      });
     };
     let gazeBack = 0;
     /** посмотреть и через ms вернуть взгляд прямо */
@@ -175,25 +177,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       gaze(gx, gy);
       window.clearTimeout(gazeBack);
       gazeBack = window.setTimeout(() => gaze(0, 0), ms);
-    };
-    /** моргнуть: веки сверху вниз и обратно (от текущего положения — сонный моргает из прищура) */
-    const blink = (twice = false) => {
-      root.querySelectorAll<HTMLElement>('.eye-lid').forEach((lid) => {
-        lid.getAnimations().forEach((a) => a.cancel());
-        lid.animate([{ transform: 'scaleY(1)' }], {
-          duration: 75,
-          direction: 'alternate',
-          iterations: twice ? 4 : 2,
-          easing: 'ease-in',
-        });
-      });
-    };
-    let squintTimer = 0;
-    /** короткий довольный прищур — реакция лица на тап */
-    const squint = (ms = SQUINT_MS) => {
-      root.dataset.squint = 'true';
-      window.clearTimeout(squintTimer);
-      squintTimer = window.setTimeout(() => delete root.dataset.squint, ms);
     };
     let poseTimer = 0;
     /** наклон головы на время (только в покое и по событиям игры, не на тап) */
@@ -352,32 +335,27 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       const head = headPoint();
       switch (reaction) {
         case 'happy':
-          squint(420);
-          later(() => blink(), 480);
+          auraFlash();
           break;
         case 'excited':
           setMood('excited', 2600);
-          blink(true);
           auraFlash();
           spawnParticles(head.x, head.y, 5, 'star', 1.6);
           break;
         case 'special':
         case 'heart':
           setMood('excited', 3000);
-          squint(700);
           auraFlash();
           spawnParticles(head.x, head.y, 8, 'heart', 1.8);
           break;
         case 'celebrate':
           setMood('excited', 3500);
-          blink(true);
           pose('up', 1600);
           confetti(centerOf(root), 60);
           spawnParticles(head.x, head.y, 8, 'gold', 1.8);
           break;
         case 'surprised':
-          // глаза широко, взгляд прямо, голова чуть набок
-          delete root.dataset.squint;
+          // взгляд вверх, голова чуть набок
           glanceFor(0, -0.4, 900);
           pose(Math.random() < 0.5 ? 'tilt-l' : 'tilt-r', 1400);
           break;
@@ -462,17 +440,14 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       e.preventDefault();
       e.stopPropagation();
       const rootRect = root.getBoundingClientRect();
-      const catRect = catRectNow();
       const x = e.clientX - rootRect.left;
       const y = e.clientY - rootRect.top;
-      const onHead = (e.clientY - catRect.top) / catRect.height < artRef.current.headBottom;
       const now = performance.now();
       lastActivity = now;
       lookAt(e.clientX, e.clientY);
       wakeUp();
       if (onPressRef.current) {
         pressStarts.set(e.pointerId, now);
-        squint(180);
         feel(now);
         return;
       }
@@ -492,9 +467,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       streak = now - lastTap < STREAK_GAP_MS ? streak + 1 : 1;
       lastTap = now;
       // серия усиливает только эффекты вокруг: 1–3 обычно, 4–9 живее, 10+ заметнее; награда — как в логике
-      // игры. Сам персонаж стоит: лицо лишь чуть щурится (по голове — сильнее)
+      // игры. Сам персонаж стоит: лицо отвечает только взглядом в сторону пальца (lookAt выше)
       const tier = streak >= 10 ? 3 : streak >= 4 ? 2 : 1;
-      squint(onHead ? SQUINT_MS + 120 : SQUINT_MS);
       spawnFloat(
         x,
         y - 10,
@@ -545,7 +519,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         case 'glance': {
           const dir = Math.random() < 0.5 ? -1 : 1;
           glanceFor(dir * (0.6 + Math.random() * 0.4), Math.random() * 0.4 - 0.2, 1500);
-          later(() => blink(), 1700);
           break;
         }
         case 'paws':
@@ -555,7 +528,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
           break;
         case 'tilt':
           pose(Math.random() < 0.5 ? 'tilt-l' : 'tilt-r', 2600);
-          later(() => blink(), 900);
           break;
         case 'look-up':
           pose('up', 1800);
@@ -563,22 +535,9 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
           break;
         case 'glow':
           auraFlash();
-          blink(true);
           break;
       }
     };
-    // моргание — само по себе, независимо от тапов
-    let blinkTimer = 0;
-    const scheduleBlink = () => {
-      blinkTimer = window.setTimeout(
-        () => {
-          if (!document.hidden && mood !== 'sleepy') blink(Math.random() < 0.2);
-          scheduleBlink();
-        },
-        BLINK_MIN_MS + Math.random() * BLINK_SPREAD_MS,
-      );
-    };
-    scheduleBlink();
     // в покое персонаж медленно поворачивается то чуть в одну, то в другую сторону — живой объём
     let orbitTimer = 0;
     const scheduleOrbit = () => {
@@ -663,11 +622,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       offMood();
       window.clearTimeout(idleTimer);
       window.clearTimeout(orbitTimer);
-      window.clearTimeout(blinkTimer);
-      pending.forEach((id) => window.clearTimeout(id));
       window.clearTimeout(moodTimer);
       window.clearTimeout(gazeBack);
-      window.clearTimeout(squintTimer);
       window.clearTimeout(poseTimer);
       if (raf) cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVisibility);
@@ -680,6 +636,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       [...floats, ...rings, ...flashes, ...coins, ...pts].forEach((el) => el.remove());
     };
   }, []);
+  useEffect(() => reapplyRef.current?.(), [skin]);
 
   const head = { x: L.cat.left + L.cat.width * art.head[0], y: L.cat.top + L.cat.height * art.head[1] };
   return (
