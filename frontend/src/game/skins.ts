@@ -19,13 +19,14 @@ export type ParticleKind =
 
 /**
  * Атмосфера сцены: лёгкие частицы поверх фона (только transform и opacity, на слабых устройствах — меньше).
- * rain — косой дождь, snow — снег, petals — лепестки, embers — искры огня вверх, stars — мерцание,
+ * Падающие частицы летят с одним ветром на всю сцену (у каждой — лишь лёгкое покачивание).
+ * neon — неоновые огоньки города медленно плывут вверх, snow — снег, petals — лепестки, embers — искры огня вверх, stars — мерцание,
  * bubbles — пузырьки, fireflies — светлячки, sparks — быстрые искры вверх, sand — песок по ветру,
  * spores — кислотные споры, feathers — перья, shards — кристаллы, bats — летучие мыши, smoke — дымка,
  * magic — искры чар.
  */
 export type AmbientKind =
-  | 'rain'
+  | 'neon'
   | 'snow'
   | 'petals'
   | 'embers'
@@ -64,7 +65,7 @@ export interface SkinStyle {
 }
 
 export const SKIN_STYLES: Record<string, SkinStyle> = {
-  neon_punk: { accent: '#22d3ff', accent2: '#ff3fd8', ambient: 'rain', idle: 'bob', burst: 'neon' },
+  neon_punk: { accent: '#22d3ff', accent2: '#ff3fd8', ambient: 'neon', idle: 'bob', burst: 'neon' },
   desert_nomad: { accent: '#ffb35c', accent2: '#ffe0a3', ambient: 'sand', idle: 'sway', burst: 'gold' },
   sakura_blossom: {
     accent: '#ff8ac0',
@@ -117,7 +118,7 @@ export const SKIN_STYLES: Record<string, SkinStyle> = {
     idle: 'float',
     burst: 'star',
   },
-  shadow_drifter: { accent: '#a24bff', accent2: '#6a8bff', ambient: 'rain', idle: 'sway', burst: 'smoke' },
+  shadow_drifter: { accent: '#a24bff', accent2: '#6a8bff', ambient: 'smoke', idle: 'sway', burst: 'smoke' },
   cyber_samurai: { accent: '#ff2a3c', accent2: '#ff9aa8', ambient: 'petals', idle: 'sway', burst: 'petal' },
   galaxy_emperor: { accent: '#7a5cff', accent2: '#ff4fd8', ambient: 'stars', idle: 'float', burst: 'star' },
 };
@@ -132,8 +133,47 @@ export interface SkinArt {
   body: number;
   /** нижний край головы (доля высоты): выше — тап по голове */
   headBottom: number;
-  /** где персонаж стоял на фоне сцены (доли картинки фона): фон выравнивается так же */
-  anchor: [number, number];
+  /**
+   * Сцена (фон): пропорции и рамка персонажа в ней (доли: x, y, ширина, высота). Фон ставится так, чтобы
+   * персонаж на экране стоял точно там, где стоял в своём мире, и закрывал своё место на картинке.
+   */
+  scene: { aspect: number; char: [number, number, number, number] };
+}
+
+export interface Rect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Где нарисовать фон сцены, чтобы персонаж (fit — его рамка на экране) стоял на своём месте. Если при этом
+ * фон не закрывает всю область (очень широкий или высокий экран), он увеличивается от ступней персонажа.
+ */
+export function sceneRect(id: string | undefined, fit: Rect, box: { width: number; height: number }): Rect {
+  const { aspect, char } = skinArt(id).scene;
+  const height = fit.height / char[3];
+  const width = height * aspect;
+  const left = fit.left - char[0] * width;
+  const top = fit.top - char[1] * height;
+  // точка опоры — ступни персонажа: при увеличении он остаётся на месте
+  const ax = fit.left + fit.width / 2;
+  const ay = fit.top + fit.height;
+  const need = (gap: number, span: number) => (gap > 0 && span > 0 ? gap / span : 1);
+  const k = Math.max(
+    1,
+    need(ax, ax - left),
+    need(box.width - ax, left + width - ax),
+    need(ay, ay - top),
+    need(box.height - ay, top + height - ay),
+  );
+  return {
+    left: ax - (ax - left) * k,
+    top: ay - (ay - top) * k,
+    width: width * k,
+    height: height * k,
+  };
 }
 
 const ART = art as unknown as Record<string, SkinArt>;

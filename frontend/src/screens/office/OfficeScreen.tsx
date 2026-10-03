@@ -1,8 +1,9 @@
 import { playerLevel } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { HeroStage, type TapHandler } from '../../components/hero/HeroStage';
+import { heroLayout } from '../../components/hero/layout';
 import { SkinScene } from '../../components/hero/SkinScene';
 import { GoldenCoin } from '../../components/GoldenCoin';
 import { HappyHourChip } from '../../components/HappyHourChip';
@@ -13,6 +14,7 @@ import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
 import { onFrame } from '../../game/frameLoop';
 import { leagueAt, leagueProgress, LEAGUE_COUNT } from '../../game/leagues';
+import { skinArt, type Rect } from '../../game/skins';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT } from '../../i18n';
 import { useGame } from '../../store/game';
@@ -106,6 +108,8 @@ export function OfficeScreen({
   const config = useGame((s) => s.config);
   const dailyReady = player?.daily.claimedToday === false;
   const [catBox, catSize] = useBoxSize<HTMLDivElement>();
+  const arcRef = useRef<HTMLElement>(null);
+  const [catRect, setCatRect] = useState<Rect | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const pawRef = useRef<HTMLDivElement>(null);
 
@@ -152,6 +156,40 @@ export function OfficeScreen({
     }),
     [],
   );
+
+  // рамка персонажа в координатах дуги (там лежит сцена): фон ставится так, чтобы персонаж стоял на своём
+  // месте в своём мире. Позиции — по offset* (без transform), пересчёт при любом изменении размеров.
+  const skin = player?.cosmetics.skin;
+  useLayoutEffect(() => {
+    const arc = arcRef.current;
+    const box = catBox.current;
+    if (!arc || !box || !skin) return;
+    const measure = () => {
+      const hero = box.querySelector<HTMLElement>('[data-testid="hero"]');
+      if (!hero) return;
+      const art = skinArt(skin);
+      const L = heroLayout(hero.offsetWidth, hero.offsetHeight, art.aspect, art.body).cat;
+      const next = {
+        left: box.offsetLeft + hero.offsetLeft + L.left,
+        top: box.offsetTop + hero.offsetTop + L.top,
+        width: L.width,
+        height: L.height,
+      };
+      setCatRect((prev) =>
+        prev &&
+        Math.abs(prev.left - next.left) < 0.5 &&
+        Math.abs(prev.top - next.top) < 0.5 &&
+        Math.abs(prev.height - next.height) < 0.5
+          ? prev
+          : next,
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(arc);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [catBox, skin, catSize.width, catSize.height, catOverlay]);
 
   if (!player || !league || !config) return null;
   // минимальный размер кота; в режиме шифра на низких экранах — чуть меньше, чтобы поместилась строка Морзе
@@ -203,10 +241,18 @@ export function OfficeScreen({
 
       <PlayerStats />
 
-      <section className="office-arc relative isolate mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-4 short:mt-2.5 short:pt-2.5">
+      <section
+        ref={arcRef}
+        className="office-arc relative isolate mt-4 flex min-h-0 flex-1 flex-col rounded-t-[40px] px-4 pt-4 short:mt-2.5 short:pt-2.5"
+      >
         {/* мир надетого персонажа: фон, свет и атмосфера; смена скина — сцена мягко проявляется */}
         <div className="absolute inset-0 -z-10 overflow-hidden rounded-t-[40px]">
-          <SkinScene key={player.cosmetics.skin} skinId={player.cosmetics.skin} testId="skin-scene" />
+          <SkinScene
+            key={player.cosmetics.skin}
+            skinId={player.cosmetics.skin}
+            fit={catRect}
+            testId="skin-scene"
+          />
         </div>
         <div className="flex items-center justify-center gap-2.5" data-testid="balance" data-coin-target>
           <CoinIcon size={34} className="short:h-7 short:w-7" />

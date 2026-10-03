@@ -1,6 +1,6 @@
 // Кодирование арта скинов (результат compose.py в .work/<id>/) в файлы игры:
 //   public/assets/skins/<id>/character.{avif,webp} — персонаж с прозрачным фоном, в своём разрешении
-//   public/assets/skins/<id>/background.{avif,webp} — сцена без персонажа
+//   public/assets/skins/<id>/background.{avif,webp} — сцена без персонажа, продлённая за края
 //   public/assets/skins/<id>/preview.{avif,webp}    — картинка карточки коллекции
 //   public/assets/skins/<id>/icon.webp              — портрет (аватар в профиле)
 // и манифест src/game/skinArt.json (пропорции, голова, центр тела — по ним раскладывается сцена).
@@ -18,7 +18,7 @@ const manifestPath = path.join(root, 'src', 'game', 'skinArt.json');
 
 /** не больше такой высоты персонажа и ширины фона — больше телефону не нужно */
 const CHARACTER_MAX_H = 1100;
-const BACKGROUND_MAX_W = 1080;
+const BACKGROUND_MAX_W = 1500;
 const PREVIEW_W = 360;
 const ICON = 512;
 
@@ -60,7 +60,7 @@ for (const id of ids.sort()) {
     head: meta.head,
     body: meta.body,
     headBottom: meta.headBottom,
-    anchor: meta.anchor,
+    scene: meta.scene,
     source: meta.source,
   };
   console.log(`[skins] ${id}: ${width}×${height}`);

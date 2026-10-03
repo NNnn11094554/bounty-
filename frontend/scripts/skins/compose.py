@@ -3,8 +3,11 @@
 Шаги (python3 compose.py [индексы]):
   1. плитка персонажа → апскейл ×4 (Real-ESRGAN anime 6B, ONNX, CPU);
   2. маска персонажа (BiRefNet через rembg), вырез мини-превью из угла плитки;
-  3. персонаж (RGBA, обрезан по силуэту), фон сцены без персонажа (заливка + лёгкое размытие),
-     картинка карточки и портрет — PNG в .work/<id>/; кодирование в WebP/AVIF — build.mjs.
+  3. персонаж (RGBA, обрезан по силуэту);
+  4. фон сцены: место персонажа, мини-превью и уголки рамки дорисовывает big-lama; сцена продлевается за
+     края (зеркально, к краю мягче и темнее — там интерфейс), чтобы в игре персонаж стоял точно на своём
+     месте и закрывал его, а фон заполнял экран;
+  5. картинка карточки (мини-превью дорисовано) и портрет — PNG в .work/<id>/; кодирование — build.mjs.
 Модели скачиваются в .work/models при первом запуске (см. README, раздел «Скины»).
 """
 import json, os, sys, urllib.request
@@ -40,12 +43,17 @@ HIRES = {
     'vampire_lord': (900, (646, 598, 892, 874)),
     'astro_cat': (1030, (639, 734, 884, 1006)),
 }
+# расширение сцены по краям (доли исходной картинки): в игре сцена выше и шире, чем картинка персонажа
+SCENE_PAD = {'left': 0.4, 'right': 0.4, 'top': 0.9, 'bottom': 0.5}
+# сколько пикселей вокруг силуэта тоже дорисовать (полупрозрачный край персонажа)
+HOLE_GROW = 9
 # доуточнение маски, где нейросеть пропустила часть персонажа (светящийся хвост на тёмном фоне):
 # рамка (x0, y0, x1, y1) и диапазон оттенка HSV — GrabCut добирает персонажа внутри рамки
 MASK_HINTS = {
     'toxic': [((30, 330, 300, 735), (35, 85))],
 }
 RELEASES = {
+    'big-lama.pt': 'https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt',
     'esrgan.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth',
 }
 
@@ -95,16 +103,82 @@ def refine(img, m, hints):
     return np.maximum(m, extra)
 
 
-def fill(img, hole):
-    """Заливка дыры (персонаж, мини-превью) окружающим фоном: пирамида push-pull + inpaint."""
-    small = cv2.resize(img, None, fx=0.125, fy=0.125, interpolation=cv2.INTER_AREA)
-    hs = cv2.resize(hole, (small.shape[1], small.shape[0]), interpolation=cv2.INTER_NEAREST)
-    filled = cv2.inpaint(small, hs, 6, cv2.INPAINT_TELEA)
-    # залитое место — мягкий расфокус цветов сцены, без «осколков» заливки
-    filled = cv2.GaussianBlur(filled, (0, 0), 5)
-    big = cv2.resize(filled, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_CUBIC)
-    soft = np.clip(cv2.GaussianBlur(hole.astype(np.float32) / 255, (0, 0), 12) * 1.6, 0, 1)[..., None]
-    return (img * (1 - soft) + big * soft).astype(np.uint8)
+_LAMA = None
+
+
+def lama(img, hole, max_side=1024):
+    """big-lama: дорисовать дыру (hole — 0/255) по окружению; вне дыры картинка не меняется."""
+    import torch
+    global _LAMA
+    if _LAMA is None:
+        _LAMA = torch.jit.load(model('big-lama.pt'), map_location='cpu').eval()
+    h, w = hole.shape
+    sc = min(1.0, max_side / max(h, w))
+    W, H = [(int(v * sc) + 7) // 8 * 8 for v in (w, h)]
+    x = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)[:, :, ::-1].astype(np.float32) / 255
+    mk = (cv2.resize(hole, (W, H), interpolation=cv2.INTER_NEAREST) > 127).astype(np.float32)
+    with torch.no_grad():
+        r = _LAMA(torch.from_numpy(x.transpose(2, 0, 1).copy())[None], torch.from_numpy(mk)[None, None])[0]
+    r = (np.clip(r.permute(1, 2, 0).numpy(), 0, 1) * 255 + 0.5).astype(np.uint8)[:, :, ::-1]
+    r = cv2.resize(r, (w, h), interpolation=cv2.INTER_CUBIC)
+    inside = (hole > 127).astype(np.float32)
+    soft = np.maximum(inside, cv2.GaussianBlur(inside, (0, 0), 2.5))[..., None]
+    return (img * (1 - soft) + r * soft + 0.5).astype(np.uint8)
+
+
+def corner_mask(h, w, r, strip=4):
+    """Скруглённые верхние углы и тонкая кромка рамки карточки/плитки — их дорисовывает big-lama."""
+    mk = np.zeros((h, w), np.uint8)
+    mk[:strip, :] = 255
+    mk[:, :strip] = 255
+    mk[:, w - strip:] = 255
+    for cx in (r, w - 1 - r):
+        box = np.zeros((h, w), np.uint8)
+        x0 = 0 if cx == r else w - r - 1
+        box[: r + 1, x0: x0 + r + 1] = 255
+        circle = np.zeros((h, w), np.uint8)
+        cv2.circle(circle, (cx, r), r, 255, -1)
+        mk |= box & ~circle
+    return cv2.dilate(mk, np.ones((5, 5), np.uint8))
+
+
+def push_pull(img, w):
+    """Заполнить неизвестное (w=0) плавным продолжением известных цветов — пирамида «push-pull»."""
+    h, wd = w.shape
+    if min(h, wd) <= 4:
+        m = (img * w[..., None]).sum((0, 1)) / max(float(w.sum()), 1e-6)
+        return np.broadcast_to(m, img.shape).astype(np.float32)
+    half = (max(1, wd // 2), max(1, h // 2))
+    si = cv2.resize(img * w[..., None], half, interpolation=cv2.INTER_AREA)
+    sw = cv2.resize(w, half, interpolation=cv2.INTER_AREA)
+    avg = si / np.maximum(sw, 1e-6)[..., None]
+    coarse = push_pull(avg, np.minimum(sw * 4, 1))
+    up = cv2.resize(coarse, (wd, h), interpolation=cv2.INTER_LINEAR)
+    return img * w[..., None] + up * (1 - w[..., None])
+
+
+def extend(base, pads):
+    """Продлить сцену за края: цвета картинки плавно продолжаются (без полос и повторов), к краю —
+    темнее (там интерфейс)."""
+    pt, pb, pl, pr = pads
+    bh, bw = base.shape[:2]
+    H, W = bh + pt + pb, bw + pl + pr
+    canvas = np.zeros((H, W, 3), np.float32)
+    canvas[pt:pt + bh, pl:pl + bw] = base
+    known = np.zeros((H, W), np.float32)
+    known[pt:pt + bh, pl:pl + bw] = 1
+    filled = push_pull(canvas, known)
+    filled = cv2.GaussianBlur(filled, (0, 0), 6)
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    dy = np.maximum(np.maximum(pt - yy, yy - (pt + bh - 1)), 0) / max(1, max(pt, pb))
+    dx = np.maximum(np.maximum(pl - xx, xx - (pl + bw - 1)), 0) / max(1, max(pl, pr))
+    d = np.clip(np.maximum(dy, dx), 0, 1)
+    # стык мягкий: картинка уходит в продолжение на 3% её размера
+    seam = cv2.GaussianBlur(known, (0, 0), max(4, bw * 0.03))
+    mix = np.clip(seam * 2 - 1, 0, 1)[..., None]
+    out = canvas * mix + filled * (1 - mix)
+    out = out * (1 - 0.4 * d[..., None])
+    return np.clip(out, 0, 255).astype(np.uint8)
 
 
 def build(i):
@@ -167,16 +241,37 @@ def build(i):
     allc = a.sum(0)
     body_x = float((allc * np.arange(cw)).sum() / max(allc.sum(), 1)) / cw
 
-    hole = cv2.dilate(((m > 0.05) * 255).astype(np.uint8), np.ones((31, 31), np.uint8)) | inset
+    # фон: место персонажа (с краем) и мини-превью дорисовывает big-lama — в игре это место закрыто
+    # самим персонажем, видна только тонкая кромка при покачивании
+    silhouette = ((m > 0.05) * 255).astype(np.uint8)
+    # у карточек высокого разрешения рамка толще: срезается 18 px, ещё 8 px под ней дорисовываются
+    frame = corner_mask(h, w, 64 if hires else 60, strip=26 if hires else 4)
+    hole = cv2.dilate(silhouette, np.ones((2 * HOLE_GROW + 1, 2 * HOLE_GROW + 1), np.uint8)) | inset | frame
+    # дорисовка — дольше всего: результат кэшируется (сбросить — удалить .work/<id>/filled.png)
+    filled_path = os.path.join(out, 'filled.png')
+    if os.path.exists(filled_path) and os.path.getmtime(filled_path) > os.path.getmtime(mask_path):
+        filled = cv2.imread(filled_path)
+    else:
+        filled = lama(up, hole)
+        cv2.imwrite(filled_path, filled)
     # у карточек высокого разрешения по краю — рамка со скруглёнными углами: в фон и превью она не идёт
     edge = 18 if hires else 0
     trim = lambda im: im[edge:, edge:w - edge] if edge else im
-    bg = fill(up, hole)
-    bg = cv2.GaussianBlur(bg, (0, 0), 1.2)
-    cv2.imwrite(os.path.join(out, 'background.png'), trim(bg))
+    base = trim(filled)
+    bh, bw = base.shape[:2]
+    # сцена шире и выше картинки: края дорисовываются, персонаж остаётся на своём месте
+    pl, pr = int(bw * SCENE_PAD['left']), int(bw * SCENE_PAD['right'])
+    pt, pb = int(bh * SCENE_PAD['top']), int(bh * SCENE_PAD['bottom'])
+    scene = extend(base, (pt, pb, pl, pr))
+    cv2.imwrite(os.path.join(out, 'background.png'), scene)
+    SH, SW = scene.shape[:2]
+    scene_char = [(bx0 - edge + pl) / SW, (by0 - edge + pt) / SH, cw / SW, ch / SH]
 
-    card = fill(up, cv2.dilate(inset, np.ones((15, 15), np.uint8)) & ~((m > 0.5) * 255).astype(np.uint8))
-    cv2.imwrite(os.path.join(out, 'preview.png'), trim(card))
+    # карточка коллекции: исходная картинка, мини-превью дорисовано
+    card_path = os.path.join(out, 'preview.png')
+    if not (os.path.exists(card_path) and os.path.getmtime(card_path) > os.path.getmtime(mask_path)):
+        card = lama(up, (cv2.dilate(inset, np.ones((15, 15), np.uint8)) & ~((m > 0.5) * 255).astype(np.uint8)) | frame)
+        cv2.imwrite(card_path, trim(card))
 
     # портрет: голова и плечи на фоне сцены
     size = int(min(ch * 0.46, cw * 1.0))
@@ -190,8 +285,9 @@ def build(i):
         'body': round(body_x, 4),
         # нижний край головы ≈ 1.9 × центр головы по высоте (по силуэтам листа)
         'headBottom': round(min(0.45, head_y * 1.9), 4),
-        # где стоит персонаж на фоне сцены (доли картинки фона) — сцена ставится так, чтобы он был в «своём» месте
-        'anchor': [round((bx0 + body_x * cw - edge) / (w - 2 * edge), 4), round((by1 - edge) / (h - edge), 4)],
+        # сцена: пропорции и рамка персонажа в ней (доли) — в игре фон ставится так, чтобы персонаж
+        # стоял точно на своём месте
+        'scene': {'aspect': round(SW / SH, 4), 'char': [round(v, 5) for v in scene_char]},
     }
     json.dump(meta, open(os.path.join(out, 'meta.json'), 'w'))
     print(sid, meta, flush=True)
