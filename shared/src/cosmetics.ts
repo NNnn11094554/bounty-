@@ -282,8 +282,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
     stars(249),
     ['Теневой Бродяга', 'Shadow Drifter'],
     [
-      'Кепка, плащ и фиолетовые тени, что тянутся следом. Ночной мегаполис под дождём.',
-      'A cap, a cloak and violet shadows trailing behind. A night megacity in the rain.',
+      'Кепка, плащ и фиолетовые тени, что тянутся следом. Ночной мегаполис в огнях.',
+      'A cap, a cloak and violet shadows trailing behind. A night megacity in lights.',
     ],
   ),
   skin(

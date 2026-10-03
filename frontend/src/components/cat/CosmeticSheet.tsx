@@ -1,7 +1,7 @@
 import { formatInt, playerLevel, type CosmeticDef } from '@meowgul/shared';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { centerOf, confetti } from '../../game/effects';
-import { RARITY_COLOR } from '../../game/skins';
+import { RARITY_COLOR, skinArt } from '../../game/skins';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT, type MessageKey } from '../../i18n';
 import { playSound } from '../../lib/sound';
@@ -15,6 +15,52 @@ import { CoinIcon, StarIcon } from '../icons';
 import { HeroFigure } from '../hero/HeroFigure';
 import { SkinScene } from '../hero/SkinScene';
 import { CosmeticPreview, RarityFrame } from './CosmeticCard';
+
+/**
+ * Большой просмотр персонажа: он в полный рост в своём мире — фон стоит так, что персонаж на своём месте
+ * (как на главном экране), со спокойной анимацией и атмосферой.
+ */
+function SkinPreviewStage({
+  id,
+  stageRef,
+  children,
+}: {
+  id: string;
+  stageRef: RefObject<HTMLDivElement>;
+  children?: ReactNode;
+}) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useLayoutEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [stageRef]);
+  const art = skinArt(id);
+  const height = Math.max(0, Math.min(250, size.height - 30));
+  const width = height * art.aspect;
+  const fit = size.width
+    ? { left: size.width / 2 - width * art.body, top: size.height - 12 - height, width, height }
+    : null;
+  return (
+    <div
+      ref={stageRef}
+      className="relative h-[300px] overflow-hidden rounded-[18px] short:h-[240px]"
+      data-testid="skin-preview"
+    >
+      <SkinScene key={id} skinId={id} fit={fit} />
+      {fit && (
+        <div key={`f-${id}`} className="hero-enter absolute" style={{ left: fit.left, top: fit.top }}>
+          <HeroFigure skinId={id} height={height} />
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
 
 /**
  * Окно предмета. Для персонажа — полный просмотр: он сам в полный рост в своём мире (фон, свет, частицы,
@@ -119,18 +165,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
       <div className="flex flex-col items-center pb-2 text-center" data-testid="cosmetic-sheet">
         <RarityFrame rarity={shown.rarity} className="w-full">
           {shown.kind === 'skin' ? (
-            <div
-              ref={previewRef}
-              className="relative h-[300px] overflow-hidden rounded-[18px] short:h-[240px]"
-              data-testid="skin-preview"
-            >
-              <SkinScene key={shown.id} skinId={shown.id} />
-              <div
-                key={`f-${shown.id}`}
-                className="hero-enter absolute inset-x-0 bottom-3 flex justify-center"
-              >
-                <HeroFigure skinId={shown.id} height={250} />
-              </div>
+            <SkinPreviewStage id={shown.id} stageRef={previewRef}>
               {locked && (
                 <div className="absolute inset-0 grid place-items-center bg-black/35">
                   <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm font-black">
@@ -138,7 +173,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
                   </span>
                 </div>
               )}
-            </div>
+            </SkinPreviewStage>
           ) : (
             <div ref={previewRef} className="flex justify-center px-4 pb-5 pt-8">
               <CosmeticPreview item={shown} size={150} />

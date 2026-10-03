@@ -4,7 +4,16 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { heroLayout } from '../components/hero/layout';
 import art from './skinArt.json';
-import { liteDevice, resetLiteDevice, skinArt, skinAsset, skinIcon, skinStyle, SKIN_STYLES } from './skins';
+import {
+  liteDevice,
+  resetLiteDevice,
+  sceneRect,
+  skinArt,
+  skinAsset,
+  skinIcon,
+  skinStyle,
+  SKIN_STYLES,
+} from './skins';
 
 const SKINS = COSMETICS.filter((c) => c.kind === 'skin');
 const PUBLIC = path.resolve(__dirname, '..', '..', 'public');
@@ -30,6 +39,7 @@ describe('skin catalog ↔ visuals', () => {
   it('characters are distinct: own colours, scene atmosphere and animation set per skin', () => {
     const accents = new Set(SKINS.map((s) => skinStyle(s.id).accent));
     expect(accents.size).toBeGreaterThanOrEqual(18);
+    expect(SKINS.some((s) => (skinStyle(s.id).ambient as string) === 'rain')).toBe(false);
     const combos = new Set(
       SKINS.map((s) => `${skinStyle(s.id).ambient}/${skinStyle(s.id).idle}/${skinStyle(s.id).accent}`),
     );
@@ -79,6 +89,40 @@ describe('stage layout', () => {
         expect(hit.left).toBeGreaterThanOrEqual(0);
         expect(hit.left + hit.width).toBeLessThanOrEqual(w + 1e-6);
         expect(hit.left).toBeLessThanOrEqual(cat.left + cat.width * 0.2);
+      }
+    }
+  });
+});
+
+describe('scene alignment', () => {
+  it('the character stands exactly on its own spot in its world, and the world covers the whole area', () => {
+    // типичные телефоны: дуга главного экрана и рамка персонажа в ней (как считает OfficeScreen)
+    const screens = [
+      { box: { width: 390, height: 614 }, stage: { top: 140, width: 358, height: 388 } },
+      { box: { width: 320, height: 470 }, stage: { top: 110, width: 288, height: 280 } },
+      { box: { width: 430, height: 700 }, stage: { top: 150, width: 398, height: 450 } },
+    ];
+    for (const { id } of SKINS) {
+      const art = skinArt(id);
+      const [cx, cy, cw, ch] = art.scene.char;
+      expect(cx).toBeGreaterThan(0);
+      expect(cy).toBeGreaterThan(0);
+      expect(cx + cw).toBeLessThan(1);
+      expect(cy + ch).toBeLessThan(1);
+      for (const { box, stage } of screens) {
+        const L = heroLayout(stage.width, stage.height, art.aspect, art.body).cat;
+        const fit = { left: 16 + L.left, top: stage.top + L.top, width: L.width, height: L.height };
+        const bg = sceneRect(id, fit, box);
+        // фон закрывает всю дугу
+        expect(bg.left).toBeLessThanOrEqual(0.5);
+        expect(bg.top).toBeLessThanOrEqual(0.5);
+        expect(bg.left + bg.width).toBeGreaterThanOrEqual(box.width - 0.5);
+        expect(bg.top + bg.height).toBeGreaterThanOrEqual(box.height - 0.5);
+        // место персонажа на картинке — ровно под ним
+        expect(bg.left + cx * bg.width).toBeCloseTo(fit.left, 3);
+        expect(bg.top + cy * bg.height).toBeCloseTo(fit.top, 3);
+        expect(ch * bg.height).toBeCloseTo(fit.height, 3);
+        expect(cw * bg.width).toBeCloseTo(fit.width, 1);
       }
     }
   });
