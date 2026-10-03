@@ -47,7 +47,13 @@ export function EffectsLayer() {
     const step = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000 || 0.016);
       last = now;
-      if (!ctx) return;
+      if (!ctx) {
+        // без 2D-контекста рисовать нечем: цикл не держим, иначе следующие конфетти не запустятся
+        particles = [];
+        raf = 0;
+        canvas.style.visibility = 'hidden';
+        return;
+      }
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
       particles = particles.filter((p) => p.life > 0 && p.y < window.innerHeight + 40);
       for (const p of particles) {

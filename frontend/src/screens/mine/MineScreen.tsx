@@ -1,7 +1,6 @@
 import { CARD_CATEGORIES, type CardCategory, type CardView } from '@meowgul/shared';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DURATION, SPRING, STAGGER_MAX, isReducedMotion } from '../../animations';
+import { isReducedMotion } from '../../animations';
 import { Button } from '../../components/Button';
 import { CoinIcon } from '../../components/icons';
 import { PlayerStats } from '../../components/PlayerStats';
@@ -61,13 +60,7 @@ function Segmented<T extends string>({
             className={`relative rounded-xl font-extrabold ${small ? 'h-8 text-[11px]' : 'h-9 text-[13px]'} ${active ? 'text-white' : 'text-white/50'}`}
             data-testid={`${layoutId}-${item}`}
           >
-            {active && (
-              <motion.span
-                layoutId={layoutId}
-                className="absolute inset-0 rounded-xl bg-night-500 shadow-card"
-                transition={SPRING.tab}
-              />
-            )}
+            {active && <span className="absolute inset-0 rounded-xl bg-night-500 shadow-card" />}
             <span className="relative">{label(item)}</span>
           </button>
         );
@@ -182,31 +175,15 @@ export function MineScreen() {
             )}
           </div>
         ) : (
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={listKey}
-              className="grid grid-cols-2 gap-2.5"
-              initial={reduced ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 10px, 0)' }}
-              animate={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: DURATION.tabSwitch / 1000 }}
-            >
-              {visible.slice(0, shown).map((card, i) => (
-                <motion.div
-                  key={card.id}
-                  className="flex"
-                  // появляются по очереди только первые карточки (видимые на экране), остальные — сразу
-                  initial={
-                    reduced || i >= STAGGER_MAX ? false : { opacity: 0, transform: 'translate3d(0, 12px, 0)' }
-                  }
-                  animate={{ opacity: 1, transform: 'translate3d(0, 0px, 0)' }}
-                  transition={{ delay: i * (DURATION.stagger / 1000), duration: 0.25 }}
-                >
-                  <CardTile card={card} onOpen={open} />
-                </motion.div>
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          // другая категория — список проявляется целиком (150 мс, CSS); без анимации на каждую из десятков
+          // плиток: экран открывают часто, а каскад только задерживал первый кадр
+          <div key={listKey} className={`grid grid-cols-2 gap-2.5 ${reduced ? '' : 'screen-in'}`}>
+            {visible.slice(0, shown).map((card) => (
+              <div key={card.id} className="cv-tile flex">
+                <CardTile card={card} onOpen={open} />
+              </div>
+            ))}
+          </div>
         )}
         {cards.length > 0 && (
           <p

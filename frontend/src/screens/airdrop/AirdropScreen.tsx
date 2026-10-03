@@ -6,10 +6,8 @@ import {
   type AirdropRequirementId,
   type AirdropResponse,
 } from '@meowgul/shared';
-import { motion } from 'framer-motion';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { endpoints } from '../../api/endpoints';
-import { isReducedMotion } from '../../animations';
 import { Button } from '../../components/Button';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CoinIcon } from '../../components/icons';
@@ -124,27 +122,17 @@ export function AirdropScreen() {
   }, [loadTasks]);
   const extra = tasks.filter((x) => x.section === 'AIRDROP' && x.type !== 'CONNECT_WALLET');
   const openTask = openId ? (tasks.find((x) => x.id === openId) ?? null) : null;
-  const reduced = isReducedMotion();
   const percent = data ? Math.round(data.progress * 100) : 0;
 
   return (
     <div className="h-full overflow-y-auto px-4 pb-6" data-testid="airdrop">
       <div className="flex flex-col items-center pt-6 text-center">
+        {/* неподвижно: экран открывают часто, бесконечное вращение и покачивание только грузили телефон */}
         <div className="relative">
-          {!reduced && (
-            <motion.div
-              className="absolute inset-[-45%] rounded-full bg-[conic-gradient(from_0deg,transparent,rgba(255,201,60,0.35),transparent_30%,rgba(166,107,255,0.3),transparent_60%)]"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
-            />
-          )}
-          <motion.div
-            className="relative rounded-full shadow-glow"
-            animate={reduced ? undefined : { y: [0, -6, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          >
+          <div className="absolute inset-[-45%] rounded-full bg-[conic-gradient(from_0deg,transparent,rgba(255,201,60,0.35),transparent_30%,rgba(166,107,255,0.3),transparent_60%)]" />
+          <div className="relative rounded-full shadow-glow">
             <CoinIcon size={92} />
-          </motion.div>
+          </div>
         </div>
         <h1 className="mt-5 text-[28px] font-black">{t('airdrop.title')}</h1>
         <p className="mt-1.5 max-w-[320px] text-[15px] font-semibold leading-snug text-white/65">
@@ -198,11 +186,10 @@ export function AirdropScreen() {
                 </p>
               </div>
               <div className="mx-1 mt-2 h-2.5 overflow-hidden rounded-full bg-white/10">
-                <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-gold to-lime"
-                  initial={reduced ? false : { width: 0 }}
-                  animate={{ width: `${percent}%` }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                {/* полоса — transform, а не width: без пересчёта раскладки */}
+                <div
+                  className="h-full origin-left rounded-full bg-gradient-to-r from-gold to-lime transition-transform duration-500"
+                  style={{ transform: `scaleX(${percent / 100})` }}
                 />
               </div>
               <ul className="mt-3 flex flex-col gap-1.5">
@@ -223,12 +210,11 @@ export function AirdropScreen() {
         )}
 
         {extra.map((task) => (
-          <motion.button
+          <button
             key={task.id}
             type="button"
-            whileTap={{ scale: 0.97 }}
             onClick={() => setOpenId(task.id)}
-            className={`flex items-center gap-3 rounded-[20px] border border-line bg-night-700 p-3 text-left shadow-card ${task.status === 'done' ? 'opacity-70' : ''}`}
+            className={`press flex items-center gap-3 rounded-[20px] border border-line bg-night-700 p-3 text-left shadow-card ${task.status === 'done' ? 'opacity-70' : ''}`}
             data-testid={`airdrop-task-${task.id}`}
           >
             <TaskIcon icon={task.icon} size={48} />
@@ -236,7 +222,7 @@ export function AirdropScreen() {
             <span className={task.status === 'done' ? 'text-lime' : 'text-white/35'}>
               {task.status === 'done' ? '✓' : '›'}
             </span>
-          </motion.button>
+          </button>
         ))}
         <p className="pt-2 text-center text-sm font-bold text-white/40" data-testid="airdrop-soon">
           {t('airdrop.soon')}

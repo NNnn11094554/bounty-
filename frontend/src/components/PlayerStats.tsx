@@ -33,22 +33,23 @@ export function StatTile({
   }, [open]);
   return (
     <div className="relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl border border-line bg-night-700/80 px-1.5 py-2 shadow-card short:gap-0.5 short:py-1.5">
+      {/* подпись в одну строку на любой ширине: значок «i» — в углу плитки, а не рядом с текстом */}
       <span
-        className="flex items-center gap-1 text-center text-[11px] font-bold leading-tight short:text-[10px]"
+        className="max-w-full truncate whitespace-nowrap text-center text-[11px] font-bold leading-tight short:text-[10px] narrow:text-[10px]"
         style={{ color }}
       >
         {label}
-        {info && (
-          <button
-            type="button"
-            aria-label="info"
-            onClick={() => setOpen((v) => !v)}
-            className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-white/15 text-[10px] font-black text-white/80"
-          >
-            i
-          </button>
-        )}
       </span>
+      {info && (
+        <button
+          type="button"
+          aria-label="info"
+          onClick={() => setOpen((v) => !v)}
+          className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border border-line bg-night-600 text-[10px] font-black text-white/80"
+        >
+          i
+        </button>
+      )}
       <span className="flex items-center gap-1 text-sm font-extrabold tabular">{children}</span>
       {info && open && (
         <motion.div

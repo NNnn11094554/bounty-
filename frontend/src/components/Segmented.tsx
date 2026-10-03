@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-import { useId } from 'react';
 import { haptic } from '../telegram/webapp';
 
 interface Option<T extends string> {
@@ -14,9 +12,11 @@ interface Props<T extends string> {
   testId?: string;
 }
 
-/** Переключатель из нескольких вариантов; подсветка выбранного переезжает между ними. */
+/**
+ * Переключатель из нескольких вариантов. Его нажимают часто — подсветка встаёт на выбранный сразу, без общей
+ * анимации раскладки (она пересчитывала положение всего экрана).
+ */
 export function Segmented<T extends string>({ options, value, onChange, testId }: Props<T>) {
-  const layoutId = `seg-${useId()}`;
   return (
     <div className="flex rounded-2xl bg-night-900/70 p-1" role="radiogroup" data-testid={testId}>
       {options.map((o) => {
@@ -32,19 +32,14 @@ export function Segmented<T extends string>({ options, value, onChange, testId }
               haptic.select();
               onChange(o.value);
             }}
-            className={`relative min-w-0 flex-1 rounded-xl px-2 py-2 text-[13px] font-extrabold transition-colors ${
+            // ширина по тексту (свободное место делится поровну): длинные подписи не обрезаются на узком экране
+            className={`relative min-w-0 flex-auto rounded-xl px-1.5 py-2 text-[13px] font-extrabold transition-colors ${
               active ? 'text-white' : 'text-white/55'
             }`}
             data-testid={testId ? `${testId}-${o.value}` : undefined}
           >
-            {active && (
-              <motion.span
-                layoutId={layoutId}
-                className="absolute inset-0 rounded-xl bg-night-500 shadow-card"
-                transition={{ type: 'spring', stiffness: 500, damping: 36 }}
-              />
-            )}
-            <span className="relative block truncate">{o.label}</span>
+            {active && <span className="absolute inset-0 rounded-xl bg-night-500 shadow-card" />}
+            <span className="relative block truncate whitespace-nowrap">{o.label}</span>
           </button>
         );
       })}
