@@ -22,7 +22,8 @@ test.describe('Onboarding', () => {
     await expect(onboarding).toBeHidden();
     await expect(page.getByText('Стартовый бонус +5 000!')).toBeVisible();
     await expect(page.getByTestId('player-hq')).toHaveCount(0);
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^5\s000$/);
+    // 5 000 стартового бонуса + достижение «Серебряный кот» 2 000 (5 000 заработано — лига Silver)
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^7\s000$/);
 
     // второй вход — без онбординга
     await page.reload();
@@ -35,6 +36,6 @@ test.describe('Onboarding', () => {
     await page.getByTestId('onboarding-skip').click();
     await expect(page.getByTestId('onboarding')).toBeHidden();
     await expect(page.getByTestId('office')).toBeVisible();
-    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^5\s000$/);
+    await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^7\s000$/);
   });
 });
