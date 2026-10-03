@@ -127,7 +127,7 @@ export const COSMETICS: readonly CosmeticDef[] = [
     'shadow',
     'LEGENDARY',
     15,
-    coins(4_000_000),
+    coins(8_000_000),
     ['Тень', 'Shadow Cat'],
     [
       'Почти чёрный: приглушённый фиолетовый свет, тёмные логотипы и дымка вокруг.',
@@ -138,7 +138,7 @@ export const COSMETICS: readonly CosmeticDef[] = [
     'galaxy',
     'LEGENDARY',
     20,
-    coins(10_000_000),
+    coins(40_000_000),
     ['Галактический кот', 'Galaxy Cat'],
     [
       'Индиго и фиолет переливаются снизу вверх, вокруг — звёзды.',
@@ -148,8 +148,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'golden_boss',
     'MYTHIC',
-    25,
-    coins(25_000_000),
+    32,
+    coins(600_000_000),
     ['Золотой Босс', 'Golden Boss Cat'],
     [
       'Золотой неон, золотые логотипы и подошвы. Здесь главный — он.',
@@ -159,8 +159,8 @@ export const COSMETICS: readonly CosmeticDef[] = [
   skin(
     'hacker',
     'MYTHIC',
-    30,
-    coins(50_000_000),
+    38,
+    coins(2_000_000_000),
     ['Кот-хакер', 'Hacker Cat'],
     [
       'Зелёный неон терминала и бегущий код вокруг. Root-доступ к рынку.',
@@ -233,7 +233,7 @@ export const COSMETICS: readonly CosmeticDef[] = [
     'lightning',
     'EPIC',
     14,
-    coins(3_000_000),
+    coins(5_000_000),
     ['Молнии', 'Lightning'],
     ['Разряд энергии — тапы как удар тока.', 'An energy discharge — taps that hit like lightning.'],
   ),

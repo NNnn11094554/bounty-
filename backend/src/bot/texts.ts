@@ -1,13 +1,11 @@
 import type { Locale } from '@meowgul/shared';
-import { REFERRAL, REWARDS } from '../game/config/rewards.js';
+import { REFERRAL } from '../game/config/rewards.js';
 
 /** Имя игрока для текста с parse_mode HTML. */
 export const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const num = (n: number, locale: Locale) =>
   new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(n);
-/** комбо + шифр за день */
-const DAILY_MAX = REWARDS.combo + REWARDS.cipher;
 
 /** Тексты бота на двух языках. welcome — HTML (parse_mode: 'HTML'), имя экранируется. */
 export const BOT_TEXTS = {
@@ -24,7 +22,7 @@ export const BOT_TEXTS = {
         '',
         '👆 <b>Тапай кота</b> — каждый тап приносит монеты',
         '📈 <b>Покупай карточки</b> — прибыль капает каждый час, даже когда ты офлайн',
-        `🧩 <b>Комбо и шифр дня</b> — до +${num(DAILY_MAX, 'ru')} монет каждый день`,
+        `🧩 <b>Комбо и шифр дня</b> — до 4 часов дохода каждый день`,
         `👥 <b>Зови друзей</b> — от +${num(REFERRAL.regular, 'ru')} монет вам обоим`,
         '🪂 <b>Airdrop</b> — подключи кошелёк и будь готов',
         '',
@@ -56,7 +54,7 @@ export const BOT_TEXTS = {
         '',
         '👆 <b>Tap the cat</b> — every tap earns coins',
         '📈 <b>Buy cards</b> — profit drips in every hour, even while you’re offline',
-        `🧩 <b>Daily combo & cipher</b> — up to +${num(DAILY_MAX, 'en')} coins every day`,
+        `🧩 <b>Daily combo & cipher</b> — up to 4 hours of income every day`,
         `👥 <b>Invite friends</b> — from +${num(REFERRAL.regular, 'en')} coins for both of you`,
         '🪂 <b>Airdrop</b> — connect your wallet and get ready',
         '',

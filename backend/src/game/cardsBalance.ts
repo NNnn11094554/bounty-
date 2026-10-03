@@ -20,9 +20,10 @@ export function levelPayback(card: CardConfig, level: number): number {
 
 /**
  * Правила экономики карточек (их же проверяют тесты):
- *  - costMultiplier 1,7–2,2, profitMultiplier 1,05–1,2;
- *  - окупаемость 1-го уровня 3–250 ч (дорогие тиры окупаются дольше), к 10-му уровню (или максимуму) —
- *    от 100 ч, и растёт с каждым уровнем; прирост дохода за уровень ≤ MAX_LEVEL_PROFIT;
+ *  - costMultiplier 1,1–2,2, profitMultiplier 1,05–1,25;
+ *  - окупаемость 1-го уровня 3–300 ч (дорогие тиры окупаются дольше), последнего — до 80 000 ч и не
+ *    меньше чем в 15 раз дольше первого; растёт с каждым уровнем (без «стен» и без провалов);
+ *  - прирост дохода за уровень ≤ MAX_LEVEL_PROFIT;
  *  - цена любого уровня ≤ MAX_LEVEL_PRICE;
  *  - уникальные id и иконки, условия ссылаются на существующие карточки и не образуют циклов.
  */
@@ -48,19 +49,22 @@ export function checkCardsBalance(cards: readonly CardConfig[]): BalanceReport {
 
   for (const card of cards) {
     const id = card.id;
-    if (card.costMultiplier < 1.7 || card.costMultiplier > 2.2)
-      errors.push(`${id}: costMultiplier вне 1,7–2,2`);
-    if (card.profitMultiplier < 1.05 || card.profitMultiplier > 1.2) {
-      errors.push(`${id}: profitMultiplier вне 1,05–1,2`);
+    if (card.costMultiplier < 1.1 || card.costMultiplier > 2.2)
+      errors.push(`${id}: costMultiplier вне 1,1–2,2`);
+    if (card.profitMultiplier < 1.05 || card.profitMultiplier > 1.25) {
+      errors.push(`${id}: profitMultiplier вне 1,05–1,25`);
     }
     const first = levelPayback(card, 1);
-    if (first < 3 || first > 250)
-      errors.push(`${id}: окупаемость 1-го уровня ${first.toFixed(1)} ч (нужно 3–250)`);
+    if (first < 3 || first > 300)
+      errors.push(`${id}: окупаемость 1-го уровня ${first.toFixed(1)} ч (нужно 3–300)`);
     if (cardLevelProfit(card, card.maxLevel) > MAX_LEVEL_PROFIT)
       errors.push(`${id}: прирост дохода за уровень выше ${MAX_LEVEL_PROFIT}`);
-    const late = levelPayback(card, Math.min(10, card.maxLevel));
-    if (late < 100)
-      errors.push(`${id}: окупаемость ${Math.min(10, card.maxLevel)}-го уровня ${late.toFixed(0)} ч (< 100)`);
+    const last = levelPayback(card, card.maxLevel);
+    if (last > 80_000) errors.push(`${id}: окупаемость последнего уровня ${last.toFixed(0)} ч (> 80 000)`);
+    if (last < first * 15)
+      errors.push(
+        `${id}: последний уровень окупается всего в ${(last / first).toFixed(0)} раз дольше первого`,
+      );
     for (let level = 2; level <= card.maxLevel; level++) {
       if (levelPayback(card, level) < levelPayback(card, level - 1)) {
         errors.push(`${id}: окупаемость падает на ${level}-м уровне`);

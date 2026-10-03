@@ -3,12 +3,31 @@
  */
 export const REWARDS = {
   /** ежедневная награда по дням серии; после 10-го дня цикл начинается заново */
-  daily: [500, 1_000, 2_500, 5_000, 15_000, 25_000, 100_000, 500_000, 1_000_000, 5_000_000],
-  /** все 3 карточки комбо дня улучшены за игровой день */
-  combo: 5_000_000,
-  /** шифр дня разгадан */
-  cipher: 1_000_000,
+  daily: [500, 1_000, 2_000, 3_500, 5_000, 7_500, 10_000, 15_000, 25_000, 50_000],
+  /** все 3 карточки комбо дня улучшены за игровой день: часы дохода игрока, но не меньше минимума */
+  combo: { hours: 3, min: 50_000 },
+  /** шифр дня разгадан: час дохода игрока, но не меньше минимума */
+  cipher: { hours: 1, min: 10_000 },
 } as const;
+
+/** Ежедневная награда за день серии streakDay (1…; цикл по REWARDS.daily). */
+export function dailyReward(streakDay: number, _profitPerHour: number): number {
+  const cycle = REWARDS.daily.length;
+  return REWARDS.daily[(Math.max(1, streakDay) - 1) % cycle]!;
+}
+
+const scaled = (r: { hours: number; min: number }, profitPerHour: number) =>
+  Math.max(r.min, Math.round((profitPerHour * r.hours) / 1000) * 1000);
+
+/** Награда за комбо дня: растёт вместе с доходом, а не фиксированная сумма — не ломает начало игры. */
+export function comboReward(profitPerHour: number): number {
+  return scaled(REWARDS.combo, profitPerHour);
+}
+
+/** Награда за шифр дня (как и комбо — от дохода в час). */
+export function cipherReward(profitPerHour: number): number {
+  return scaled(REWARDS.cipher, profitPerHour);
+}
 
 /**
  * Рефералы: бонус обоим за нового друга (за друга с Telegram Premium — больше)

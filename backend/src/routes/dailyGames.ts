@@ -1,7 +1,7 @@
 import type { CipherClaimResponse, DailyGamesResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { REWARDS } from '../game/config/rewards.js';
+import { cipherReward } from '../game/config/rewards.js';
 import { dayKey, nextResetAt } from '../game/dayKey.js';
 import { ApiError } from '../lib/errors.js';
 import { prisma } from '../lib/db.js';
@@ -35,8 +35,8 @@ export async function dailyGameRoutes(app: FastifyInstance): Promise<void> {
       prisma.userCipher.findUnique({ where: { userId_dayKey: { userId: user.id, dayKey: key } } }),
     ]);
     return {
-      combo: await comboState(combo, progress),
-      cipher: cipherState(cipher, solved?.solved ?? false),
+      combo: await comboState(combo, progress, Number(user.profitPerHour)),
+      cipher: cipherState(cipher, solved?.solved ?? false, Number(user.profitPerHour)),
       nextResetAt: nextResetAt(now).getTime(),
     };
   });
@@ -68,10 +68,11 @@ export async function dailyGameRoutes(app: FastifyInstance): Promise<void> {
             return null;
           }
           const { user } = await syncPassive(tx, locked, now);
+          const reward = cipherReward(Number(user.profitPerHour));
           const updated = await applyBalanceChanges(
             tx,
             user,
-            [{ type: 'cipher_reward', amount: REWARDS.cipher, meta: { dayKey: key } }],
+            [{ type: 'cipher_reward', amount: reward, meta: { dayKey: key } }],
             {},
             now,
           );
@@ -82,8 +83,8 @@ export async function dailyGameRoutes(app: FastifyInstance): Promise<void> {
           const final = await checkAchievements(tx, updated, now, ['ciphers']);
           return {
             state: buildPlayerState(final, now),
-            cipher: cipherState(cipher, true),
-            reward: REWARDS.cipher,
+            cipher: cipherState(cipher, true, Number(user.profitPerHour)),
+            reward,
           };
         },
       );

@@ -124,8 +124,9 @@ export async function seedCards(opts: { force?: boolean } = {}): Promise<number>
  * работающей игры (цены, доход), версию повышают: при следующем старте сервер один раз перезаписывает
  * карточки в БД из конфига и пересчитывает доход в час всех игроков по купленным уровням.
  * 2 — потолок дохода MAX_LEVEL_PROFIT и долгая окупаемость дорогих тиров.
+ * 3 — экономика под долгую игру: плавная кривая окупаемости от часов до лет (см. TIERS в cards.ts).
  */
-export const CARDS_ECONOMY_VERSION = 2;
+export const CARDS_ECONOMY_VERSION = 3;
 const ECONOMY_KEY = 'cardsEconomyVersion';
 
 export async function syncCardEconomy(): Promise<{ users: number } | null> {

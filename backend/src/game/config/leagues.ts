@@ -1,5 +1,6 @@
 /**
- * Лиги — по ВСЕГО заработанным монетам (траты не понижают лигу).
+ * Лиги — по ВСЕГО заработанным монетам (траты не понижают лигу). Пороги — под долгую прогрессию:
+ * обычный активный игрок берёт Epic примерно за месяц, Master — за ~3 месяца, Lord — за ~8 месяцев.
  * Цвета задают оформление вокруг персонажа: обводка, свечение, бейдж.
  */
 export interface LeagueConfig {
@@ -13,14 +14,14 @@ export interface LeagueConfig {
 export const LEAGUES: readonly LeagueConfig[] = [
   { level: 0, id: 'bronze', name: 'Bronze', threshold: 0, color: '#cd7f32' },
   { level: 1, id: 'silver', name: 'Silver', threshold: 5_000, color: '#c0c7d1' },
-  { level: 2, id: 'gold', name: 'Gold', threshold: 10_000_000, color: '#ffc93c' },
-  { level: 3, id: 'platinum', name: 'Platinum', threshold: 50_000_000, color: '#7fe3ff' },
-  { level: 4, id: 'diamond', name: 'Diamond', threshold: 250_000_000, color: '#4f9dff' },
-  { level: 5, id: 'epic', name: 'Epic', threshold: 1_000_000_000, color: '#a66bff' },
-  { level: 6, id: 'legendary', name: 'Legendary', threshold: 3_000_000_000, color: '#ff4fa3' },
-  { level: 7, id: 'master', name: 'Master', threshold: 10_000_000_000, color: '#ff5f3d' },
-  { level: 8, id: 'grandmaster', name: 'Grandmaster', threshold: 50_000_000_000, color: '#2ed39a' },
-  { level: 9, id: 'lord', name: 'Lord', threshold: 200_000_000_000, color: 'rainbow' },
+  { level: 2, id: 'gold', name: 'Gold', threshold: 1_000_000, color: '#ffc93c' },
+  { level: 3, id: 'platinum', name: 'Platinum', threshold: 10_000_000, color: '#7fe3ff' },
+  { level: 4, id: 'diamond', name: 'Diamond', threshold: 120_000_000, color: '#4f9dff' },
+  { level: 5, id: 'epic', name: 'Epic', threshold: 1_500_000_000, color: '#a66bff' },
+  { level: 6, id: 'legendary', name: 'Legendary', threshold: 15_000_000_000, color: '#ff4fa3' },
+  { level: 7, id: 'master', name: 'Master', threshold: 70_000_000_000, color: '#ff5f3d' },
+  { level: 8, id: 'grandmaster', name: 'Grandmaster', threshold: 240_000_000_000, color: '#2ed39a' },
+  { level: 9, id: 'lord', name: 'Lord', threshold: 700_000_000_000, color: 'rainbow' },
 ];
 
 export function leagueForTotal(totalEarned: number): number {

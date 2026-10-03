@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import type { DailyCipher, DailyCombo, User } from '@prisma/client';
 import type { CipherState, ComboCard, ComboState, ComboUpdate } from '@meowgul/shared';
 import { CIPHER_WORDS } from '../game/config/ciphers.js';
-import { COMBO_MAX_BASE_COST, REWARDS } from '../game/config/rewards.js';
+import { COMBO_MAX_BASE_COST, cipherReward, comboReward } from '../game/config/rewards.js';
 import { dayKey } from '../game/dayKey.js';
 import { prisma } from '../lib/db.js';
 import { getCatalog, type CatalogCard } from './cards.js';
@@ -82,6 +82,7 @@ async function comboCards(ids: readonly string[]): Promise<ComboCard[]> {
 export async function comboState(
   combo: DailyCombo,
   progress: { foundCardIds: string[]; rewarded: boolean } | null,
+  profitPerHour: number,
 ): Promise<ComboState> {
   const found = (progress?.foundCardIds ?? []).filter((id) => combo.cardIds.includes(id));
   const cards = await comboCards(found);
@@ -89,17 +90,17 @@ export async function comboState(
     dayKey: combo.dayKey,
     slots: Array.from({ length: COMBO_SIZE }, (_, i) => cards[i] ?? null),
     rewarded: progress?.rewarded ?? false,
-    reward: REWARDS.combo,
+    reward: comboReward(profitPerHour),
   };
 }
 
-export function cipherState(cipher: DailyCipher, solved: boolean): CipherState {
+export function cipherState(cipher: DailyCipher, solved: boolean, profitPerHour: number): CipherState {
   return {
     dayKey: cipher.dayKey,
     length: cipher.word.length,
     hint: { ru: cipher.hintRu, en: cipher.hintEn },
     solved,
-    reward: REWARDS.cipher,
+    reward: cipherReward(profitPerHour),
   };
 }
 
@@ -127,7 +128,7 @@ export async function registerComboCard(
   let updatedUser = user;
   let reward = 0;
   if (complete && !progress.rewarded) {
-    reward = REWARDS.combo;
+    reward = comboReward(Number(user.profitPerHour));
     updatedUser = await applyBalanceChanges(
       tx,
       user,
@@ -140,5 +141,8 @@ export async function registerComboCard(
     where: { userId_dayKey: { userId: user.id, dayKey: key } },
     data: { foundCardIds: found, rewarded: progress.rewarded || reward > 0 },
   });
-  return { user: updatedUser, update: { combo: await comboState(combo, saved), reward } };
+  return {
+    user: updatedUser,
+    update: { combo: await comboState(combo, saved, Number(updatedUser.profitPerHour)), reward },
+  };
 }

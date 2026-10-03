@@ -15,7 +15,8 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "balance-check": "tsx src/scripts/balance-check.ts",
     "postinstall": "prisma generate",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "economy-sim": "tsx src/scripts/economy-sim.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

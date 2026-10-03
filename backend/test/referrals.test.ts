@@ -184,7 +184,7 @@ describe('referrals', () => {
 
     const friends = (await client(app, tgUser(11201)).get('/api/friends')).json<FriendsResponse>();
     expect(friends.total).toBe(1);
-    expect(friends.friends[0]).toMatchObject({ name: 'Cat11202', level: 2, online: true, bonus: 25_000 });
+    expect(friends.friends[0]).toMatchObject({ name: 'Cat11202', level: 1, online: true, bonus: 25_000 });
 
     // уже игравшему игроку Start по ссылке ничего не даёт
     await start(11201, '/start ref_11202');

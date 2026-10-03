@@ -41,18 +41,45 @@ type Tier = 1 | 2 | 3 | 4 | 5 | 6;
 export const MAX_LEVEL_PROFIT = 2_000_000;
 
 /**
- * Базовая цена и окупаемость первого уровня (ч) по тирам. Чем дороже тир, тем дольше окупается:
- * дорогие карточки — долгая цель, а не мгновенный скачок дохода; ни один уровень не даёт больше
- * MAX_LEVEL_PROFIT в час.
+ * Тиры карточек — место карточки в долгой прогрессии. Для каждого тира задано:
+ *  - cost — базовая цена 1-го уровня;
+ *  - payback — окупаемость 1-го уровня (ч): дешёвые окупаются за часы, дорогие — за дни;
+ *  - lastPayback — окупаемость последнего уровня (ч): последние уровни — цели на месяцы и годы;
+ *  - profitGrowth — во сколько раз растёт прирост дохода с каждым уровнем.
+ * Рост цены уровня подбирается для каждой карточки так, чтобы окупаемость плавно (геометрически) шла
+ * от payback к lastPayback — без «стены», где каждый следующий уровень вдвое дороже. Ни один уровень
+ * не даёт больше MAX_LEVEL_PROFIT в час. Кривую проверяет симуляция игрока (npm run economy-sim).
  */
-const TIERS: Record<Tier, { cost: number; payback: number; mult: [number, number, number] }> = {
-  1: { cost: 1_000, payback: 5, mult: [1.7, 1.75, 1.8] },
-  2: { cost: 12_000, payback: 8, mult: [1.75, 1.8, 1.85] },
-  3: { cost: 150_000, payback: 14, mult: [1.8, 1.85, 1.9] },
-  4: { cost: 2_000_000, payback: 28, mult: [1.85, 1.9, 2.0] },
-  5: { cost: 25_000_000, payback: 60, mult: [1.9, 2.0, 2.1] },
-  6: { cost: 300_000_000, payback: 160, mult: [2.0, 2.1, 2.2] },
+interface TierSpec {
+  cost: number;
+  payback: number;
+  lastPayback: number;
+  profitGrowth: number;
+}
+const TIERS: Record<Tier, TierSpec> = {
+  1: { cost: 1_000, payback: 5, lastPayback: 3_000, profitGrowth: 1.2 },
+  2: { cost: 12_000, payback: 9, lastPayback: 6_000, profitGrowth: 1.18 },
+  3: { cost: 150_000, payback: 20, lastPayback: 12_000, profitGrowth: 1.16 },
+  4: { cost: 2_000_000, payback: 45, lastPayback: 26_000, profitGrowth: 1.14 },
+  5: { cost: 25_000_000, payback: 100, lastPayback: 40_000, profitGrowth: 1.12 },
+  6: { cost: 300_000_000, payback: 240, lastPayback: 60_000, profitGrowth: 1.08 },
 };
+
+/** Рост цены уровня, при котором последний уровень окупается за lastPayback часов (с учётом потолка дохода). */
+function solveCostMultiplier(
+  baseCost: number,
+  baseProfit: number,
+  profitMultiplier: number,
+  maxLevel: number,
+  lastPayback: number,
+): number {
+  if (maxLevel <= 1) return 1.5;
+  const profitAt = Math.min(MAX_LEVEL_PROFIT, baseProfit * profitMultiplier ** (maxLevel - 1));
+  // цена последнего уровня = lastPayback × его прибыль; отсюда рост цены за уровень
+  const cm = ((lastPayback * profitAt) / baseCost) ** (1 / (maxLevel - 1));
+  // окупаемость не должна падать от уровня к уровню: цена растёт не медленнее прибыли
+  return Math.round(Math.max(cm, profitMultiplier + 0.01) * 10_000) / 10_000;
+}
 
 function twoDigits(n: number): number {
   const p = 10 ** Math.max(0, Math.floor(Math.log10(n)) - 1);
@@ -1336,9 +1363,20 @@ function build(category: CardCategory, defs: Def[], limited = false): CardConfig
     const tier = TIERS[d.tier];
     const baseCost = twoDigits(tier.cost * (d.k ?? 1));
     // небольшой разброс окупаемости внутри тира: 0.9–1.15
-    const payback = tier.payback * (0.9 + ((i * 7) % 6) * 0.05);
-    const costMultiplier = tier.mult[i % 3]!;
-    const profitMultiplier = Math.min(1.2, Math.max(1.05, Math.round((costMultiplier / 1.48) * 100) / 100));
+    const spread = 0.9 + ((i * 7) % 6) * 0.05;
+    const payback = tier.payback * spread;
+    const baseProfit = Math.min(MAX_LEVEL_PROFIT, Math.max(1, Math.round(baseCost / payback)));
+    const profitMultiplier = tier.profitGrowth;
+    const wantedMax = d.max ?? (limited ? 10 : category === 'SPECIALS' ? 20 : 25);
+    // окупаемость растёт не круче ×1,4 за уровень — у коротких (лимитированных) карточек потолок ниже
+    const lastPayback = Math.min(tier.lastPayback * spread, payback * 1.4 ** (wantedMax - 1));
+    const costMultiplier = solveCostMultiplier(
+      baseCost,
+      baseProfit,
+      profitMultiplier,
+      wantedMax,
+      lastPayback,
+    );
     return {
       id: d.id,
       category,
@@ -1348,14 +1386,10 @@ function build(category: CardCategory, defs: Def[], limited = false): CardConfig
       descEn: d.en[1],
       icon: d.icon,
       baseCost,
-      baseProfit: Math.min(MAX_LEVEL_PROFIT, Math.max(1, Math.round(baseCost / payback))),
+      baseProfit,
       costMultiplier,
       profitMultiplier,
-      maxLevel: cappedMaxLevel(
-        baseCost,
-        costMultiplier,
-        d.max ?? (limited ? 10 : category === 'SPECIALS' ? 20 : 25),
-      ),
+      maxLevel: cappedMaxLevel(baseCost, costMultiplier, wantedMax),
       cooldownSec: d.cd ?? 0,
       condition: d.cond ?? null,
       isLimited: limited,

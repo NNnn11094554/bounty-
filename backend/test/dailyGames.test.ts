@@ -8,7 +8,7 @@ import type {
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CIPHER_WORDS, CIPHER_WORD_RE } from '../src/game/config/ciphers.js';
-import { REWARDS } from '../src/game/config/rewards.js';
+import { REWARDS, comboReward } from '../src/game/config/rewards.js';
 import { dayKey, previousDayKey } from '../src/game/dayKey.js';
 import { prisma } from '../src/lib/db.js';
 import { getCatalog } from '../src/services/cards.js';
@@ -70,8 +70,9 @@ describe('daily combo and cipher', () => {
     const { c } = await player(9001);
     const first = (await c.get('/api/combo')).json<DailyGamesResponse>();
     expect(first.combo.slots).toEqual([null, null, null]);
-    expect(first.combo).toMatchObject({ rewarded: false, reward: 5_000_000 });
-    expect(first.cipher).toMatchObject({ solved: false, reward: 1_000_000 });
+    // награды — от дохода в час; у нового игрока — минимальные
+    expect(first.combo).toMatchObject({ rewarded: false, reward: REWARDS.combo.min });
+    expect(first.cipher).toMatchObject({ solved: false, reward: REWARDS.cipher.min });
     expect(first.cipher.length).toBeGreaterThanOrEqual(4);
     expect(JSON.stringify(first)).not.toContain('"word"');
     const again = (await c.get('/api/combo')).json<DailyGamesResponse>();
@@ -80,7 +81,7 @@ describe('daily combo and cipher', () => {
     expect(first.nextResetAt).toBeGreaterThan(Date.now());
   });
 
-  it('upgrading all three combo cards pays 5 000 000 once', async () => {
+  it('upgrading all three combo cards pays the combo reward once', async () => {
     const key = dayKey(new Date());
     await prisma.dailyCombo.create({ data: { dayKey: key, cardIds: ['mk_spot', 'pr_support', 'lg_kyc'] } });
     const { c, user } = await player(9002, 1_000_000);
@@ -101,8 +102,11 @@ describe('daily combo and cipher', () => {
     await c.post('/api/cards/pr_support/upgrade');
     const before = (await c.get('/api/state')).json<{ state: { balance: number } }>().state.balance;
     const last = (await c.post('/api/cards/lg_kyc/upgrade')).json<CardUpgradeResponse>();
-    expect(last.combo).toMatchObject({ reward: REWARDS.combo, combo: { rewarded: true } });
-    expect(last.state.balance).toBeGreaterThan(before + REWARDS.combo - 2_000);
+    expect(last.combo).toMatchObject({
+      reward: comboReward(last.state.profitPerHour),
+      combo: { rewarded: true },
+    });
+    expect(last.state.balance).toBeGreaterThan(before + REWARDS.combo.min - 2_000);
 
     const games = (await c.get('/api/combo')).json<DailyGamesResponse>();
     expect(games.combo.slots.map((s) => s?.id)).toEqual(['mk_spot', 'pr_support', 'lg_kyc']);
@@ -134,8 +138,8 @@ describe('daily combo and cipher', () => {
     const ok = await c.post('/api/cipher/claim', { word: ' meow ' });
     expect(ok.statusCode).toBe(200);
     const body = ok.json<CipherClaimResponse>();
-    expect(body).toMatchObject({ reward: 1_000_000, cipher: { solved: true, length: 4 } });
-    expect(body.state.balance).toBeGreaterThanOrEqual(1_000_000);
+    expect(body).toMatchObject({ reward: REWARDS.cipher.min, cipher: { solved: true, length: 4 } });
+    expect(body.state.balance).toBeGreaterThanOrEqual(REWARDS.cipher.min);
 
     expect((await c.post('/api/cipher/claim', { word: 'MEOW' })).json<ApiErrorBody>().error.code).toBe(
       'ALREADY_DONE',
