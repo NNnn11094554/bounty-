@@ -3,7 +3,7 @@ import { env } from './env.js';
 import { prisma } from './lib/db.js';
 import { logger } from './lib/logger.js';
 import { startBot } from './bot/runtime.js';
-import { seedCards } from './services/cards.js';
+import { seedCards, syncCardEconomy } from './services/cards.js';
 import { seedTasks } from './services/tasks.js';
 
 async function main(): Promise<void> {
@@ -12,6 +12,9 @@ async function main(): Promise<void> {
   // новые карточки из конфига появляются в БД автоматически после деплоя
   const added = await seedCards();
   if (added > 0) logger.info({ added }, 'cards added from config');
+  // новая версия экономики карточек: цифры из конфига и пересчёт дохода игроков — один раз
+  const economy = await syncCardEconomy();
+  if (economy) logger.info(economy, 'card economy updated, profit per hour recalculated');
   const tasks = await seedTasks();
   if (tasks > 0) logger.info({ tasks }, 'built-in tasks added');
 

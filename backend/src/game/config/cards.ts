@@ -37,14 +37,21 @@ export interface CardConfig {
 
 type Tier = 1 | 2 | 3 | 4 | 5 | 6;
 
-/** Базовая цена и окупаемость первого уровня (ч) по тирам. */
+/** Потолок прироста дохода за один уровень любой карточки, монет в час. */
+export const MAX_LEVEL_PROFIT = 2_000_000;
+
+/**
+ * Базовая цена и окупаемость первого уровня (ч) по тирам. Чем дороже тир, тем дольше окупается:
+ * дорогие карточки — долгая цель, а не мгновенный скачок дохода; ни один уровень не даёт больше
+ * MAX_LEVEL_PROFIT в час.
+ */
 const TIERS: Record<Tier, { cost: number; payback: number; mult: [number, number, number] }> = {
-  1: { cost: 1_000, payback: 4.5, mult: [1.7, 1.75, 1.8] },
-  2: { cost: 12_000, payback: 5.5, mult: [1.75, 1.8, 1.85] },
-  3: { cost: 150_000, payback: 6.5, mult: [1.8, 1.85, 1.9] },
-  4: { cost: 2_000_000, payback: 7.5, mult: [1.85, 1.9, 2.0] },
-  5: { cost: 25_000_000, payback: 8.5, mult: [1.9, 2.0, 2.1] },
-  6: { cost: 300_000_000, payback: 10, mult: [2.0, 2.1, 2.2] },
+  1: { cost: 1_000, payback: 5, mult: [1.7, 1.75, 1.8] },
+  2: { cost: 12_000, payback: 8, mult: [1.75, 1.8, 1.85] },
+  3: { cost: 150_000, payback: 14, mult: [1.8, 1.85, 1.9] },
+  4: { cost: 2_000_000, payback: 28, mult: [1.85, 1.9, 2.0] },
+  5: { cost: 25_000_000, payback: 60, mult: [1.9, 2.0, 2.1] },
+  6: { cost: 300_000_000, payback: 160, mult: [2.0, 2.1, 2.2] },
 };
 
 function twoDigits(n: number): number {
@@ -1341,7 +1348,7 @@ function build(category: CardCategory, defs: Def[], limited = false): CardConfig
       descEn: d.en[1],
       icon: d.icon,
       baseCost,
-      baseProfit: Math.max(1, Math.round(baseCost / payback)),
+      baseProfit: Math.min(MAX_LEVEL_PROFIT, Math.max(1, Math.round(baseCost / payback))),
       costMultiplier,
       profitMultiplier,
       maxLevel: cappedMaxLevel(
@@ -1379,12 +1386,12 @@ export function cardLevelCost(c: Pick<CardConfig, 'baseCost' | 'costMultiplier'>
   return Math.round(c.baseCost * c.costMultiplier ** (level - 1));
 }
 
-/** Прирост прибыли в час, который даёт уровень level. */
+/** Прирост прибыли в час, который даёт уровень level (не больше MAX_LEVEL_PROFIT). */
 export function cardLevelProfit(
   c: Pick<CardConfig, 'baseProfit' | 'profitMultiplier'>,
   level: number,
 ): number {
-  return Math.round(c.baseProfit * c.profitMultiplier ** (level - 1));
+  return Math.min(MAX_LEVEL_PROFIT, Math.round(c.baseProfit * c.profitMultiplier ** (level - 1)));
 }
 
 /** Суммарная прибыль карточки в час на уровне level. */

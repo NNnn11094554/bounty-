@@ -1,5 +1,11 @@
 import { CARD_GLYPHS, parseCardIcon } from '@meowgul/shared';
-import { MAX_LEVEL_PRICE, cardLevelCost, cardLevelProfit, type CardConfig } from './config/cards.js';
+import {
+  MAX_LEVEL_PRICE,
+  MAX_LEVEL_PROFIT,
+  cardLevelCost,
+  cardLevelProfit,
+  type CardConfig,
+} from './config/cards.js';
 import { LEAGUES } from './config/leagues.js';
 
 export interface BalanceReport {
@@ -15,7 +21,8 @@ export function levelPayback(card: CardConfig, level: number): number {
 /**
  * Правила экономики карточек (их же проверяют тесты):
  *  - costMultiplier 1,7–2,2, profitMultiplier 1,05–1,2;
- *  - окупаемость 1-го уровня 3–12 ч, к 10-му уровню (или максимуму) — от 100 ч, и растёт с каждым уровнем;
+ *  - окупаемость 1-го уровня 3–250 ч (дорогие тиры окупаются дольше), к 10-му уровню (или максимуму) —
+ *    от 100 ч, и растёт с каждым уровнем; прирост дохода за уровень ≤ MAX_LEVEL_PROFIT;
  *  - цена любого уровня ≤ MAX_LEVEL_PRICE;
  *  - уникальные id и иконки, условия ссылаются на существующие карточки и не образуют циклов.
  */
@@ -47,8 +54,10 @@ export function checkCardsBalance(cards: readonly CardConfig[]): BalanceReport {
       errors.push(`${id}: profitMultiplier вне 1,05–1,2`);
     }
     const first = levelPayback(card, 1);
-    if (first < 3 || first > 12)
-      errors.push(`${id}: окупаемость 1-го уровня ${first.toFixed(1)} ч (нужно 3–12)`);
+    if (first < 3 || first > 250)
+      errors.push(`${id}: окупаемость 1-го уровня ${first.toFixed(1)} ч (нужно 3–250)`);
+    if (cardLevelProfit(card, card.maxLevel) > MAX_LEVEL_PROFIT)
+      errors.push(`${id}: прирост дохода за уровень выше ${MAX_LEVEL_PROFIT}`);
     const late = levelPayback(card, Math.min(10, card.maxLevel));
     if (late < 100)
       errors.push(`${id}: окупаемость ${Math.min(10, card.maxLevel)}-го уровня ${late.toFixed(0)} ч (< 100)`);

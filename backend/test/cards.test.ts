@@ -1,9 +1,22 @@
 import type { ApiErrorBody, CardUpgradeResponse, CardsResponse, StateResponse } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { CARDS, LIMITED_ROTATION, cardLevelCost, cardLevelProfit } from '../src/game/config/cards.js';
+import {
+  CARDS,
+  LIMITED_ROTATION,
+  MAX_LEVEL_PROFIT,
+  cardLevelCost,
+  cardLevelProfit,
+  cardTotalProfit,
+} from '../src/game/config/cards.js';
 import { prisma } from '../src/lib/db.js';
-import { getCatalog, invalidateCatalog, limitedWindow } from '../src/services/cards.js';
+import {
+  CARDS_ECONOMY_VERSION,
+  getCatalog,
+  invalidateCatalog,
+  limitedWindow,
+  syncCardEconomy,
+} from '../src/services/cards.js';
 import { client, createApp, resetDb, tgUser } from './helpers.js';
 
 const config = (id: string) => {
@@ -301,5 +314,31 @@ describe('cards API', () => {
     });
     state = (await c.get('/api/state')).json<StateResponse>().state;
     expect(state.balance).toBe(3 * 3600);
+  });
+
+  it('economy sync: cards are rewritten from config and profit per hour is recalculated once', async () => {
+    const top = [...CARDS].sort((a, b) => b.baseCost - a.baseCost)[0]!;
+    const cheap = config('mk_spot');
+    // в БД — старые цифры дорогой карточки, у игрока — старый завышенный доход
+    await prisma.card.update({ where: { id: top.id }, data: { baseProfit: 30_000_000n } });
+    const { user } = await player(5901, { profitPerHour: 31_000_000n });
+    const { user: empty } = await player(5902, { profitPerHour: 777n });
+    await setLevel(user.id, top.id, 1);
+    await setLevel(user.id, cheap.id, 3);
+
+    expect(await syncCardEconomy()).toEqual({ users: 1 });
+    const card = await prisma.card.findUniqueOrThrow({ where: { id: top.id } });
+    expect(Number(card.baseProfit)).toBeLessThanOrEqual(MAX_LEVEL_PROFIT);
+    const expected = cardTotalProfit(top, 1) + cardTotalProfit(cheap, 3);
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(Number(after.profitPerHour)).toBe(expected);
+    expect(Number((await prisma.user.findUniqueOrThrow({ where: { id: empty.id } })).profitPerHour)).toBe(0);
+    const saved = await prisma.appSetting.findUniqueOrThrow({ where: { key: 'cardsEconomyVersion' } });
+    expect(saved.value).toBe(CARDS_ECONOMY_VERSION);
+
+    // второй старт — ничего не трогает (правки админки после синхронизации сохраняются)
+    await prisma.card.update({ where: { id: cheap.id }, data: { baseProfit: 1n } });
+    expect(await syncCardEconomy()).toBeNull();
+    expect(Number((await prisma.card.findUniqueOrThrow({ where: { id: cheap.id } })).baseProfit)).toBe(1);
   });
 });

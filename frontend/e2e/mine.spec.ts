@@ -28,12 +28,12 @@ test.describe('Mine', () => {
     await expect(sheet.getByRole('dialog')).toBeHidden();
     await expect(page.getByTestId('mine').getByTestId('per-hour-float')).toBeVisible();
     await expect(tile.getByTestId('card-level')).toHaveAttribute('aria-label', 'lvl 1');
-    await expect(page.getByTestId('mine-stat-per-hour')).toHaveText('+198');
+    await expect(page.getByTestId('mine-stat-per-hour')).toHaveText('+178');
 
     // прибыль в час видна и на главной («Назад» из Mine)
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('office')).toBeVisible();
-    await expect(page.getByTestId('stat-per-hour')).toHaveText('+198');
+    await expect(page.getByTestId('stat-per-hour')).toHaveText('+178');
   });
 
   test('locked cards show their condition; not enough coins disables the button', async ({ page }) => {
