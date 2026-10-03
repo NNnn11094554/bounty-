@@ -191,6 +191,7 @@ test.describe('Skins and collection', () => {
     const ids = ['inferno', 'toxic', 'astro_cat', 'lunar_witch'];
     await db.userCosmetic.createMany({
       data: ids.map((cosmeticId) => ({ userId: user.id, cosmeticId, source: 'admin' })),
+      skipDuplicates: true,
     });
     for (const id of ids) {
       await db.user.update({ where: { id: user.id }, data: { equippedSkinId: id } });
@@ -222,6 +223,7 @@ test.describe('Skins and collection', () => {
     const user = await player(page, uid, 52_000, 20_000);
     await db.userCosmetic.createMany({
       data: ['desert_nomad', 'mecha'].map((cosmeticId) => ({ userId: user.id, cosmeticId, source: 'admin' })),
+      skipDuplicates: true,
     });
     await page.reload();
     const before = await balanceOf(page);
@@ -253,12 +255,19 @@ test.describe('Skins and collection', () => {
     // на сцене один персонаж и один мир — старые не копятся
     await expect(page.locator('.hero-fig')).toHaveCount(1);
     await expect(page.getByTestId('skin-scene')).toHaveCount(1);
-    const scripted = await page.evaluate(
-      () =>
-        document.getAnimations().filter((a) => !(a instanceof CSSAnimation) && a.playState === 'running')
-          .length,
-    );
-    expect(scripted).toBeLessThanOrEqual(4);
+    // короткие анимации интерфейса (тосты, переход вкладки) доигрывают — бесконечных скриптовых не остаётся
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              document
+                .getAnimations()
+                .filter((a) => !(a instanceof CSSAnimation) && a.playState === 'running').length,
+          ),
+        { timeout: 8000 },
+      )
+      .toBeLessThanOrEqual(4);
     await page.reload();
     await expectCharacter(page, 'mecha');
     expect((await db.user.findUniqueOrThrow({ where: { id: user.id } })).equippedSkinId).toBe('mecha');
