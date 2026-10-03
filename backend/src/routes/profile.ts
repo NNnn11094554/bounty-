@@ -9,12 +9,13 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../lib/db.js';
+import { ApiError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import { toCoins } from '../lib/money.js';
 import { COUNTED_METRICS, countedMetrics, rowMetrics } from '../services/achievements.js';
 import { clearLeaderboardCache } from '../services/leaderboard.js';
 import { requirePlayer } from '../services/player.js';
-import { buildPlayerState, parseSettings } from '../services/state.js';
+import { buildPlayerState, isDeveloper, parseSettings } from '../services/state.js';
 import { syncPassive } from '../services/sync.js';
 import { withUserLock } from '../services/userLock.js';
 
@@ -25,6 +26,7 @@ const SettingsBody = z
     vibration: z.boolean(),
     animations: z.enum(['full', 'reduced']),
     notifications: z.boolean(),
+    devMode: z.boolean(),
   })
   .partial()
   .strict();
@@ -83,6 +85,9 @@ export async function profileRoutes(app: FastifyInstance): Promise<void> {
   app.patch('/api/settings', async (request): Promise<StateResponse> => {
     const patch = SettingsBody.parse(request.body);
     const player = await requirePlayer(request);
+    if (patch.devMode !== undefined && !isDeveloper(player)) {
+      throw new ApiError('FORBIDDEN', 'Developer only');
+    }
     return withUserLock(player.id, async (tx, locked) => {
       const now = new Date();
       const settings = { ...parseSettings(locked.settings), ...patch };

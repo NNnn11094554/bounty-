@@ -1,4 +1,5 @@
 import {
+  COSMETICS,
   cosmeticById,
   DEFAULT_EFFECT_ID,
   DEFAULT_SKIN_ID,
@@ -14,13 +15,21 @@ import type { prisma } from '../lib/db.js';
 import { ApiError } from '../lib/errors.js';
 import { toCoins } from '../lib/money.js';
 import { applyBalanceChanges } from './ledger.js';
+import { devModeOn } from './state.js';
 import type { Tx } from './userLock.js';
 
 type Db = Tx | typeof prisma;
 
-/** Предметы игрока: стартовые + купленные (только существующие в каталоге). */
-export async function ownedCosmetics(db: Db, userId: number): Promise<string[]> {
-  const rows = await db.userCosmetic.findMany({ where: { userId }, select: { cosmeticId: true } });
+/**
+ * Предметы игрока: стартовые + купленные (только существующие в каталоге). В режиме разработчика — весь
+ * каталог (для проверки; в базе ничего не выдаётся).
+ */
+export async function ownedCosmetics(
+  db: Db,
+  user: Pick<User, 'id' | 'telegramId' | 'settings'>,
+): Promise<string[]> {
+  if (devModeOn(user)) return COSMETICS.map((c) => c.id);
+  const rows = await db.userCosmetic.findMany({ where: { userId: user.id }, select: { cosmeticId: true } });
   return [
     DEFAULT_SKIN_ID,
     DEFAULT_EFFECT_ID,
@@ -110,6 +119,7 @@ export async function equipCosmetic(tx: Tx, user: User, id: string): Promise<Use
   const item = requireCosmetic(id);
   const owned =
     isDefaultCosmetic(id) ||
+    devModeOn(user) ||
     (await tx.userCosmetic.findUnique({ where: { userId_cosmeticId: { userId: user.id, cosmeticId: id } } }));
   if (!owned) throw new ApiError('LOCKED', 'Item is not owned');
   return tx.user.update({ where: { id: user.id }, data: equipData(item) });

@@ -27,11 +27,25 @@ export function parseSettings(raw: unknown): PlayerSettings {
     vibration: typeof s.vibration === 'boolean' ? s.vibration : DEFAULT_SETTINGS.vibration,
     animations: s.animations === 'reduced' ? 'reduced' : 'full',
     notifications: typeof s.notifications === 'boolean' ? s.notifications : DEFAULT_SETTINGS.notifications,
+    devMode: s.devMode === true,
   };
 }
 
 export function isAdmin(user: Pick<User, 'telegramId'>): boolean {
   return env.adminIds.has(user.telegramId);
+}
+
+/** Владелец режима разработчика — ровно один аккаунт (env.developerId). */
+export function isDeveloper(user: Pick<User, 'telegramId'>): boolean {
+  return env.developerId !== null && user.telegramId === env.developerId;
+}
+
+/**
+ * Режим разработчика действует: это владелец режима и он сам включил его в настройках. Для любого другого
+ * аккаунта флаг в настройках ничего не значит.
+ */
+export function devModeOn(user: Pick<User, 'telegramId' | 'settings'>): boolean {
+  return isDeveloper(user) && parseSettings(user.settings).devMode;
 }
 
 function paidBoost(boost: PaidBoost, level: number) {
@@ -59,6 +73,7 @@ export function buildPlayerState(user: User, now: Date = new Date()): PlayerStat
       languageCode: user.languageCode === 'ru' ? 'ru' : 'en',
       isPremium: user.isPremium,
       isAdmin: isAdmin(user),
+      isDeveloper: isDeveloper(user),
       onboardingDone: user.onboardingDone,
       settings: parseSettings(user.settings),
       tutorialsSeen: user.tutorialsSeen,

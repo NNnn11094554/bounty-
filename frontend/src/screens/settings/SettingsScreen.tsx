@@ -9,6 +9,8 @@ import { changeSettings } from '../../game/settings';
 import { tapEngine } from '../../game/tapEngine';
 import { useT } from '../../i18n';
 import { APP_VERSION } from '../../lib/version';
+import { useCards } from '../../store/cards';
+import { useCollection } from '../../store/collection';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
@@ -57,6 +59,14 @@ export function SettingsScreen() {
   if (!player) return null;
   const s = player.profile.settings;
   const set = (patch: Partial<PlayerSettings>) => void changeSettings(patch);
+  // режим разработчика меняет то, что сервер отдаёт по коллекции и карточкам — перезагрузить их
+  const setDevMode = async (on: boolean) => {
+    if (await changeSettings({ devMode: on })) {
+      void useCollection.getState().load();
+      void useCards.getState().load(true);
+      toast.success(t(on ? 'settings.devMode.on' : 'settings.devMode.off'));
+    }
+  };
 
   const deleteAccount = async () => {
     setDeleting(true);
@@ -139,6 +149,19 @@ export function SettingsScreen() {
           >
             {t('settings.admin')} →
           </a>
+        </Group>
+      )}
+
+      {player.profile.isDeveloper && (
+        <Group title={t('settings.developer')}>
+          <Row label={t('settings.devMode')} hint={t('settings.devMode.hint')}>
+            <Toggle
+              label={t('settings.devMode')}
+              checked={s.devMode}
+              onChange={(v) => void setDevMode(v)}
+              testId="settings-dev-mode"
+            />
+          </Row>
         </Group>
       )}
 

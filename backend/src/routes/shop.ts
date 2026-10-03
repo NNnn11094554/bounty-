@@ -22,7 +22,7 @@ const PurchaseParams = z.object({ id: z.coerce.number().int().positive() });
 export async function shopRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/shop', async (request): Promise<ShopResponse> => {
     const player = await requirePlayer(request);
-    return { products: shopProducts(player, await ownedCosmetics(prisma, player.id)) };
+    return { products: shopProducts(player, await ownedCosmetics(prisma, player)) };
   });
 
   app.post('/api/shop/invoice', async (request): Promise<InvoiceResponse> => {
