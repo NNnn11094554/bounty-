@@ -1,13 +1,12 @@
 import { onFrame } from '../game/frameLoop';
-import { STATIONS } from './content';
+import { SECTIONS } from './content';
 
 /**
- * Время и положение на сайте. Прокрутка задаёт цель (в станциях: 0 — главная, 1 — игра, …), камера и
- * интерфейс плавно догоняют её — один общий кадр для сцены и всех панелей (game/frameLoop).
+ * Время и положение на сайте. Страница — обычные секции; у каждой (кроме подвала) своя станция
+ * в 3D-сцене. Прокрутка задаёт цель (в станциях: 0 — главная, 1 — история, …), камера плавно догоняет
+ * её — один общий кадр для сцены и интерфейса (game/frameLoop).
  */
-export const LAST_STATION = STATIONS.length - 1;
-/** сколько высот экрана прокрутки на один переход между станциями */
-export const STEP_SCREENS = 1.5;
+export const LAST_STATION = SECTIONS.length - 1;
 /** доля перехода в начале и в конце, где камера ещё (уже) стоит на станции */
 const HOLD = 0.14;
 /**
@@ -79,56 +78,71 @@ export function introPhase(start: number, duration: number): number {
   return clamp01((view.intro - start) / duration);
 }
 
-/** Пикселей прокрутки на станцию: от высоты экрана при загрузке (адресная строка телефона не дёргает её). */
-let stepPx = 0;
-export function stationScroll(index: number): number {
-  return index * stepPx;
+/**
+ * Где на странице камера стоит у станции: [a, b] — положения середины экрана (px от начала страницы).
+ * Пока секция закрывает экран, камера стоит; пока граница секций проходит экран, камера летит к следующей.
+ */
+let holds: Array<[number, number]> = [];
+let screen = 0;
+
+/** Середина экрана (px от начала страницы) → положение на таймлайне, в станциях. */
+export function stationAt(anchor: number, spans: ReadonlyArray<[number, number]> = holds): number {
+  if (!spans.length) return 0;
+  for (let i = 0; i < spans.length; i++) {
+    const [a, b] = spans[i]!;
+    if (anchor < a) {
+      if (i === 0) return 0;
+      const prev = spans[i - 1]![1];
+      return i - 1 + clamp01((anchor - prev) / Math.max(1, a - prev));
+    }
+    if (anchor <= b) return i;
+  }
+  return spans.length - 1;
 }
 
-let flight: { from: number; to: number; start: number; duration: number } | null = null;
+/** Отрезки стоянки по секциям: верх и высота секции, высота экрана. */
+export function holdSpans(
+  boxes: ReadonlyArray<{ top: number; height: number }>,
+  vh: number,
+): Array<[number, number]> {
+  return boxes.map(({ top, height }) =>
+    height >= vh ? [top + vh / 2, top + height - vh / 2] : [top + height / 2, top + height / 2],
+  );
+}
 
-/** Перелёт к станции (меню): камера летит своей кривой, прокрутка сразу ставится на место. */
+/** Прокрутка к станции (меню): страница плавно едет к секции, камера летит следом. */
 export function flyTo(index: number): void {
-  const to = Math.min(LAST_STATION, Math.max(0, index));
-  const distance = Math.abs(to - view.pos);
-  if (distance < 0.01) return;
-  flight = view.reduced
-    ? null
-    : { from: view.pos, to, start: view.time, duration: Math.min(3.2, 1.1 + distance * 0.45) };
-  window.scrollTo({ top: stationScroll(to), behavior: 'instant' });
-  view.target = to;
-  if (!flight) view.pos = to;
+  const span = holds[Math.min(LAST_STATION, Math.max(0, index))];
+  if (!span) return;
+  const top = index <= 0 ? 0 : Math.max(0, span[0] - screen / 2);
+  window.scrollTo({ top, behavior: view.reduced ? 'instant' : 'smooth' });
 }
 
-/** Прокрутка → цель; высота страницы — по числу станций. Возвращает отписку. */
-export function startTimeline(spacer: HTMLElement): () => void {
-  const layout = () => {
+/** Прокрутка → цель. Секции — элементы [data-station] внутри root. Возвращает отписку. */
+export function startTimeline(root: HTMLElement): () => void {
+  const measure = () => {
     const h = window.innerHeight;
-    // адресная строка телефона меняет высоту на ~60–120 px — пересчитываем только заметные изменения
-    const next = Math.round(h * STEP_SCREENS);
-    if (stepPx && Math.abs(next - stepPx) < 160 * STEP_SCREENS) return;
-    stepPx = next;
-    spacer.style.height = `${stepPx * LAST_STATION + h}px`;
-    spacer.style.setProperty('--step', `${stepPx}px`);
+    // адресная строка телефона меняет высоту на ~60–120 px — их не считаем
+    if (!screen || Math.abs(h - screen) > 160) screen = h;
+    const y = window.scrollY;
+    const boxes = [...root.querySelectorAll<HTMLElement>('[data-station]')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top + y, height: r.height };
+    });
+    holds = holdSpans(boxes, screen);
     readScroll();
   };
   const readScroll = () => {
-    if (!stepPx) return;
-    view.target = Math.min(LAST_STATION, Math.max(0, window.scrollY / stepPx));
-  };
-  // ручная прокрутка во время перелёта — перелёт уступает ей
-  const cancelFlight = () => {
-    // пружина продолжает с текущей скоростью перелёта — без остановки на месте
-    if (flight) velocity = view.speed;
-    flight = null;
+    view.target = Math.min(LAST_STATION, stationAt(window.scrollY + screen / 2));
   };
 
-  layout();
+  measure();
   view.pos = view.target;
+  const observer = new ResizeObserver(measure);
+  observer.observe(root);
   window.addEventListener('scroll', readScroll, { passive: true });
-  window.addEventListener('resize', layout);
-  window.addEventListener('wheel', cancelFlight, { passive: true });
-  window.addEventListener('touchstart', cancelFlight, { passive: true });
+  window.addEventListener('resize', measure);
+  void document.fonts?.ready.then(measure);
 
   let last = 0;
   const stop = onFrame((now) => {
@@ -142,14 +156,7 @@ export function startTimeline(spacer: HTMLElement): () => void {
     view.dt = dt;
     if (view.intro >= 0) view.intro += Math.min(0.5, raw);
     const prev = view.pos;
-    if (flight) {
-      const k = clamp01((view.time - flight.start) / flight.duration);
-      view.pos = flight.from + (flight.to - flight.from) * easeInOutCubic(k);
-      if (k >= 1) {
-        flight = null;
-        velocity = 0;
-      }
-    } else if (view.reduced) {
+    if (view.reduced) {
       view.pos = view.target;
     } else {
       const steps = Math.ceil(dt / (1 / 120));
@@ -169,10 +176,9 @@ export function startTimeline(spacer: HTMLElement): () => void {
 
   return () => {
     stop();
+    observer.disconnect();
     window.removeEventListener('scroll', readScroll);
-    window.removeEventListener('resize', layout);
-    window.removeEventListener('wheel', cancelFlight);
-    window.removeEventListener('touchstart', cancelFlight);
+    window.removeEventListener('resize', measure);
   };
 }
 

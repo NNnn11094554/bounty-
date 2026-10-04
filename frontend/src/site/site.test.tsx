@@ -5,10 +5,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { webpSize } from '../test/images';
 import assets from './catAssets.json';
-import { CAT_SIZES, CATS, HERO_CAT, catArt, catAsset, catIcon, catSize } from './cats';
-import { AIRDROP_REQS, GAME_FACTS, LEAGUES, STATIONS } from './content';
+import { CAT_SIZES, CATS, HERO_CAT, STRONGEST_CAT, catArt, catAsset, catIcon, catSize } from './cats';
+import * as content from './content';
+import { AIRDROP_REQS, FAQ, GAME_FACTS, LEAGUES, NAV, ROADMAP, SECTIONS, WORLDS } from './content';
 import { demoEnergy, demoTap, leagueIndex, refillEnergy, startTurbo, useDemo } from './demo';
-import { nearness, travel } from './timeline';
+import { holdSpans, nearness, stationAt, travel } from './timeline';
+import { Words } from './ui/Section';
 import { Title } from './ui/Title';
 
 const PUBLIC = path.resolve(__dirname, '..', '..', 'public');
@@ -60,7 +62,7 @@ describe('site cats ↔ art', () => {
   it('every cat has lore and its own idle life (different sets, small amplitudes)', () => {
     for (const c of CATS) {
       expect(c.subtitle.length, c.id).toBeGreaterThan(5);
-      expect(c.story.length, c.id).toBeLessThan(140);
+      expect(c.story.length, c.id).toBeLessThan(150);
       expect(c.power).toBeGreaterThan(0);
       expect(c.power).toBeLessThanOrEqual(100);
       expect(c.element.length).toBeGreaterThan(1);
@@ -76,12 +78,44 @@ describe('site cats ↔ art', () => {
     expect(new Set(CATS.map((c) => c.accent)).size).toBe(CATS.length);
     expect(new Set(CATS.map((c) => c.world)).size).toBe(CATS.length);
     expect(HERO_CAT.id).toBe('inferno');
+    // финал — самый сильный персонаж
+    expect(Math.max(...CATS.map((c) => c.power))).toBe(STRONGEST_CAT.power);
+  });
+
+  it('the game characters from the brief are on the site with their exact lore', () => {
+    const byName = (name: string) => CATS.find((c) => c.name === name)!;
+    expect(byName('Stealth Assassin')).toMatchObject({ rarity: 'LEGENDARY', element: 'Assassin', power: 94 });
+    expect(byName('Galaxy Emperor')).toMatchObject({ rarity: 'MYTHIC', element: 'Cosmic', power: 98 });
+    expect(byName('Ocean Guardian')).toMatchObject({ rarity: 'LEGENDARY', element: 'Guardian', power: 91 });
+    expect(byName('Cyber Samurai')).toMatchObject({ rarity: 'LEGENDARY', element: 'Warrior', power: 95 });
   });
 });
 
 describe('site content', () => {
   it('stations and game numbers match the game', () => {
-    expect(STATIONS).toEqual(['home', 'game', 'collection', 'upgrades', 'earn', 'airdrop']);
+    expect(SECTIONS).toEqual([
+      'home',
+      'story',
+      'how',
+      'cats',
+      'collection',
+      'world',
+      'progression',
+      'airdrop',
+      'roadmap',
+      'community',
+      'faq',
+      'final',
+    ]);
+    expect(NAV.map((n) => n.label)).toEqual([
+      'Home',
+      'World',
+      'Collection',
+      'How to play',
+      'Roadmap',
+      'Airdrop',
+    ]);
+    for (const n of NAV) expect(SECTIONS).toContain(n.id);
     expect(AIRDROP_REQS.map((r) => r.id)).toEqual([...AIRDROP_REQUIREMENTS]);
     expect(LEAGUES).toHaveLength(GAME_FACTS.leagues);
     for (let i = 1; i < LEAGUES.length; i++)
@@ -91,7 +125,41 @@ describe('site content', () => {
   });
 });
 
+describe('honest copy', () => {
+  it('no promises of money or wallet connection, future worlds are not presented as live', () => {
+    const text = JSON.stringify(content).toLowerCase();
+    for (const word of ['bounty', 'guarantee', 'profit', 'allocation', 'connect wallet', 'ton connect'])
+      expect(text, word).not.toContain(word);
+    expect(WORLDS).toHaveLength(4);
+    expect(ROADMAP.map((p) => p.state)).toEqual(['done', 'next', 'later', 'unknown']);
+    expect(FAQ).toHaveLength(5);
+  });
+});
+
 describe('camera timeline', () => {
+  it('scroll maps to stations: the camera holds while a section fills the screen, flies at the seams', () => {
+    // экран 800 px; секции 1200, 800 и 400 px
+    const spans = holdSpans(
+      [
+        { top: 0, height: 1200 },
+        { top: 1200, height: 800 },
+        { top: 2000, height: 400 },
+      ],
+      800,
+    );
+    expect(spans).toEqual([
+      [400, 800],
+      [1600, 1600],
+      [2200, 2200],
+    ]);
+    expect(stationAt(0, spans)).toBe(0);
+    expect(stationAt(800, spans)).toBe(0);
+    expect(stationAt(1200, spans)).toBeCloseTo(0.5);
+    expect(stationAt(1600, spans)).toBe(1);
+    expect(stationAt(1900, spans)).toBeCloseTo(1.5);
+    expect(stationAt(9000, spans)).toBe(2);
+  });
+
   it('the camera holds at a station and travels smoothly between them', () => {
     expect(travel(0)).toBe(0);
     expect(travel(1)).toBe(1);
@@ -133,6 +201,15 @@ describe('demo game', () => {
 });
 
 describe('titles', () => {
+  it('section headings keep words whole and readable for screen readers', () => {
+    const { container } = render(<Words text="A world built one cat at a time" />);
+    const h2 = container.querySelector('h2')!;
+    expect(h2.getAttribute('aria-label')).toBe('A world built one cat at a time');
+    expect(h2.textContent).toBe('A world built one cat at a time');
+    expect(h2.style.getPropertyValue('--chars')).toBe('5');
+    expect(container.querySelectorAll('.w')).toHaveLength(8);
+  });
+
   it('words never break inside: each word is one unbreakable piece, letters keep their order', () => {
     const { container } = render(<Title text="Кристальный принц" letters />);
     const h2 = container.querySelector('h2')!;

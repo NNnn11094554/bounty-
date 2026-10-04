@@ -1,6 +1,5 @@
 import '@fontsource-variable/unbounded';
 import '@fontsource-variable/manrope';
-import '@fontsource-variable/jetbrains-mono';
 import './site.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

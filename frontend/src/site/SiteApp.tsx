@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CATS, HERO_CAT, catAsset } from './cats';
-import { STATIONS } from './content';
 import { useSite } from './store';
 import { startTimeline, view } from './timeline';
-import { Loader, Nav, Rail } from './ui/Chrome';
-import { CollectionSection } from './ui/CollectionSection';
-import { GameSection } from './ui/GameSection';
-import { HomeSection } from './ui/HomeSection';
-import { AirdropSection, EarnSection, UpgradesSection } from './ui/InfoSections';
+import { CollectionSection, MeetCatsSection } from './ui/CatSections';
+import { Loader, Nav } from './ui/Chrome';
+import { CommunitySection, FaqSection, FinalSection, Footer, RoadmapSection } from './ui/EndSections';
+import { HeroSection, HowSection, StorySection } from './ui/OpeningSections';
+import { useReveal } from './ui/reveal';
+import { AirdropSection, ProgressionSection, WorldSection } from './ui/WorldSections';
 
 /** Вступление интерфейса после проявления сцены (секунды от старта вступления). */
 const UI_INTRO_AT = 2.2;
 
 export function SiteApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const spacerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLElement>(null);
   const ready = useSite((s) => s.ready);
   const noWebgl = useSite((s) => s.noWebgl);
   const [introOn, setIntroOn] = useState(false);
@@ -23,8 +23,9 @@ export function SiteApp() {
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
-    return startTimeline(spacerRef.current!);
+    return startTimeline(pageRef.current!);
   }, []);
+  useReveal(useCallback(() => pageRef.current, []));
 
   // 3D-сцена — отдельный чанк (three.js)
   useEffect(() => {
@@ -63,18 +64,21 @@ export function SiteApp() {
       {noWebgl ? <StaticStage /> : <canvas ref={canvasRef} className="stage" aria-hidden />}
       <div className="stage-veil" />
       <Nav />
-      <Rail />
-      <HomeSection />
-      <GameSection />
-      <CollectionSection />
-      <UpgradesSection />
-      <EarnSection />
-      <AirdropSection />
-      <div ref={spacerRef} className="spacer">
-        {STATIONS.map((id, i) => (
-          <span key={id} className="snap" style={{ top: `calc(var(--step) * ${i})` }} />
-        ))}
-      </div>
+      <main ref={pageRef} className="page">
+        <HeroSection />
+        <StorySection />
+        <HowSection />
+        <MeetCatsSection />
+        <CollectionSection />
+        <WorldSection />
+        <ProgressionSection />
+        <AirdropSection />
+        <RoadmapSection />
+        <CommunitySection />
+        <FaqSection />
+        <FinalSection />
+      </main>
+      <Footer />
       <Loader />
     </div>
   );

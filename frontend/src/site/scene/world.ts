@@ -14,7 +14,7 @@ import {
   type ShaderMaterial,
   type Texture,
 } from 'three';
-import { CATS, HERO_CAT, catArt, type CatArt, type SiteCat } from '../cats';
+import { CATS, HERO_CAT, STRONGEST_CAT, catArt, catById, type CatArt, type SiteCat } from '../cats';
 import { AIRDROP_REQS, FLOATING_ASSETS } from '../content';
 import { clamp01, introPhase, nearness, smoothstep, type View } from '../timeline';
 import { CatFigure } from './catFigure';
@@ -50,18 +50,32 @@ const STEP = (Math.PI * 2) / CATS.length;
 /** собственная частота пружины поворота кольца коллекции, рад/с (~1.3 с на соседа) */
 const RING_OMEGA = 3.4;
 
-/** Где стоят станции. */
+/** Где стоят площадки сцены (одна площадка может снимать несколько секций). */
 const HOME = new Vector3(0, 0, 0);
 const COLLECTION = new Vector3(0, 0, -52);
-const RING_R = 3.6;
-const UPGRADES = new Vector3(0, 0, -104);
-const EARN = new Vector3(0, 0, -152);
+const RING_R = 4.7;
+const WORLD = new Vector3(0, 0, -104);
+const PROGRESSION = new Vector3(0, 0, -152);
 const AIRDROP = new Vector3(0, 3.1, -200);
+const ROADMAP = new Vector3(0, 0, -250);
+const COMMUNITY = new Vector3(0, 0, -300);
+const FINAL = new Vector3(0, 0, -350);
+
+/**
+ * Площадка каждой станции (секции страницы): 0 главная (герой, история, как играть), 1 коллекция
+ * (персонажи, редкости), 2 мир, 3 прогресс, 4 airdrop, 5 roadmap, 6 сообщество (и FAQ), 7 финал.
+ */
+const LOC = [0, 0, 0, 1, 1, 2, 3, 4, 5, 6, 6, 7] as const;
+const LOCATIONS = 8;
+/** станции, где идёт игра (тап по коту) и где выбирают кота */
+const PLAY = 2;
+const CATS_AT = 3;
+const OVERVIEW = 4;
 
 const v3 = (x: number, y: number, z: number) => new Vector3(x, y, z);
 
 const SHOTS: Shot[] = [
-  // главная: кот справа, слева — заголовок; на телефоне кот ниже, заголовок сверху
+  // главная: кот справа, слева — заголовок; на телефоне кот между заголовком и кнопками
   {
     target: v3(0, 1.6, 0),
     dir: v3(0, 0.05, 1),
@@ -70,97 +84,192 @@ const SHOTS: Shot[] = [
     shift: [0.23, 0],
     shiftPortrait: [0, -0.1],
   },
-  // игра: кот в центре, вокруг — интерфейс игры
+  // история: камера обходит кота — он слева, текст справа
+  {
+    target: v3(0, 1.75, 0),
+    dir: v3(-0.32, 0.1, 1),
+    fit: [3.4, 4.8],
+    fitPortrait: [3.2, 7.2],
+    shift: [-0.22, 0],
+    shiftPortrait: [0, -0.05],
+  },
+  // как играть: кот в центре, между заголовком и шагами — его можно тапать
   {
     target: v3(0, 1.45, 0),
     dir: v3(0, 0.17, 1),
-    fit: [3, 5.6],
-    fitPortrait: [2.9, 6.9],
-    shift: [0, -0.04],
-    shiftPortrait: [0, -0.03],
+    fit: [3, 7],
+    fitPortrait: [2.9, 7.6],
+    shift: [0, 0.03],
+    shiftPortrait: [0, -0.05],
   },
-  // коллекция: выбранный кот впереди кольца, информация — справа (на телефоне — снизу)
+  // персонажи: выбранный кот впереди кольца, карточка — справа
   {
     target: v3(0, 1.62, COLLECTION.z + RING_R),
     dir: v3(0, 0.1, 1),
     fit: [4, 4.7],
-    fitPortrait: [3.1, 7.4],
+    fitPortrait: [3.6, 7.4],
     shift: [-0.17, 0],
-    shiftPortrait: [0, 0.14],
+    shiftPortrait: [0, -0.05],
   },
-  // прокачка: инженер Токсик среди летящих монет-активов, панель — слева
+  // коллекция: всё кольцо сверху-спереди, редкости — под ним
   {
-    target: v3(0, 2.1, UPGRADES.z),
+    target: v3(0, 1.2, COLLECTION.z + 0.6),
+    dir: v3(0, 0.62, 1),
+    fit: [20, 13.5],
+    fitPortrait: [12, 19],
+    shift: [0, -0.02],
+    shiftPortrait: [0, -0.05],
+  },
+  // мир: Странник на краю своего мира, текст и миры — слева
+  {
+    target: v3(0, 2.1, WORLD.z),
+    dir: v3(0.14, 0.05, 1),
+    fit: [5, 5.4],
+    fitPortrait: [4.2, 8.4],
+    shift: [0.2, 0],
+    shiftPortrait: [0, -0.05],
+  },
+  // прогресс: инженер Токсик среди летящих монет-активов, путь — слева
+  {
+    target: v3(0, 2.1, PROGRESSION.z),
     dir: v3(0.16, 0.06, 1),
     fit: [7.6, 6.2],
     fitPortrait: [5.2, 9.4],
     shift: [0.19, 0],
-    shiftPortrait: [0, 0.13],
+    shiftPortrait: [0, -0.05],
   },
-  // задания: Странник в спирали наград, панель — справа
-  {
-    target: v3(0, 2.7, EARN.z),
-    dir: v3(-0.12, 0.08, 1),
-    fit: [6.4, 7],
-    fitPortrait: [5, 10.2],
-    shift: [-0.22, 0],
-    shiftPortrait: [0, 0.15],
-  },
-  // Airdrop: монета PAW в кольцах, панель — слева
+  // airdrop: монета PAW в кольцах, панель — справа
   {
     target: AIRDROP.clone(),
     dir: v3(0, 0.05, 1),
-    fit: [9.4, 9],
-    fitPortrait: [7, 15],
-    shift: [0.2, 0],
-    shiftPortrait: [0, 0.25],
+    fit: [11, 9.6],
+    fitPortrait: [7, 14],
+    shift: [-0.26, 0],
+    shiftPortrait: [0, -0.05],
+  },
+  // roadmap: маяки фаз уходят вдаль, камера сбоку и сверху
+  {
+    target: v3(0, 1.3, ROADMAP.z - 8),
+    dir: v3(0.62, 0.42, 1),
+    fit: [8, 7],
+    fitPortrait: [6.4, 12],
+    shift: [0, 0.03],
+    shiftPortrait: [0, -0.05],
+  },
+  // сообщество: коты стоят вместе, кнопки — под ними
+  {
+    target: v3(0, 1.7, COMMUNITY.z),
+    dir: v3(0, 0.08, 1),
+    fit: [10.5, 6.6],
+    fitPortrait: [8, 13],
+    shift: [0, -0.1],
+    shiftPortrait: [0, -0.05],
+  },
+  // FAQ: те же коты издалека и сверху, вопросы — справа
+  {
+    target: v3(0, 1.4, COMMUNITY.z),
+    dir: v3(-0.45, 0.6, 1),
+    fit: [15, 9],
+    fitPortrait: [11, 18],
+    shift: [-0.24, 0],
+    shiftPortrait: [0, -0.05],
+  },
+  // финал: самый сильный кот в портале, текст — под ним
+  {
+    target: v3(0, 1.85, FINAL.z),
+    dir: v3(0, 0.06, 1),
+    fit: [3.4, 6.6],
+    fitPortrait: [3, 7.2],
+    shift: [0, 0.08],
+    shiftPortrait: [0, -0.05],
   },
 ];
 
 /** Дуги перелётов: камера поднимается, уходит в сторону — пространство раскрывается по пути. */
 const LEGS: Leg[] = [
-  { arc: v3(0, -0.4, 0) },
+  { arc: v3(-1.2, 0.2, 0) },
+  { arc: v3(0.8, 0.4, 0) },
   { arc: v3(3, 4.5, 0) },
+  { arc: v3(0, 1.2, 0) },
   { arc: v3(-3.5, 1.5, 0) },
   { arc: v3(3.8, -0.6, 0) },
   { arc: v3(0, 5.5, 0) },
+  { arc: v3(-3.2, 2, 0) },
+  { arc: v3(3, 3, 0) },
+  { arc: v3(0, 1, 0) },
+  { arc: v3(0, 4, 0) },
 ];
 
-/** Тон пространства у станций (у коллекции — тон мира выбранного кота). */
-const STATION_FOG = ['#0d0603', '#07060c', '', '#030a06', '#0d0904', '#07051a'];
+/** Тон пространства у станций ('' — тон мира выбранного кота). */
+const STATION_FOG = [
+  '#0d0603',
+  '#0c0604',
+  '#07060c',
+  '',
+  '#07060d',
+  '#130b06',
+  '#030a06',
+  '#07051a',
+  '#04070f',
+  '#08060d',
+  '#050409',
+  '#070519',
+];
 
 const DUST_ZONES: DustZone[] = [
   {
     center: v3(0, 3, -2),
     size: v3(26, 14, 22),
     colors: ['#ff9a4d', '#ffcf8a', '#ff5e2b', '#ffffff'],
-    share: 0.18,
+    share: 0.13,
   },
-  { center: v3(2, 4, -26), size: v3(20, 14, 34), colors: ['#cfd6ff', '#ffffff', '#9fb0ff'], share: 0.13 },
-  { center: v3(0, 3, -52), size: v3(28, 14, 26), colors: ['#ffffff', '#d9d2ff'], share: 0.18 },
-  { center: v3(-1, 3, -78), size: v3(20, 12, 28), colors: ['#c8f7ff', '#ffffff'], share: 0.09 },
+  { center: v3(2, 4, -26), size: v3(20, 14, 34), colors: ['#cfd6ff', '#ffffff', '#9fb0ff'], share: 0.08 },
+  { center: v3(0, 3, -52), size: v3(30, 14, 28), colors: ['#ffffff', '#d9d2ff'], share: 0.12 },
+  { center: v3(-1, 3, -78), size: v3(20, 12, 28), colors: ['#c8f7ff', '#ffffff'], share: 0.05 },
+  { center: v3(0, 3.5, -104), size: v3(24, 14, 22), colors: ['#ffc93c', '#ffe08a', '#f2a65a'], share: 0.08 },
+  { center: v3(1, 3, -128), size: v3(20, 12, 26), colors: ['#ffe9b8', '#ffffff'], share: 0.04 },
   {
-    center: v3(0, 3, -104),
+    center: v3(0, 3, -152),
     size: v3(26, 14, 24),
     colors: ['#7dff3a', '#d4ff5a', '#7ce9df', '#ffffff'],
-    share: 0.14,
+    share: 0.09,
   },
-  { center: v3(1, 3, -128), size: v3(20, 12, 26), colors: ['#ffe9b8', '#ffffff'], share: 0.07 },
-  { center: v3(0, 3.5, -152), size: v3(24, 14, 22), colors: ['#ffc93c', '#ffe08a', '#f2a65a'], share: 0.1 },
-  { center: v3(0, 5, -176), size: v3(20, 16, 26), colors: ['#c9b8ff', '#ffffff'], share: 0.05 },
+  { center: v3(0, 5, -176), size: v3(20, 16, 26), colors: ['#c9b8ff', '#ffffff'], share: 0.03 },
   {
     center: v3(0, 4, -199),
     size: v3(28, 18, 26),
     colors: ['#a66bff', '#7fe3ff', '#ffffff', '#ffc93c'],
-    share: 0.16,
+    share: 0.1,
+  },
+  { center: v3(0, 3, -226), size: v3(20, 14, 26), colors: ['#c9e6ff', '#ffffff'], share: 0.03 },
+  { center: v3(0, 3, -255), size: v3(24, 12, 30), colors: ['#ffc93c', '#7fe3ff', '#ffffff'], share: 0.07 },
+  { center: v3(0, 3, -300), size: v3(28, 14, 26), colors: ['#ffffff', '#ffd9a0', '#c9b8ff'], share: 0.09 },
+  {
+    center: v3(0, 3.5, -350),
+    size: v3(24, 14, 22),
+    colors: ['#9b7bff', '#ffd98f', '#ffffff'],
+    share: 0.09,
   },
 ];
 
 const STREAK_ZONES: DustZone[] = [
-  { center: v3(2, 4, -26), size: v3(18, 14, 40), colors: [], share: 0.3 },
-  { center: v3(-1, 3, -78), size: v3(18, 12, 40), colors: [], share: 0.25 },
-  { center: v3(1, 3, -128), size: v3(18, 12, 40), colors: [], share: 0.2 },
-  { center: v3(0, 5, -176), size: v3(18, 16, 40), colors: [], share: 0.25 },
+  { center: v3(2, 4, -26), size: v3(18, 14, 40), colors: [], share: 0.16 },
+  { center: v3(-1, 3, -78), size: v3(18, 12, 40), colors: [], share: 0.14 },
+  { center: v3(1, 3, -128), size: v3(18, 12, 40), colors: [], share: 0.12 },
+  { center: v3(0, 5, -176), size: v3(18, 16, 40), colors: [], share: 0.14 },
+  { center: v3(0, 4, -226), size: v3(18, 14, 40), colors: [], share: 0.14 },
+  { center: v3(0, 4, -276), size: v3(18, 14, 40), colors: [], share: 0.15 },
+  { center: v3(0, 4, -326), size: v3(18, 14, 40), colors: [], share: 0.15 },
+];
+
+/** Котов сообщества: стоят вместе полукругом. */
+const CREW = ['ocean_guardian', 'cyber_samurai', 'inferno', 'lunar_witch', 'stealth_assassin'] as const;
+/** Маяки фаз roadmap: цвет и яркость (последняя — неизвестность). */
+const BEACONS: Array<[string, number]> = [
+  ['#ffc93c', 1],
+  ['#7fe3ff', 0.8],
+  ['#a66bff', 0.55],
+  ['#ffffff', 0.22],
 ];
 
 export interface WorldOptions {
@@ -199,6 +308,7 @@ export class SiteWorld {
   private ray: Texture;
   private ring: Texture;
 
+  /** площадки сцены (LOC) */
   private stations: Group[] = [];
   private fadeables: Array<Array<{ u: { value: number }; base: number }>> = [];
   private dust: ReturnType<typeof createDust>;
@@ -230,17 +340,26 @@ export class SiteWorld {
   private catTint = new Color(HERO_CAT.accent);
   private catFog = new Color(HERO_CAT.fog);
 
-  // прокачка, задания, airdrop
+  // мир, прогресс, airdrop
+  private nomad: CatFigure;
+  private nomadBackdrop: Backdrop;
   private engineer: CatFigure;
   private tokenCards: Mesh[] = [];
-  private nomad: CatFigure;
-  private rewardCoins: Mesh[] = [];
   private coin: Group;
   private gyro: Mesh[] = [];
   private progressRing: Mesh;
   private vortex: ReturnType<typeof createFlow>;
   private fall: ReturnType<typeof createFlow>;
 
+  // roadmap, сообщество, финал
+  private beacons: Array<{ ring: Mesh; ray: Mesh; orb: Mesh; base: number }> = [];
+  private crew: CatFigure[] = [];
+  private finalCat: CatFigure;
+  private finalBackdrop: Backdrop;
+  private finalPortal: Mesh[] = [];
+
+  /** близость станции персонажей (наезд камеры при смене кота — только там) */
+  private atCats = 0;
   private offset = new Vector3();
   private pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   private camPush = { x: 0, v: 0 };
@@ -249,6 +368,7 @@ export class SiteWorld {
   private lastPos = new Vector3();
   private velocity = new Vector3();
   private readyAt = -1;
+  private away = new Array<number>(LOCATIONS).fill(Infinity);
 
   constructor(private options: WorldOptions) {
     this.lite = options.lite;
@@ -270,17 +390,15 @@ export class SiteWorld {
     this.ray = this.bank.canvas(rayCanvas());
     this.ring = this.bank.canvas(ringCanvas());
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < LOCATIONS; i++) {
       const g = new Group();
       this.stations.push(g);
       this.scene.add(g);
     }
-    // главная и игра — одна площадка
-    this.stations[1] = this.stations[0]!;
 
     const scale = this.lite ? 0.45 : matchMedia('(pointer: coarse)').matches ? 0.6 : 1;
-    this.dust = createDust(Math.round(5200 * scale), DUST_ZONES);
-    this.streaks = createStreaks(Math.round(700 * scale), STREAK_ZONES);
+    this.dust = createDust(Math.round(6400 * scale), DUST_ZONES);
+    this.streaks = createStreaks(Math.round(1000 * scale), STREAK_ZONES);
     this.dust.renderOrder = 15;
     this.streaks.renderOrder = 16;
     this.scene.add(this.dust, this.streaks, this.bursts.points);
@@ -326,9 +444,9 @@ export class SiteWorld {
     home.add(this.hero.group);
 
     // ── коллекция ──
-    const collection = this.stations[2]!;
+    const collection = this.stations[1]!;
     this.backdrops = [this.makeBackdrop(collection), this.makeBackdrop(collection)];
-    this.makeFloor(collection, COLLECTION, 26, '#ffffff', 0.25);
+    this.makeFloor(collection, COLLECTION, 32, '#ffffff', 0.25);
     for (const cat of CATS) {
       const figure = new CatFigure(cat, CAT_H, this.glow);
       this.figures.push(figure);
@@ -356,17 +474,26 @@ export class SiteWorld {
     collection.add(this.beam);
     this.glowPlane(collection, '#ffffff', 9, v3(0, 2.5, COLLECTION.z - 0.5), 0.12);
 
-    // ── прокачка ──
-    const upgrades = this.stations[3]!;
+    // ── мир: Странник на краю своего мира ──
+    const world = this.stations[2]!;
+    this.nomadBackdrop = this.makeBackdrop(world);
+    this.nomad = new CatFigure(catById('desert_nomad'), CAT_H, this.glow);
+    this.nomad.group.position.copy(WORLD);
+    world.add(this.nomad.group);
+    this.makeFloor(world, WORLD, 18, '#f2a65a', 0.5);
+    this.glowPlane(world, '#ffb36b', 8, v3(WORLD.x, 2.6, WORLD.z - 1.4), 0.22);
+
+    // ── прогресс ──
+    const progression = this.stations[3]!;
     this.engineer = new CatFigure(catById('toxic'), CAT_H, this.glow);
-    this.engineer.group.position.copy(UPGRADES);
-    upgrades.add(this.engineer.group);
-    this.makeFloor(upgrades, UPGRADES, 18, '#7dff3a', 0.5);
-    this.flatGlow(upgrades, this.ring, '#7dff3a', 4.4, v3(UPGRADES.x, 0.02, UPGRADES.z), 0.55);
+    this.engineer.group.position.copy(PROGRESSION);
+    progression.add(this.engineer.group);
+    this.makeFloor(progression, PROGRESSION, 18, '#7dff3a', 0.5);
+    this.flatGlow(progression, this.ring, '#7dff3a', 4.4, v3(PROGRESSION.x, 0.02, PROGRESSION.z), 0.55);
     const sparks = createFlow({
       count: this.lite ? 120 : 260,
       mode: 'rise',
-      center: v3(UPGRADES.x, 0, UPGRADES.z - 0.8),
+      center: v3(PROGRESSION.x, 0, PROGRESSION.z - 0.8),
       radius: 3.2,
       height: 6,
       speed: 1.1,
@@ -374,33 +501,14 @@ export class SiteWorld {
       colors: ['#7dff3a', '#d4ff5a', '#ffffff'],
     });
     sparks.renderOrder = 14;
-    upgrades.add(sparks);
+    progression.add(sparks);
 
-    // ── задания ──
-    const earn = this.stations[4]!;
-    this.nomad = new CatFigure(catById('desert_nomad'), CAT_H, this.glow);
-    this.nomad.group.position.copy(EARN);
-    earn.add(this.nomad.group);
-    this.makeFloor(earn, EARN, 18, '#f2a65a', 0.5);
-    const pillar = new Mesh(new PlaneGeometry(1, 1), glowMaterial(this.ray, '#ffc93c', 0.2));
-    pillar.scale.set(3.2, 15, 1);
-    pillar.rotation.z = Math.PI;
-    pillar.position.set(EARN.x, 6.8, EARN.z - 1.6);
-    pillar.renderOrder = 2;
-    earn.add(pillar);
     const relief = this.bank.canvas(pawReliefCanvas());
     const face = goldMaterial(relief, false);
     const side = goldMaterial(null, true);
-    const small = new CylinderGeometry(0.36, 0.36, 0.07, 48);
-    for (let i = 0; i < 10; i++) {
-      const coin = new Mesh(small, [side, face, face]);
-      coin.scale.setScalar(i === 9 ? 1.5 : 1);
-      this.rewardCoins.push(coin);
-      earn.add(coin);
-    }
 
     // ── airdrop ──
-    const airdrop = this.stations[5]!;
+    const airdrop = this.stations[4]!;
     this.coin = new Group();
     const big = new Mesh(new CylinderGeometry(1.45, 1.45, 0.24, 96), [side, face, face]);
     big.rotation.x = Math.PI / 2;
@@ -454,11 +562,85 @@ export class SiteWorld {
     drop.renderOrder = 2;
     airdrop.add(drop);
 
+    // ── roadmap: маяки фаз уходят вдаль ──
+    const roadmap = this.stations[5]!;
+    this.makeFloor(roadmap, v3(ROADMAP.x, 0, ROADMAP.z - 8), 30, '#7fe3ff', 0.18);
+    for (const [i, [color, base]] of BEACONS.entries()) {
+      const at = v3(ROADMAP.x + (i % 2 ? 1.3 : -1.3), 0, ROADMAP.z - i * 5.2);
+      const ring = this.flatGlow(roadmap, this.ring, color, 3.4, v3(at.x, 0.03, at.z), 0.9 * base);
+      const ray = new Mesh(new PlaneGeometry(1, 1), glowMaterial(this.ray, color, 0.6 * base));
+      ray.scale.set(1.6, 9, 1);
+      ray.rotation.z = Math.PI;
+      ray.position.set(at.x, 4.2, at.z);
+      ray.renderOrder = 2;
+      roadmap.add(ray);
+      const orb = this.glowPlane(roadmap, color, 2.6, v3(at.x, 1.1, at.z), base);
+      this.beacons.push({ ring, ray, orb, base });
+    }
+    const trail = createFlow({
+      count: this.lite ? 120 : 260,
+      mode: 'rise',
+      center: v3(ROADMAP.x, 0, ROADMAP.z - 8),
+      radius: 4,
+      height: 5,
+      speed: 0.7,
+      size: 0.05,
+      colors: ['#ffc93c', '#7fe3ff', '#ffffff'],
+    });
+    trail.renderOrder = 14;
+    roadmap.add(trail);
+
+    // ── сообщество: коты стоят вместе ──
+    const community = this.stations[6]!;
+    this.makeFloor(community, COMMUNITY, 30, '#ffd9a0', 0.3);
+    this.glowPlane(community, '#c9b8ff', 14, v3(COMMUNITY.x, 2.4, COMMUNITY.z - 2.4), 0.14);
+    for (const [i, id] of CREW.entries()) {
+      const figure = new CatFigure(catById(id), CAT_H, this.glow);
+      const k = i - (CREW.length - 1) / 2;
+      figure.group.position.set(COMMUNITY.x + k * 2.15, 0.02, COMMUNITY.z - Math.abs(k) * 0.9);
+      figure.group.scale.setScalar(1 - Math.abs(k) * 0.07);
+      this.crew.push(figure);
+      community.add(figure.group);
+    }
+
+    // ── финал: самый сильный кот в портале ──
+    const final = this.stations[7]!;
+    this.finalBackdrop = this.makeBackdrop(final);
+    this.finalCat = new CatFigure(STRONGEST_CAT, CAT_H, this.glow);
+    this.finalCat.group.position.copy(FINAL);
+    final.add(this.finalCat.group);
+    this.makeFloor(final, FINAL, 18, STRONGEST_CAT.accent, 0.5);
+    this.glowPlane(final, STRONGEST_CAT.accent, 8, v3(FINAL.x, 2.3, FINAL.z - 1.6), 0.36);
+    const outer = new Mesh(new TorusGeometry(2.3, 0.04, 24, 200), glassMaterial('#9b7bff', '#ffd98f'));
+    outer.position.set(FINAL.x, 1.95, FINAL.z - 1.3);
+    const ring2 = new Mesh(new TorusGeometry(2.06, 0.012, 12, 200), glassMaterial('#c9b8ff', '#fff1d6'));
+    ring2.position.copy(outer.position);
+    (ring2.material as ShaderMaterial).uniforms.uSpeed!.value = -0.9;
+    this.finalPortal = [outer, ring2];
+    for (const m of this.finalPortal) {
+      m.renderOrder = 3;
+      final.add(m);
+    }
+    const stardust = createFlow({
+      count: this.lite ? 140 : 300,
+      mode: 'spiral',
+      center: v3(FINAL.x, -0.4, FINAL.z - 0.6),
+      radius: 2.6,
+      height: 7,
+      speed: 0.8,
+      size: 0.055,
+      colors: ['#9b7bff', '#ffd98f', '#ffffff'],
+    });
+    stardust.renderOrder = 14;
+    final.add(stardust);
+
     // свет мира на персонажах: низ подсвечен цветом пола их станции
     this.hero.setAmbient(new Color(HERO_CAT.accent), 0.16);
     for (const f of this.figures) f.setAmbient(new Color(f.cat.accent), 0.12);
     this.engineer.setAmbient(new Color('#7dff3a'), 0.14);
-    this.nomad.setAmbient(new Color('#f2a65a'), 0.12);
+    this.nomad.setAmbient(new Color('#f2a65a'), 0.14);
+    for (const f of this.crew) f.setAmbient(new Color(f.cat.accent), 0.12);
+    this.finalCat.setAmbient(new Color(STRONGEST_CAT.accent), 0.16);
     this.collectFadeables();
 
     window.addEventListener('pointermove', this.onPointer, { passive: true });
@@ -466,9 +648,9 @@ export class SiteWorld {
 
   // ───────────────────────────── построение ─────────────────────────────
 
-  /** Прозрачность свечений и частиц станций 2–5 (кроме котов): ими управляет близость станции. */
+  /** Прозрачность свечений и частиц площадок (кроме главной и котов): ими управляет близость станции. */
   private collectFadeables(): void {
-    for (let i = 2; i < 6; i++) {
+    for (let i = 1; i < LOCATIONS; i++) {
       // уже известные — с прежней исходной прозрачностью (текущая могла быть приглушена)
       const list: Array<{ u: { value: number }; base: number }> = [...(this.fadeables[i] ?? [])];
       this.stations[i]!.traverse((o) => {
@@ -575,6 +757,8 @@ export class SiteWorld {
       this.loadCat(this.hero),
       this.setBackdrop(this.heroBackdrop, HERO_CAT),
       fonts.then(() => this.buildTokenCards()),
+      this.setBackdrop(this.nomadBackdrop, this.nomad.cat),
+      this.setBackdrop(this.finalBackdrop, STRONGEST_CAT),
       ...this.figures.map((f) => this.loadCat(f)),
     ];
     let done = 0;
@@ -583,9 +767,11 @@ export class SiteWorld {
     // текстуры коллекции общие с прокачкой и заданиями
     const texture = (id: string) =>
       this.figures[CATS.findIndex((c) => c.id === id)]!.material.uniforms.map.value!;
-    this.engineer.setTexture(texture('toxic'), catArt('toxic'));
-    this.nomad.setTexture(texture('desert_nomad'), catArt('desert_nomad'));
+    for (const f of [this.engineer, this.nomad, this.finalCat, ...this.crew])
+      f.setTexture(texture(f.cat.id), catArt(f.cat.id));
     this.placeBackdrop(this.heroBackdrop, catArt(HERO_CAT.id), HOME, 10, v3(0, 1.6, 7));
+    this.placeBackdrop(this.nomadBackdrop, catArt(this.nomad.cat.id), WORLD, 11, v3(0, 2, WORLD.z + 8));
+    this.placeBackdrop(this.finalBackdrop, catArt(STRONGEST_CAT.id), FINAL, 10, v3(0, 1.8, FINAL.z + 7));
     this.hero.reveal = 0;
     await this.showSelected();
     // карточки активов появились после конструктора — их прозрачностью тоже управляет близость станции
@@ -630,7 +816,7 @@ export class SiteWorld {
     if (index === this.selected) return;
     this.selected = index;
     this.selectedAt = time;
-    this.camPush.v -= 1.6;
+    this.camPush.v -= 1.6 * this.atCats;
     void this.showSelected();
   }
 
@@ -765,25 +951,30 @@ export class SiteWorld {
     globals.uFogFar.value = dist + 26;
 
     // ── что рисовать ──
-    for (let i = 0; i < 6; i++)
-      if (i !== 1) this.stations[i]!.visible = Math.abs(pos - i) < 1.4 || (i === 0 && pos < 2.4);
-    // свечения и частицы станции проявляются и гаснут плавно, а не включаются вместе со станцией
+    const away = this.away.fill(Infinity);
+    for (const [i, loc] of LOC.entries()) away[loc] = Math.min(away[loc]!, Math.abs(pos - i));
+    for (let i = 0; i < LOCATIONS; i++) this.stations[i]!.visible = away[i]! < 1.4;
+    // свечения и частицы площадки проявляются и гаснут плавно, а не включаются вместе с ней
     for (const [i, list] of this.fadeables.entries()) {
       if (!list) continue;
-      const presence = 1 - smoothstep(0.45, 1.3, Math.abs(pos - i));
+      const presence = 1 - smoothstep(0.45, 1.3, away[i]!);
       for (const f of list) f.u.value = f.base * presence;
     }
+    this.atCats = nearness(pos, CATS_AT);
 
     const reveal = introPhase(0, 1.6);
     (this.dust.material as ShaderMaterial).uniforms.uReveal!.value = reveal;
     (this.dust.material as ShaderMaterial).uniforms.uTint!.value.copy(this.catTint);
     (this.dust.material as ShaderMaterial).uniforms.uTintZ!.value = COLLECTION.z;
 
-    this.updateHome(v, still);
-    if (this.stations[2]!.visible) this.updateCollection(v, still);
-    if (this.stations[3]!.visible) this.updateUpgrades(v, still);
-    if (this.stations[4]!.visible) this.updateEarn(v, still);
-    if (this.stations[5]!.visible) this.updateAirdrop(v, still);
+    if (this.stations[0]!.visible) this.updateHome(v, still);
+    if (this.stations[1]!.visible) this.updateCollection(v, still);
+    if (this.stations[2]!.visible) this.updateWorld(v, still);
+    if (this.stations[3]!.visible) this.updateProgression(v, still);
+    if (this.stations[4]!.visible) this.updateAirdrop(v, still);
+    if (this.stations[5]!.visible) this.updateRoadmap(v, still);
+    if (this.stations[6]!.visible) this.updateCommunity(v, still);
+    if (this.stations[7]!.visible) this.updateFinal(v, still);
     this.bursts.update(dt);
 
     this.renderer.setClearColor(this.fog);
@@ -801,7 +992,7 @@ export class SiteWorld {
       const t = clamp01(1 - Math.abs(pos - i));
       const w = t * t * t * (t * (t * 6 - 15) + 10);
       if (!w) continue;
-      const c = i === 2 ? this.catFog : this.tmpColor.set(STATION_FOG[i]!);
+      const c = STATION_FOG[i] === '' ? this.catFog : this.tmpColor.set(STATION_FOG[i]!);
       this.fog.r += c.r * w;
       this.fog.g += c.g * w;
       this.fog.b += c.b * w;
@@ -813,8 +1004,8 @@ export class SiteWorld {
 
   private updateHome(v: View, still: boolean): void {
     const { pos, time, dt } = v;
-    const home = nearness(pos, 0);
-    const game = nearness(pos, 1);
+    const home = nearness(pos, 0) + nearness(pos, 1) * 0.7;
+    const game = nearness(pos, PLAY);
     const appear = (a: number, b: number) => easeOutCubic(introPhase(a, b));
     const light = appear(0.3, 1.6);
     const world = appear(0.8, 1.4);
@@ -866,7 +1057,9 @@ export class SiteWorld {
     }
     const settled = smoothstep(0.35, 1.1, time - this.selectedAt);
     // на широком экране справа — текст: коты с той стороны уходят в тень, чтобы не спорить с ним
-    const wide = landscapeness(this.width / this.height);
+    const wide = landscapeness(this.width / this.height) * this.atCats;
+    // обзор коллекции: все коты на виду, без тени у дальних
+    const overview = nearness(v.pos, OVERVIEW);
     for (const [i, figure] of this.figures.entries()) {
       const a = i * STEP + this.ringAngle;
       const front = (Math.cos(a) + 1) / 2;
@@ -877,8 +1070,10 @@ export class SiteWorld {
       figure.group.position.set(x, 0.08, z);
       figure.group.scale.setScalar(0.7 + 0.3 * front ** 1.3);
       const behindText = wide * smoothstep(0.1, 0.6, Math.sin(a)) * (1 - chosen);
-      figure.dim = (0.26 + 0.74 * front ** 1.6) * (1 - behindText * 0.7);
-      figure.opacity = (0.35 + 0.65 * smoothstep(0, 0.45, front)) * (1 - behindText * 0.9);
+      const lit = 0.26 + 0.74 * front ** 1.6;
+      figure.dim = (lit + (0.82 - lit) * overview * (1 - front * 0.3)) * (1 - behindText * 0.7);
+      figure.opacity =
+        (0.35 + 0.65 * Math.max(smoothstep(0, 0.45, front), overview)) * (1 - behindText * 0.9);
       figure.reveal = 1;
       figure.update(time + i * 1.7, dt, still);
       figure.material.uniforms.uRimStrength.value = 0.5 + chosen * 0.6;
@@ -903,7 +1098,17 @@ export class SiteWorld {
     }
   }
 
-  private updateUpgrades(v: View, still: boolean): void {
+  private updateWorld(v: View, still: boolean): void {
+    const { time, dt } = v;
+    this.nomad.reveal = 1;
+    this.nomad.update(time, dt, still);
+    const bd = this.nomadBackdrop.material.uniforms;
+    bd.uOpacity!.value = 1;
+    bd.uDim!.value = 0.62;
+    bd.uSoft!.value = 0.35;
+  }
+
+  private updateProgression(v: View, still: boolean): void {
     const { time, dt } = v;
     this.engineer.reveal = 1;
     this.engineer.update(time, dt, still);
@@ -919,24 +1124,11 @@ export class SiteWorld {
       const sway = still ? 0 : Math.sin(time * 0.18 + i * 1.3) * 0.12;
       const a = center + span * (((i * 7) % n) / (n - 1) - 0.5) + sway;
       const radius = 2.9 + wide * 0.8 + (i % 3) * 0.45;
-      const z = UPGRADES.z + 4 - i * 1.15;
+      const z = PROGRESSION.z + 4 - i * 1.15;
       card.position.set(Math.cos(a) * radius, 2.3 + Math.sin(a) * radius * (0.58 + wide * 0.04), z);
       // карточка повёрнута к оси полёта, чуть покачивается
       card.lookAt(0, 2.3, z + 7);
       card.rotation.z += Math.sin(time * 0.5 + i) * 0.05;
-    }
-  }
-
-  private updateEarn(v: View, still: boolean): void {
-    const { time, dt } = v;
-    this.nomad.reveal = 1;
-    this.nomad.update(time, dt, still);
-    const spin = still ? 0 : time * 0.12;
-    for (const [i, coin] of this.rewardCoins.entries()) {
-      const a = i * 0.72 + spin;
-      coin.position.set(EARN.x + Math.cos(a) * 2.1, 0.45 + i * 0.42, EARN.z + Math.sin(a) * 1.5);
-      coin.rotation.set(Math.PI / 2, 0, 0);
-      coin.rotateZ(still ? 0 : time * 0.8 + i);
     }
   }
 
@@ -949,23 +1141,57 @@ export class SiteWorld {
     for (const [i, ring] of this.gyro.entries()) {
       ring.rotation.set(t * (0.12 + i * 0.05) + i, t * (0.09 - i * 0.04) + i * 0.7, 0);
     }
-    const here = nearness(pos, 5);
+    const here = nearness(pos, 7);
     const progress = this.progressRing.material as ShaderMaterial;
     const filled = AIRDROP_REQS.reduce((s, r) => s + r.demo, 0) / AIRDROP_REQS.length;
     const current = progress.uniforms.uProgress!;
     current.value += (filled * here - current.value) * (1 - Math.exp(-v.dt * 1.8));
     // кольцо без тумана: издалека (с соседней станции) его не видно
-    progress.uniforms.uOpacity!.value = clamp01(1.6 - Math.abs(pos - 5) * 1.6);
+    progress.uniforms.uOpacity!.value = clamp01(1.6 - Math.abs(pos - 7) * 1.6);
+  }
+
+  private updateRoadmap(v: View, still: boolean): void {
+    const t = still ? 0 : v.time;
+    for (const [i, b] of this.beacons.entries()) {
+      // неизвестная фаза мерцает: то проявится, то пропадёт
+      const flicker = i === 3 ? 0.55 + 0.45 * Math.sin(t * 1.3) * Math.sin(t * 0.47 + 1) : 1;
+      const breathe = 1 + Math.sin(t * 0.8 + i * 1.4) * 0.04;
+      b.orb.scale.setScalar(breathe);
+      b.ring.scale.setScalar(breathe);
+      b.orb.position.y = 1.1 + Math.sin(t * 0.6 + i) * 0.08;
+      b.ray.rotation.z = Math.PI + Math.sin(t * 0.3 + i) * 0.03;
+      (b.orb.material as ShaderMaterial).uniforms.uOpacity!.value *= flicker;
+    }
+  }
+
+  private updateCommunity(v: View, still: boolean): void {
+    for (const [i, f] of this.crew.entries()) {
+      f.reveal = 1;
+      f.dim = 0.92;
+      f.update(v.time + i * 2.3, v.dt, still);
+    }
+  }
+
+  private updateFinal(v: View, still: boolean): void {
+    const { time, dt } = v;
+    this.finalCat.reveal = 1;
+    this.finalCat.update(time, dt, still);
+    this.finalCat.material.uniforms.uRimStrength.value = 0.9;
+    const bd = this.finalBackdrop.material.uniforms;
+    bd.uOpacity!.value = 1;
+    bd.uDim!.value = 0.55;
+    bd.uSoft!.value = 0.2;
+    const t = still ? 0 : time;
+    for (const [i, m] of this.finalPortal.entries()) {
+      m.rotation.z = t * (i ? -0.05 : 0.03);
+      m.rotation.x = 0.08 + Math.sin(t * 0.3) * 0.03;
+    }
   }
 
   dispose(): void {
     window.removeEventListener('pointermove', this.onPointer);
     this.renderer.dispose();
   }
-}
-
-function catById(id: string): SiteCat {
-  return CATS.find((c) => c.id === id)!;
 }
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -1007,7 +1233,7 @@ function tokenCard(coin: HTMLCanvasElement, ticker: string, group: string): HTML
   ctx.font = '700 78px "Unbounded Variable", "Arial Black", sans-serif';
   ctx.fillText(ticker, W / 2, 470);
   ctx.fillStyle = 'rgba(220,255,200,0.62)';
-  ctx.font = '500 26px "JetBrains Mono Variable", monospace';
+  ctx.font = '600 26px "Manrope Variable", sans-serif';
   ctx.fillText(group.toUpperCase(), W / 2, 520);
   for (let i = 0; i < 5; i++) {
     ctx.fillStyle = i < 3 ? 'rgba(212,255,90,0.9)' : 'rgba(255,255,255,0.14)';

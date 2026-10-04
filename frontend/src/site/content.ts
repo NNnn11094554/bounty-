@@ -1,32 +1,146 @@
-import { AIRDROP_REQUIREMENTS, MAX_LEVEL, START_BONUS, type AirdropRequirementId } from '@meowgul/shared';
+import {
+  AIRDROP_REQUIREMENTS,
+  MAX_LEVEL,
+  START_BONUS,
+  type AirdropRequirementId,
+  type Rarity,
+} from '@meowgul/shared';
 
 /**
- * Сайт — одна сцена, по которой камера летит от станции к станции: прокрутка двигает камеру,
- * у каждой станции — свой интерфейс поверх сцены.
+ * Сайт — одна 3D-сцена и поверх неё обычные секции страницы. У каждой секции — своя точка съёмки
+ * в сцене (станция): прокрутка ведёт камеру от станции к станции, подвал — продолжение финала.
  */
-export const STATIONS = ['home', 'game', 'collection', 'upgrades', 'earn', 'airdrop'] as const;
-export type StationId = (typeof STATIONS)[number];
+export const SECTIONS = [
+  'home',
+  'story',
+  'how',
+  'cats',
+  'collection',
+  'world',
+  'progression',
+  'airdrop',
+  'roadmap',
+  'community',
+  'faq',
+  'final',
+] as const;
+export type SectionId = (typeof SECTIONS)[number];
+export const sectionIndex = (id: SectionId): number => SECTIONS.indexOf(id);
 
-export const STATION_LABEL: Record<StationId, string> = {
-  home: 'Главная',
-  game: 'Игра',
-  collection: 'Коты',
-  upgrades: 'Прокачка',
-  earn: 'Задания',
-  airdrop: 'Airdrop',
+/** Пункты навигации (порядок — как в меню, не как на странице). */
+export const NAV: ReadonlyArray<{ id: SectionId; label: string }> = [
+  { id: 'home', label: 'Home' },
+  { id: 'world', label: 'World' },
+  { id: 'collection', label: 'Collection' },
+  { id: 'how', label: 'How to play' },
+  { id: 'roadmap', label: 'Roadmap' },
+  { id: 'airdrop', label: 'Airdrop' },
+];
+
+/**
+ * Ссылки сообщества. Telegram — бот игры; X и сообщество задаются при сборке (VITE_X_URL,
+ * VITE_COMMUNITY_URL) — пока их нет, кнопка показывает «Soon» и никуда не ведёт.
+ */
+export const LINKS = {
+  telegram: `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'meowgul_bot'}`,
+  x: import.meta.env.VITE_X_URL || null,
+  community: import.meta.env.VITE_COMMUNITY_URL || null,
 };
 
-/** Технические подписи в духе пульта: номер станции и её код. */
-export const STATION_CODE: Record<StationId, string> = {
-  home: 'HOME',
-  game: 'GAME',
-  collection: 'COLLECTION',
-  upgrades: 'UPGRADES',
-  earn: 'EARN / TASKS',
-  airdrop: 'AIRDROP',
-};
+export const STORY_STEPS = [
+  { title: 'The First Cat', text: 'The journey begins.' },
+  { title: 'The Collection', text: 'Discover unique characters and rare skins.' },
+  { title: 'The Evolution', text: 'Upgrade, progress and unlock new possibilities.' },
+  { title: 'The World Expands', text: 'New characters, mechanics and experiences arrive.' },
+] as const;
 
-export const stationIndex = (id: StationId): number => STATIONS.indexOf(id);
+export const HOW_STEPS = [
+  { title: 'Tap', text: 'Earn rewards through active gameplay.' },
+  { title: 'Upgrade', text: 'Improve your progression and unlock new possibilities.' },
+  { title: 'Collect', text: 'Discover unique cats, skins and rare characters.' },
+  { title: 'Compete', text: 'Climb through leagues and prove your place in the world.' },
+] as const;
+
+/** Ступени редкости: у каждой свой характер (цвет — как в игре). */
+export const TIERS: ReadonlyArray<{ rarity: Rarity; text: string }> = [
+  { rarity: 'COMMON', text: 'Where every collection starts.' },
+  { rarity: 'RARE', text: 'Distinct looks, harder to find.' },
+  { rarity: 'EPIC', text: 'Characters with their own worlds.' },
+  { rarity: 'LEGENDARY', text: 'Icons of the universe.' },
+  { rarity: 'MYTHIC', text: 'Almost beyond reach.' },
+];
+
+/** Миры вселенной — все пока в будущем (не выдавать за готовые). */
+export const WORLDS = [
+  {
+    name: 'Shadow District',
+    text: 'A city ruled by silent hunters and hidden secrets.',
+    cat: 'stealth_assassin',
+  },
+  {
+    name: 'Galaxy Frontier',
+    text: 'A distant world where cosmic energy shapes everything around it.',
+    cat: 'galaxy_emperor',
+  },
+  { name: 'Ocean Realm', text: 'An ancient kingdom hidden beneath endless waters.', cat: 'ocean_guardian' },
+  { name: 'Unknown', text: 'Something is waiting beyond the known world.', cat: null },
+] as const;
+
+export const PROGRESSION = [
+  { title: 'Level', text: `${MAX_LEVEL} levels — each one raises your income and energy.` },
+  { title: 'Energy', text: 'Every tap spends it, it refills by itself.' },
+  { title: 'Upgrades', text: 'In-game assets that keep earning while you are away.' },
+  { title: 'Leagues', text: 'Ten leagues, from Bronze to Lord.' },
+  { title: 'Collection', text: 'Characters and tap effects you unlock as you grow.' },
+  { title: 'Achievements', text: 'Daily rewards, streaks and tasks.' },
+] as const;
+
+/** Что учитывается в пути игрока (без обещаний наград и сумм). */
+export const JOURNEY_PILLARS = [
+  { title: 'Activity', text: 'Play regularly and keep your streak.' },
+  { title: 'Progression', text: 'Levels, leagues and upgrades.' },
+  { title: 'Achievements', text: 'Tasks and milestones you complete.' },
+  { title: 'Community', text: 'Friends you bring along.' },
+] as const;
+
+export const ROADMAP = [
+  {
+    phase: '01',
+    title: 'Genesis',
+    state: 'done',
+    items: ['Core game', 'Telegram Mini App', 'First characters', 'Collection'],
+  },
+  {
+    phase: '02',
+    title: 'Expansion',
+    state: 'next',
+    items: ['New characters', 'New skins', 'More upgrades', 'Events', 'New worlds'],
+  },
+  {
+    phase: '03',
+    title: 'Ecosystem',
+    state: 'later',
+    items: ['Community features', 'Competitive mechanics', 'New game systems'],
+  },
+  { phase: '04', title: 'Next World', state: 'unknown', items: ['???'] },
+] as const;
+
+export const FAQ = [
+  {
+    q: 'What is the game?',
+    a: 'A Telegram-based game built around collecting, progression and an evolving universe of characters.',
+  },
+  { q: 'How do I start playing?', a: 'Open the Mini App through Telegram and begin your journey.' },
+  { q: 'What can I collect?', a: 'Characters, skins, rewards and other in-game assets.' },
+  {
+    q: 'Will new characters be added?',
+    a: 'Yes. The collection and universe are designed to expand over time.',
+  },
+  {
+    q: 'How does the airdrop work?',
+    a: 'Participation and progression are part of the current ecosystem experience. Further details can be announced as the system develops.',
+  },
+] as const;
 
 /** Числа игры, которые показывает сайт (в игре они приходят с сервера — здесь те же значения). */
 export const GAME_FACTS = {
@@ -55,46 +169,31 @@ export const LEAGUES = [
   { name: 'Lord', threshold: 700_000_000_000, color: '#ffffff' },
 ] as const;
 
-/** Категории активов и примеры (иконки — те же стилизованные монеты, что в игре). */
-export const ASSET_GROUPS = [
-  { title: 'Блокчейны', icon: 'token/TON/5', examples: 'TON · SOL · ETH · BTC' },
-  { title: 'DeFi', icon: 'token/UNI/6', examples: 'LINK · UNI · AAVE' },
-  { title: 'Мемы', icon: 'token/DOGE/0', examples: 'DOGE · NOT · MEOW' },
-  { title: 'Особые', icon: 'chip/bolt/9', examples: 'инфраструктура кота' },
-] as const;
-
 /** Монеты, которые летят вокруг камеры в разделе прокачки: тикер, палитра (как в игре) и категория. */
 export const FLOATING_ASSETS = [
-  { ticker: 'TON', palette: 5, group: 'Блокчейны' },
-  { ticker: 'SOL', palette: 2, group: 'Блокчейны' },
-  { ticker: 'ETH', palette: 9, group: 'Блокчейны' },
-  { ticker: 'BTC', palette: 8, group: 'Блокчейны' },
-  { ticker: 'DOGE', palette: 0, group: 'Мемы' },
+  { ticker: 'TON', palette: 5, group: 'Blockchains' },
+  { ticker: 'SOL', palette: 2, group: 'Blockchains' },
+  { ticker: 'ETH', palette: 9, group: 'Blockchains' },
+  { ticker: 'BTC', palette: 8, group: 'Blockchains' },
+  { ticker: 'DOGE', palette: 0, group: 'Memes' },
   { ticker: 'LINK', palette: 5, group: 'DeFi' },
-  { ticker: 'NOT', palette: 10, group: 'Мемы' },
+  { ticker: 'NOT', palette: 10, group: 'Memes' },
   { ticker: 'UNI', palette: 6, group: 'DeFi' },
-  { ticker: 'MEOW', palette: 0, group: 'Мемы' },
-  { ticker: 'AVAX', palette: 11, group: 'Блокчейны' },
-] as const;
-
-/** Задания (награда — как в игре: комбо и шифр растут вместе с доходом игрока). */
-export const TASKS = [
-  { title: 'Комбо дня', note: 'найди 3 актива дня', reward: 'от 50 000' },
-  { title: 'Шифр дня', note: 'слово азбукой Морзе — тапами', reward: 'от 10 000' },
-  { title: 'Пригласи друга', note: 'бонус обоим, за друга с Premium — 25 000', reward: '5 000' },
+  { ticker: 'MEOW', palette: 0, group: 'Memes' },
+  { ticker: 'AVAX', palette: 11, group: 'Blockchains' },
 ] as const;
 
 /** Требования Airdrop (как в игре) и демо-прогресс для сайта. */
 export const AIRDROP_REQS: ReadonlyArray<{ id: AirdropRequirementId; label: string; demo: number }> = [
-  { id: 'league', label: 'Лига Platinum', demo: 1 },
-  { id: 'level', label: 'Уровень 10', demo: 1 },
-  { id: 'friends', label: 'Пригласи 3 друзей', demo: 0.66 },
-  { id: 'streak', label: 'Заходи 7 дней подряд', demo: 1 },
-  { id: 'cards', label: 'Открой 6 активов', demo: 0.5 },
-  { id: 'tasks', label: 'Выполни 5 заданий', demo: 0.8 },
+  { id: 'league', label: 'Reach Platinum league', demo: 1 },
+  { id: 'level', label: 'Reach level 10', demo: 1 },
+  { id: 'friends', label: 'Invite 3 friends', demo: 0.66 },
+  { id: 'streak', label: '7-day streak', demo: 1 },
+  { id: 'cards', label: 'Unlock 6 assets', demo: 0.5 },
+  { id: 'tasks', label: 'Complete 5 tasks', demo: 0.8 },
 ];
 
 // требования сайта — те же, что у игры (порядок и состав)
 if (import.meta.env.DEV && AIRDROP_REQS.map((r) => r.id).join() !== AIRDROP_REQUIREMENTS.join()) {
-  console.warn('site: требования Airdrop разошлись с игрой');
+  console.warn('site: airdrop requirements differ from the game');
 }

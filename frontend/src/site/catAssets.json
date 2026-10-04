@@ -1,5 +1,16 @@
 {
-  "ids": ["inferno", "sakura_blossom", "toxic", "desert_nomad", "crystal_prince", "lunar_witch"],
+  "ids": [
+    "stealth_assassin",
+    "galaxy_emperor",
+    "ocean_guardian",
+    "cyber_samurai",
+    "inferno",
+    "sakura_blossom",
+    "toxic",
+    "desert_nomad",
+    "crystal_prince",
+    "lunar_witch"
+  ],
   "sizes": {
     "character": [900, 1200, 1600],
     "background": [1200, 1800, 2400]

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { MINI_APP_URL } from '../../lib/links';
-import { STATION_CODE, STATION_LABEL, STATIONS } from '../content';
+import { LINKS, NAV, sectionIndex, type SectionId } from '../content';
 import { useSite } from '../store';
 import { flyTo, LAST_STATION, onTick } from '../timeline';
 import { useActiveStation } from './hooks';
+import { CommunityIcon, TelegramIcon, XIcon } from './icons';
+import { k } from './reveal';
 
 /** Лапа — знак Meowgul. */
 export function PawMark({ size = 22 }: { size?: number }) {
@@ -52,7 +54,7 @@ export function Loader() {
   );
 }
 
-export function PlayButton({ className = '' }: { className?: string }) {
+export function PlayButton({ className = '', label = 'Play now' }: { className?: string; label?: string }) {
   return (
     <a
       className={`btn btn-primary ${className}`}
@@ -60,71 +62,144 @@ export function PlayButton({ className = '' }: { className?: string }) {
       target="_blank"
       rel="noopener noreferrer"
     >
-      Играть в Telegram
+      {label}
     </a>
   );
 }
 
+const SOCIALS = [
+  { id: 'telegram', label: 'Telegram', href: LINKS.telegram, icon: <TelegramIcon /> },
+  { id: 'x', label: 'X', href: LINKS.x, icon: <XIcon /> },
+  { id: 'community', label: 'Community', href: LINKS.community, icon: <CommunityIcon /> },
+] as const;
+
+/**
+ * Ссылки сообщества. Пока у ссылки нет адреса (X, сообщество — задаются при сборке), кнопка видна,
+ * но неактивна и подписана «Soon» — никуда не ведёт.
+ */
+export function Socials({ wide = false, className = '' }: { wide?: boolean; className?: string }) {
+  return (
+    <div className={`socials ${className}`}>
+      {SOCIALS.map((s) =>
+        s.href ? (
+          <a
+            key={s.id}
+            className={wide ? 'btn btn-ghost' : 'icon-btn'}
+            href={s.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={s.label}
+          >
+            {s.icon}
+            {wide && <span>{socialText(s.id)}</span>}
+          </a>
+        ) : (
+          <span
+            key={s.id}
+            className={wide ? 'btn btn-ghost is-soon' : 'icon-btn is-soon'}
+            aria-label={`${s.label} — soon`}
+            aria-disabled="true"
+            title="Soon"
+          >
+            {s.icon}
+            {wide && <span>{socialText(s.id)}</span>}
+            {wide && <small>Soon</small>}
+          </span>
+        ),
+      )}
+    </div>
+  );
+}
+
+const socialText = (id: string) =>
+  id === 'telegram' ? 'Join Telegram' : id === 'x' ? 'Follow on X' : 'Community';
+
+/** Пункт навигации, у которого камера сейчас (или ни одного — между пунктами). */
+function useActiveNav(): number {
+  const station = useActiveStation();
+  return NAV.findIndex((n) => sectionIndex(n.id) === station);
+}
+
 export function Nav() {
-  const active = useActiveStation();
+  const active = useActiveNav();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const linksRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLSpanElement>(null);
 
-  // подложка активного пункта переезжает к нему
+  // подложка активного пункта переезжает к нему; между пунктами — гаснет
   useEffect(() => {
     const host = linksRef.current;
     const pill = pillRef.current;
-    const link = host?.querySelectorAll<HTMLElement>('.nav-link')[active];
-    if (!host || !pill || !link) return;
+    if (!host || !pill) return;
+    const link = active >= 0 ? host.querySelectorAll<HTMLElement>('.nav-link')[active] : undefined;
+    pill.style.opacity = link ? '1' : '0';
+    if (!link) return;
     pill.style.transition = pill.style.width
-      ? 'transform 500ms var(--ease-out), width 500ms var(--ease-out)'
+      ? 'transform 500ms var(--ease-out), width 500ms var(--ease-out), opacity 300ms ease'
       : '';
     pill.style.width = `${link.offsetWidth}px`;
     pill.style.transform = `translateX(${link.offsetLeft}px)`;
   }, [active]);
 
+  // навигация становится стеклянной, как только страница сдвинулась
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const root = document.documentElement;
+    root.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      root.style.overflow = '';
+    };
   }, [open]);
 
-  const go = (i: number) => {
+  const go = (id: SectionId) => {
     setOpen(false);
-    flyTo(i);
+    flyTo(sectionIndex(id));
   };
 
   return (
     <>
-      <header className="nav intro-fade" style={{ ['--k' as string]: 0 }}>
-        <button type="button" className="logo" onClick={() => go(0)} aria-label="Meowgul — в начало">
+      <header className="nav intro-fade" data-scrolled={scrolled || open} style={k(0)}>
+        <button type="button" className="logo" onClick={() => go('home')} aria-label="Meowgul — home">
           <PawMark />
           MEOWGUL
         </button>
-        <nav aria-label="Разделы">
+        <nav aria-label="Sections" className="nav-center">
           <div className="nav-links" ref={linksRef}>
             <span className="nav-pill" ref={pillRef} />
-            {STATIONS.map((id, i) => (
-              <button
-                key={id}
-                type="button"
+            {NAV.map((n, i) => (
+              <a
+                key={n.id}
+                href={`#${n.id}`}
                 className="nav-link"
-                aria-current={i === active}
-                onClick={() => go(i)}
+                aria-current={i === active ? 'true' : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  go(n.id);
+                }}
               >
-                {STATION_LABEL[id]}
-              </button>
+                {n.label}
+              </a>
             ))}
           </div>
         </nav>
-        <div className="flex items-center gap-3">
-          <PlayButton className="hidden sm:inline-flex" />
+        <div className="nav-right">
+          <Socials className="nav-socials" />
+          <PlayButton className="btn-sm nav-play" />
           <button
             type="button"
             className="menu-button"
-            aria-label="Меню"
+            aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
@@ -134,64 +209,45 @@ export function Nav() {
             </span>
           </button>
         </div>
+        <ProgressLine />
       </header>
       <div className="menu" data-open={open} aria-hidden={!open}>
-        {STATIONS.map((id, i) => (
-          <button
-            key={id}
-            type="button"
-            className="menu-item"
-            style={{ ['--k' as string]: i }}
-            onClick={() => go(i)}
-            tabIndex={open ? 0 : -1}
-          >
-            <small>{String(i + 1).padStart(2, '0')}</small>
-            {STATION_LABEL[id]}
-          </button>
-        ))}
-        <PlayButton className="menu-play mt-8 self-start" />
+        <nav aria-label="Menu" className="menu-list">
+          {NAV.map((n, i) => (
+            <a
+              key={n.id}
+              href={`#${n.id}`}
+              className="menu-item"
+              style={k(i)}
+              onClick={(e) => {
+                e.preventDefault();
+                go(n.id);
+              }}
+              tabIndex={open ? 0 : -1}
+            >
+              <small>{String(i + 1).padStart(2, '0')}</small>
+              {n.label}
+            </a>
+          ))}
+        </nav>
+        <div className="menu-foot">
+          <PlayButton className="menu-play" />
+          <Socials className="menu-socials" />
+        </div>
       </div>
     </>
   );
 }
 
-/** Шкала пути справа (десктоп) и тонкая линия прогресса сверху (телефон). */
-export function Rail() {
-  const active = useActiveStation();
-  const fillRef = useRef<HTMLDivElement>(null);
-  const lineRef = useRef<HTMLDivElement>(null);
+/** Тонкая линия пути под навигацией: сколько мира уже пройдено. */
+function ProgressLine() {
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(
     () =>
       onTick((v) => {
-        const k = (v.pos / LAST_STATION).toFixed(4);
-        if (fillRef.current) fillRef.current.style.transform = `scaleY(${k})`;
-        if (lineRef.current) lineRef.current.style.transform = `scaleX(${k})`;
+        if (ref.current) ref.current.style.transform = `scaleX(${(v.pos / LAST_STATION).toFixed(4)})`;
       }),
     [],
   );
-  return (
-    <>
-      <div className="rail intro-fade" style={{ ['--k' as string]: 3 }}>
-        <span className="rail-label mono">
-          {String(active + 1).padStart(2, '0')} / {String(STATIONS.length).padStart(2, '0')}
-        </span>
-        <div className="rail-track">
-          <div className="rail-fill" ref={fillRef} />
-          {STATIONS.map((id, i) => (
-            <button
-              key={id}
-              type="button"
-              className="rail-dot"
-              style={{ top: `${(i / LAST_STATION) * 100}%` }}
-              aria-current={i === active}
-              aria-label={STATION_LABEL[id]}
-              onClick={() => flyTo(i)}
-            />
-          ))}
-        </div>
-        <span className="rail-label">{STATION_CODE[STATIONS[active]!]}</span>
-      </div>
-      <div className="progress-line" ref={lineRef} />
-    </>
-  );
+  return <div className="progress-line" ref={ref} aria-hidden />;
 }

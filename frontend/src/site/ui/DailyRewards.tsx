@@ -36,7 +36,7 @@ export function DailyRewards() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="stat-label">Ежедневная награда · день {TODAY} из 10</p>
+        <p className="tag">Daily reward · day {TODAY} of 10</p>
         <span className="chip text-[color:var(--gold)]" ref={balanceRef}>
           <CoinIcon size={14} />
           <RollingNumber getValue={demoBalance} glowOnJump={false} />
@@ -46,12 +46,12 @@ export function DailyRewards() {
         {GAME_FACTS.daily.map((amount, i) => {
           const day = i + 1;
           const state = day < TODAY || (day === TODAY && claimed) ? 'done' : day === TODAY ? 'today' : 'next';
-          const label = `День ${day}: ${formatInt(amount)} PAW`;
+          const label = `Day ${day}: ${formatInt(amount)} PAW`;
           const body = (
             <>
-              <p className="mono text-[9px] tracking-[0.14em] text-[color:var(--ink-3)]">ДЕНЬ {day}</p>
+              <p className="tag text-[9px]">Day {day}</p>
               <CoinIcon size={18} className="mx-auto my-1" />
-              <p className="num text-[12px] font-semibold">{formatShort(amount)}</p>
+              <p className="tabular text-[12px] font-bold">{formatShort(amount)}</p>
             </>
           );
           return day === TODAY && !claimed ? (
@@ -61,7 +61,7 @@ export function DailyRewards() {
               type="button"
               className="day day-claim"
               data-state={state}
-              aria-label={`${label} — забрать`}
+              aria-label={`${label} — claim`}
               onClick={claim}
             >
               {body}
