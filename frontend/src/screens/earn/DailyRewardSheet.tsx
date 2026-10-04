@@ -14,6 +14,7 @@ import { playSound } from '../../lib/sound';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
+import { useBusy } from '../../hooks/useBusy';
 
 interface Props {
   open: boolean;
@@ -36,7 +37,7 @@ function DailyBody() {
   const rewards = useGame((s) => s.config?.dailyRewards ?? []);
   const nextReset = useGame((s) => s.player?.nextResetAt ?? 0);
   const now = useNow(1000);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
   const [flipped, setFlipped] = useState<number | null>(null);
   const tiles = useRef<Array<HTMLDivElement | null>>([]);
   const reduced = isReducedMotion();
@@ -46,19 +47,18 @@ function DailyBody() {
   const claimedUpTo = daily.claimedToday ? daily.day : daily.day - 1;
   const serverNow = now + (tapEngine.serverNow() - Date.now());
 
-  const claim = async () => {
-    if (busy || daily.claimedToday) return;
-    setBusy(true);
-    const day = daily.day;
-    const res = await claimDaily();
-    setBusy(false);
-    if (!res) return;
-    setFlipped(day);
-    haptic.notify('success');
-    playSound('reward');
-    flyCoins(centerOf(tiles.current[day - 1] ?? null), 16);
-    toast.success(t('daily.claimed', { n: day, reward: formatInt(res.reward) }));
-  };
+  const claim = () =>
+    run(async () => {
+      if (daily.claimedToday) return;
+      const day = daily.day;
+      const res = await claimDaily();
+      if (!res) return;
+      setFlipped(day);
+      haptic.notify('success');
+      playSound('reward');
+      flyCoins(centerOf(tiles.current[day - 1] ?? null), 16);
+      toast.success(t('daily.claimed', { n: day, reward: formatInt(res.reward) }));
+    });
 
   return (
     <div className="flex flex-col items-center gap-3 pt-1 text-center">

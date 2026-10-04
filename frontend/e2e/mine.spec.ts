@@ -43,6 +43,33 @@ test.describe('Assets (Mine)', () => {
     await expect(page.getByTestId('stat-per-hour')).toHaveText('+133');
   });
 
+  test('a double tap on «Buy» upgrades once and charges once', async ({ page }) => {
+    const uid = 700000507;
+    await page.goto(`/?uid=${uid}&name=Торопыга`);
+    await expect(page.getByTestId('office')).toBeVisible();
+    await setPlayer(uid, { balance: 100_000, totalEarned: 100_000, leagueLevel: 1 });
+    await markLeagueSeen(page, uid, 1);
+    await page.reload();
+    await page.getByTestId('open-mine').click();
+    await page.getByTestId('card-ton').click();
+    const buy = page.getByTestId('card-buy');
+    await expect(buy).toBeEnabled();
+    // три нажатия в одном кадре — как дрогнувший палец
+    await buy.evaluate((el) => {
+      for (let i = 0; i < 3; i++) (el as HTMLElement).click();
+    });
+    await expect(page.getByTestId('card-ton').getByTestId('card-level')).toHaveAttribute(
+      'aria-label',
+      'lvl 1',
+    );
+    await page.waitForTimeout(1000);
+    const id = await userId(uid);
+    expect(await db.userCard.findMany({ where: { userId: id } })).toMatchObject([
+      { cardId: 'ton', level: 1 },
+    ]);
+    expect(await db.transaction.count({ where: { userId: id, type: 'card_upgrade' } })).toBe(1);
+  });
+
   test('locked assets show their requirement; not enough coins disables the button', async ({ page }) => {
     const uid = 700000502;
     await page.goto(`/?uid=${uid}&name=Новичок`);

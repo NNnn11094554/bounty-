@@ -74,10 +74,12 @@ function wireEngine(): void {
     }
   };
   const flushNow = () => void tapEngine.flush();
+  // свернули/закрывают: отправить тапы и сохранить неотправленные на устройстве (дойдут при следующем входе)
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushNow();
+    if (document.visibilityState === 'hidden') tapEngine.hide();
+    else tapEngine.show();
   });
-  window.addEventListener('pagehide', flushNow);
+  window.addEventListener('pagehide', () => tapEngine.hide());
   window.addEventListener('online', flushNow);
   getWebApp()?.onEvent('viewportChanged', flushNow);
 }

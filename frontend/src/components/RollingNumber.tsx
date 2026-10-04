@@ -58,6 +58,31 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
       }
     };
 
+    // очень большое число (поздняя игра — сотни триллионов) не помещается в строку с монеткой на узком
+    // экране: шрифт уменьшается ровно настолько, чтобы строка влезла. Проверка — только когда меняется
+    // количество цифр (и при смене размера экрана), не на каждом кадре.
+    const fit = () => {
+      root.style.fontSize = '';
+      const row = root.parentElement;
+      if (!row) return;
+      const cs = getComputedStyle(row);
+      const items = Array.from(row.children) as HTMLElement[];
+      // соседи (монетка) не сжимаются — уменьшается только число
+      for (const el of items) if (el !== root) el.style.flexShrink = '0';
+      const gap = parseFloat(cs.columnGap) || 0;
+      const content =
+        items.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (items.length - 1);
+      // запас по краям, чтобы число не упиралось в край экрана
+      const room =
+        row.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 24;
+      const over = content - room;
+      if (over <= 0) return;
+      const width = root.getBoundingClientRect().width;
+      const base = parseFloat(getComputedStyle(root).fontSize);
+      if (width > 0) root.style.fontSize = `${Math.max(12, Math.floor((base * (width - over)) / width))}px`;
+    };
+    window.addEventListener('resize', fit);
+
     const render = () => {
       const value = Math.max(0, Math.floor(getter.current()));
       if (value === lastValue) return;
@@ -80,6 +105,7 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
       lastValue = value;
       if (text.length !== shown.length) {
         build(text);
+        fit();
       } else {
         for (let i = 0; i < text.length; i++) {
           const ch = text[i]!;
@@ -92,7 +118,11 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
       root.setAttribute('aria-label', text);
     };
     render();
-    return onFrame(render);
+    const off = onFrame(render);
+    return () => {
+      off();
+      window.removeEventListener('resize', fit);
+    };
   }, [glowOnJump]);
 
   return <span ref={ref} className={`roll ${className}`} data-testid={testId} role="text" />;

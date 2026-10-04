@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { setPlayer } from './db';
+import { db, markLeagueSeen, setPlayer } from './db';
 
 // темп быстрого живого игрока (~15 тапов/с): сервер срезает всё, что быстрее 20 тапов/с с прошлой
 // синхронизации, а клики Playwright без пауз идут под 60/с — часть тапов честно отбрасывается антифродом
@@ -22,6 +22,32 @@ test.describe('Office', () => {
     await page.waitForResponse((r) => r.url().includes('/api/tap') && r.ok(), { timeout: 8000 });
     await page.reload();
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', '15');
+  });
+
+  test('taps made without network survive closing the game and arrive on the next launch', async ({
+    page,
+  }) => {
+    const uid = 700000118;
+    await page.goto(`/?uid=${uid}&name=Без сети`);
+    await expect(page.getByTestId('office')).toBeVisible();
+    await markLeagueSeen(page, uid, 9);
+    await page.route('**/api/tap', (route) => route.abort());
+    const hit = (await page.getByTestId('cat-hit').boundingBox())!;
+    for (let i = 0; i < 12; i++)
+      await page.mouse.click(hit.x + hit.width / 2, hit.y + hit.height / 2, { delay: 30 });
+    await page.waitForTimeout(3000); // пачки не дошли: сети нет
+    await page.reload(); // игру закрыли и открыли снова
+    await page.unroute('**/api/tap');
+    await expect(page.getByTestId('office')).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          Number((await db.user.findUniqueOrThrow({ where: { telegramId: BigInt(uid) } })).totalTaps),
+        {
+          timeout: 10_000,
+        },
+      )
+      .toBe(12);
   });
 
   test('the cat is only a tap target: no image menu, no navigation, no popups', async ({ page, context }) => {
