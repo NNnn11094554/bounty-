@@ -1,5 +1,5 @@
 import { decodeMorse, formatInt, MORSE_DASH_MS, MORSE_LETTER_PAUSE_MS } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from '../store/create';
 import { endpoints } from '../api/endpoints';
 import { translate } from '../i18n';
 import { playSound } from '../lib/sound';

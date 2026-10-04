@@ -2,6 +2,7 @@ import { catMood } from './game/catMood';
 import { formatInt } from '@meowgul/shared';
 import { ApiError, onGlobalApiError, setInitData } from './api/client';
 import { endpoints } from './api/endpoints';
+import { kickFrames } from './game/frameLoop';
 import { setTurboMultiplier, tapEngine } from './game/tapEngine';
 import { resolveLocale, translate } from './i18n';
 import { applyClientSettings } from './lib/clientSettings';
@@ -52,7 +53,11 @@ const NETWORK_TOAST = 'network';
 function wireEngine(): void {
   if (engineWired) return;
   engineWired = true;
-  tapEngine.subscribe((state) => useGame.getState().applyState(state));
+  tapEngine.subscribe((state) => {
+    useGame.getState().applyState(state);
+    // награда или покупка с сервера — счётчики показывают её сразу, а не со следующим обновлением в покое
+    kickFrames();
+  });
   tapEngine.onGoldenCoin = (coin) => useEvents.getState().showGoldenCoin(coin);
   tapEngine.onSync = (ok, err) => {
     const store = useGame.getState();

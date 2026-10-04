@@ -25,10 +25,13 @@ function skipTutorials(): boolean {
 }
 
 function findTarget(name: string): HTMLElement | null {
-  const el = document.querySelector<HTMLElement>(`[data-tour="${name}"]`);
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return r.width > 0 && r.height > 0 ? el : null;
+  // скрытые вкладки тоже в документе (components/TabLayer) — элемент ищется только на видимом экране
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${name}"]`))) {
+    if (el.closest('.tab-layer[aria-hidden="true"]')) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) return el;
+  }
+  return null;
 }
 
 interface Box {
@@ -106,14 +109,18 @@ export function TabTutorial({ screen }: { screen: string }) {
     }
     el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     let last = '';
-    return onFrame(() => {
-      const r = targetRef.current?.getBoundingClientRect();
-      if (!r) return;
-      const key = `${Math.round(r.left)}:${Math.round(r.top)}:${Math.round(r.width)}:${Math.round(r.height)}`;
-      if (key === last) return;
-      last = key;
-      setBox({ x: r.left - PAD, y: r.top - PAD, w: r.width + PAD * 2, h: r.height + PAD * 2 });
-    });
+    // рамка следует за элементом при плавной прокрутке — каждый кадр
+    return onFrame(
+      () => {
+        const r = targetRef.current?.getBoundingClientRect();
+        if (!r) return;
+        const key = `${Math.round(r.left)}:${Math.round(r.top)}:${Math.round(r.width)}:${Math.round(r.height)}`;
+        if (key === last) return;
+        last = key;
+        setBox({ x: r.left - PAD, y: r.top - PAD, w: r.width + PAD * 2, h: r.height + PAD * 2 });
+      },
+      { hot: true },
+    );
     // next зависит от шага — перезапуск нужен только при смене шага
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);

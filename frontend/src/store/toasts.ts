@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from './create';
 
 export type ToastKind = 'info' | 'success' | 'error' | 'reward' | 'network';
 

@@ -17,13 +17,15 @@ test.describe('Scenario: tap mechanics', () => {
 
   test('out of energy: taps give nothing and the energy comes back by itself', async ({ game, page }) => {
     await game.login(710000102, { state: { energy: 4, energyUpdatedAt: new Date() } });
-    await game.tap(12, { gapMs: 30 });
+    // касаний заметно больше, чем энергии: за время перезагрузки и серии она успевает восстановиться (~3 в
+    // секунду), поэтому запас — чтобы проверка не зависела от доли секунды
+    await game.tap(20, { gapMs: 30 });
     await expect.poll(async () => (await game.energy())[0]).toBeLessThan(4);
     // засчитано не больше, чем было энергии (+ то, что успело восстановиться)
     await page.waitForTimeout(3500);
     const taps = Number((await game.user()).totalTaps);
     expect(taps).toBeGreaterThanOrEqual(4);
-    expect(taps).toBeLessThan(12);
+    expect(taps).toBeLessThan(20);
     // энергия восстанавливается
     const [low] = await game.energy();
     await expect.poll(async () => (await game.energy())[0], { timeout: 8000 }).toBeGreaterThan(low);

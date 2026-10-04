@@ -1,5 +1,5 @@
 import type { ShopProduct, ShopProductId } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 import { endpoints } from '../api/endpoints';
 import { payInvoice, type PayResult } from '../game/payments';
 

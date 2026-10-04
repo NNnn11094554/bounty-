@@ -42,7 +42,13 @@ function useSize(ref: React.RefObject<HTMLElement>) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    const update = () => {
+      const width = el.clientWidth;
+      const height = el.clientHeight;
+      // 0×0 — вкладка скрыта (components/TabLayer): прежний размер остаётся
+      if (width === 0 || height === 0) return;
+      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+    };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);

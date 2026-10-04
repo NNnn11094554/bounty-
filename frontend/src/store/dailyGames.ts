@@ -1,5 +1,5 @@
 import type { CipherState, ComboState } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 import { endpoints } from '../api/endpoints';
 
 interface DailyGamesStore {

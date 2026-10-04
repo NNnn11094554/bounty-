@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from './create';
 import { getWebApp } from '../telegram/webapp';
 
 /** Нижнее меню: Главная, Друзья, Магазин, Airdrop, Коллекция, Профиль. */
