@@ -112,3 +112,9 @@ export function refillEnergy(): boolean {
 export function isTurbo(): boolean {
   return nowSec() < state.turboUntil;
 }
+
+/** Начислить награду (ежедневная награда на сайте). */
+export function demoAdd(amount: number): void {
+  advance();
+  state.balance += amount;
+}

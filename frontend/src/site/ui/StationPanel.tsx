@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { introPhase, onTick, smoothstep } from '../timeline';
+import { introPhase, onTick } from '../timeline';
 
 interface Props {
   index: number;
@@ -25,7 +25,9 @@ export function StationPanel({ index, className = '', afterIntro = false, label,
     let shown = false;
     return onTick((v) => {
       const d = v.pos - index;
-      const near = 1 - smoothstep(0.06, 0.44, Math.abs(d));
+      // плавная кривая без излома: панель проявляется и гаснет медленно в начале и в конце
+      const k = 1 - Math.min(1, Math.max(0, (Math.abs(d) - 0.05) / 0.42));
+      const near = k * k * k * (k * (k * 6 - 15) + 10);
       const p = near * (afterIntro ? introPhase(2.2, 1.0) : v.intro >= 0 || v.reduced ? 1 : 0);
       if (p < 0.004) {
         if (shown) {
@@ -44,13 +46,14 @@ export function StationPanel({ index, className = '', afterIntro = false, label,
         shown = true;
       }
       // только transform и opacity — их браузер анимирует на видеокарте, без перерисовки слоя
-      const y = (-d * 90).toFixed(1);
-      const s = (1 + d * 0.08).toFixed(4);
+      // лёгкий параллакс глубины: из глубины снизу, мимо зрителя вверх
+      const y = (-d * 64).toFixed(1);
+      const s = (1 + d * 0.05).toFixed(4);
       const key = `${p.toFixed(3)}|${y}|${s}`;
       if (key === last) return;
       last = key;
       el.style.setProperty('--p', p.toFixed(3));
-      el.style.opacity = Math.min(1, p * 1.6).toFixed(3);
+      el.style.opacity = p.toFixed(3);
       el.style.transform = `translate3d(0, ${y}px, 0) scale(${s})`;
       el.style.pointerEvents = 'none';
       el.dataset.active = p > 0.6 ? 'true' : 'false';

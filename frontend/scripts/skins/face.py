@@ -80,6 +80,16 @@ EARS = {
     'lunar_witch': [],
 }
 
+# хвосты котов сайта: [основание x, y, кончик x, y] в долях картинки — размечены вручную по сетке
+TAILS = {
+    'inferno': [0.39, 0.7, 0.09, 0.73],
+    'sakura_blossom': [0.42, 0.55, 0.13, 0.35],
+    'toxic': [0.41, 0.6, 0.08, 0.42],
+    'desert_nomad': [0.34, 0.5, 0.07, 0.6],
+    'crystal_prince': [0.26, 0.68, 0.05, 0.65],
+    'lunar_witch': [0.33, 0.67, 0.14, 0.53],
+}
+
 
 def main_site():
     """Сайт игры: лицо и уши котов сайта в src/site/catArt.json (картинки — public/assets/site/cats)."""
@@ -94,6 +104,7 @@ def main_site():
         a['headBottom'] = round(min(0.45, a['head'][1] * 1.9), 4)
         face = face_for(alpha, a, EYES[cat])
         face['ears'] = EARS[cat]
+        face['tail'] = TAILS.get(cat)
         a['face'] = face
     path.write_text(json.dumps(art, indent=2, ensure_ascii=False) + '\n')
     print(f'face: {len(art)} site cats')

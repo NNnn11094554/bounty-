@@ -742,6 +742,71 @@ body {
     filter: blur(8px);
   }
 }
+.cat-subtitle {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(13px, 1.1vw, 16px);
+  letter-spacing: 0.02em;
+}
+.cat-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.cat-stats dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.cat-stats dd {
+  margin-top: 6px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+@media (max-aspect-ratio: 19/20) {
+  .cat-stats {
+    grid-template-columns: 1.35fr 1fr 1fr;
+    gap: 8px;
+    padding-top: 10px;
+  }
+  .cat-stats dd {
+    font-size: 13px;
+  }
+  .cat-power {
+    display: none;
+  }
+}
+.cat-power {
+  position: relative;
+  flex: 1;
+  max-width: 64px;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.cat-power i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  border-radius: inherit;
+  animation: power-in 900ms var(--ease-out) 400ms both;
+}
+@keyframes power-in {
+  from {
+    transform: scaleX(0);
+  }
+}
 .swap-in {
   animation: swap-in 700ms var(--ease-out) both;
   animation-delay: calc(var(--k, 0) * 70ms + 260ms);
@@ -764,19 +829,24 @@ body {
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--line);
-  opacity: 0.55;
+  opacity: 0.5;
+  filter: saturate(0.7);
+  transform: translateZ(0);
   transition:
-    opacity 300ms ease,
-    transform 300ms var(--ease-out),
-    border-color 300ms ease;
+    opacity 480ms var(--ease-out),
+    transform 560ms var(--ease-out),
+    filter 480ms var(--ease-out),
+    border-color 480ms var(--ease-out),
+    box-shadow 560ms var(--ease-out);
 }
 @media (max-aspect-ratio: 19/20) {
   .thumbs {
     justify-content: space-between;
+    gap: 6px;
   }
   .thumb {
-    width: 48px;
-    height: 48px;
+    width: min(48px, calc((100vw - 2 * var(--gutter) - 30px) / 6));
+    height: min(48px, calc((100vw - 2 * var(--gutter) - 30px) / 6));
     border-radius: 14px;
   }
 }
@@ -785,15 +855,30 @@ body {
   height: 100%;
   object-fit: cover;
 }
+/* мягкий блик сверху — стекло карточки */
+.thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 45%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
 .thumb[aria-current='true'] {
   opacity: 1;
-  border-color: var(--c);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px -6px var(--c);
+  filter: none;
+  border-color: color-mix(in srgb, var(--c) 70%, white 10%);
+  transform: translateY(-3px) scale(1.07);
+  box-shadow:
+    0 10px 22px -10px rgba(0, 0, 0, 0.8),
+    0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent),
+    0 8px 26px -12px var(--c);
 }
 @media (hover: hover) {
   .thumb:hover {
-    opacity: 0.9;
+    opacity: 0.85;
+    filter: none;
   }
 }
 .arrow {
@@ -1139,6 +1224,110 @@ body {
   .dock-right {
     gap: 10px;
   }
+}
+
+/* ───────────── ежедневная награда ───────────── */
+
+button.day {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+/* сегодняшняя награда дышит — спокойно, только transform и тень */
+.day-claim {
+  animation: day-pulse 2.6s ease-in-out infinite;
+}
+@keyframes day-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 18px -8px rgba(255, 201, 60, 0.55);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 26px -6px rgba(255, 201, 60, 0.85);
+  }
+}
+.day-claim:active {
+  transform: scale(0.96);
+  animation: none;
+}
+.day {
+  transition:
+    border-color 400ms var(--ease-out),
+    background-color 400ms var(--ease-out);
+}
+.spark,
+.fly-coin {
+  position: fixed;
+  z-index: 40;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.spark {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6d0 0%, #ffc93c 55%, transparent 70%);
+}
+.fly-coin {
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3b8 0%, #ffc93c 45%, #d98f0b 100%);
+  box-shadow: 0 0 0 1.5px #b8740a inset;
+}
+
+/* ───────────── airdrop: заполнение и отметки, когда камера у станции ───────────── */
+
+.req-bar i {
+  transform: scaleX(0);
+  transition: transform 300ms var(--ease-out);
+}
+.station[data-active='true'] .req-bar i {
+  transform: scaleX(var(--v));
+  transition: transform 1300ms cubic-bezier(0.22, 1, 0.36, 1) var(--d);
+}
+/* энергия бежит по заполненной части */
+.req-bar i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: translateX(-100%);
+  animation: energy-run 2.8s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes energy-run {
+  60%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+.check {
+  transition:
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 400ms ease;
+}
+.check[data-done='true'] {
+  transform: scale(0.6);
+}
+.station[data-active='true'] .check[data-done='true'] {
+  transform: scale(1);
+  transition-delay: var(--d);
+}
+.check path {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+  transition: stroke-dashoffset 300ms ease;
+}
+.station[data-active='true'] .check path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 520ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--d) + 200ms);
 }
 
 /* утилиты — последними: перекрывают классы компонентов (hidden у .btn и т.п.) */

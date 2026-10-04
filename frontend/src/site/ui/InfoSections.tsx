@@ -1,9 +1,10 @@
-import { formatShort } from '@meowgul/shared';
 import { EnergyLimitIcon, FullEnergyIcon, TurboIcon } from '../../components/boostIcons';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CoinIcon } from '../../components/icons';
 import { AIRDROP_REQS, ASSET_GROUPS, GAME_FACTS, TASKS } from '../content';
 import { PlayButton } from './Chrome';
+import { CountUp } from './CountUp';
+import { DailyRewards } from './DailyRewards';
 import { StationPanel } from './StationPanel';
 import { Title } from './Title';
 
@@ -76,9 +77,6 @@ function Boost({ icon, title, text }: { icon: React.ReactNode; title: string; te
   );
 }
 
-/** день серии, который «сегодня» в демо */
-const TODAY = 4;
-
 /** Задания: ежедневная награда по дням серии и задания. */
 export function EarnSection() {
   return (
@@ -92,23 +90,7 @@ export function EarnSection() {
           Серия из 10 дней: чем дольше не пропускаешь, тем больше награда.
         </p>
         <div className="glass reveal p-3 sm:p-4" style={k(3)}>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="stat-label">Ежедневная награда</p>
-            <p className="stat-label">день {TODAY} из 10</p>
-          </div>
-          <div className="days">
-            {GAME_FACTS.daily.map((amount, i) => {
-              const day = i + 1;
-              const state = day < TODAY ? 'done' : day === TODAY ? 'today' : 'next';
-              return (
-                <div key={day} className="day" data-state={state}>
-                  <p className="mono text-[9px] tracking-[0.14em] text-[color:var(--ink-3)]">ДЕНЬ {day}</p>
-                  <CoinIcon size={18} className="mx-auto my-1" />
-                  <p className="num text-[12px] font-semibold">{formatShort(amount)}</p>
-                </div>
-              );
-            })}
-          </div>
+          <DailyRewards />
         </div>
         <div className="glass reveal wide-only tall-only px-4 py-1" style={k(4)}>
           {TASKS.map((task) => (
@@ -148,14 +130,14 @@ export function AirdropSection() {
             <div>
               <p className="stat-label">Готовность</p>
               <p className="num text-[34px] font-bold leading-none" style={{ color: '#c9b8ff' }}>
-                {Math.round(ready * 100)}%
+                <CountUp to={Math.round(ready * 100)} station={5} />%
               </p>
             </div>
             <p className="stat-label text-right">демо-игрок</p>
           </div>
           <div className="grid grid-cols-2 gap-x-4 sm:gap-x-6">
-            {AIRDROP_REQS.map((r) => (
-              <div key={r.id} className="row">
+            {AIRDROP_REQS.map((r, i) => (
+              <div key={r.id} className="row req" style={{ ['--d' as string]: `${180 + i * 90}ms` }}>
                 <span className="check" data-done={r.demo >= 1}>
                   {r.demo >= 1 && (
                     <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
@@ -173,10 +155,15 @@ export function AirdropSection() {
                   <p className="text-[12px] font-medium leading-snug sm:text-[13px]">{r.label}</p>
                   {r.demo < 1 && (
                     <div
-                      className="bar mt-1.5"
-                      style={{ height: 3, ['--from' as string]: '#a66bff', ['--to' as string]: '#7fe3ff' }}
+                      className="bar req-bar mt-1.5"
+                      style={{
+                        height: 3,
+                        ['--from' as string]: '#a66bff',
+                        ['--to' as string]: '#7fe3ff',
+                        ['--v' as string]: r.demo,
+                      }}
                     >
-                      <i style={{ transform: `scaleX(${r.demo})` }} />
+                      <i />
                     </div>
                   )}
                 </div>

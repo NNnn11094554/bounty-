@@ -1,6 +1,7 @@
+import type { Color } from 'three';
 import { Group, Mesh, PlaneGeometry, Vector3, type Camera, type ShaderMaterial, type Texture } from 'three';
 import type { CatArt, SiteCat } from '../cats';
-import { catMaterial, depthMaskMaterial, glowMaterial, lifeUniforms } from './shaders';
+import { catMaterial, depthMaskMaterial, glowMaterial, lifeUniforms, shadowMaterial } from './shaders';
 import { makeCanvas } from './textures';
 
 /** Пружина: x тянется к 0, v — скорость (реакция на тап с лёгким перелётом, без наложения анимаций). */
@@ -25,13 +26,56 @@ class Spring {
   }
 }
 
-/** период вдоха-выдоха, с */
-const BREATH_PERIOD = 3.6;
+/**
+ * Медленное блуждание: цель меняется в случайные моменты, значение догоняет её пружиной с критическим
+ * затуханием — плавно, без перелёта и без повторяющегося цикла.
+ */
+class Drift {
+  x = 0;
+  private v = 0;
+  private target = 0;
+  private next: number;
+  constructor(
+    /** амплитуда */
+    private amp: number,
+    /** паузы между сменами цели, с */
+    private gap: [number, number],
+    /** собственная частота, рад/с: чем меньше, тем медленнее */
+    private omega: number,
+    /** доля смен, когда цель — покой (0) */
+    private rest = 0.35,
+  ) {
+    this.next = Math.random() * gap[1];
+  }
+  update(time: number, dt: number): number {
+    if (this.amp && time > this.next) {
+      this.target = Math.random() < this.rest ? 0 : (Math.random() * 2 - 1) * this.amp;
+      this.next = time + this.gap[0] + Math.random() * (this.gap[1] - this.gap[0]);
+    }
+    const n = Math.ceil(dt / (1 / 120));
+    const h = dt / n;
+    for (let i = 0; i < n; i++) {
+      this.v += (this.omega * this.omega * (this.target - this.x) - 2 * this.omega * this.v) * h;
+      this.x += this.v * h;
+    }
+    return this.x;
+  }
+}
+
+/** Моргание: закрыть — 70 мс, закрыто — 30 мс, открыть — 90 мс. */
+function blinkCurve(t: number): number {
+  if (t < 0 || t > 0.19) return 0;
+  if (t < 0.07) return t / 0.07;
+  if (t < 0.1) return 1;
+  const k = (t - 0.1) / 0.09;
+  return 1 - k * k * (3 - 2 * k);
+}
 
 /**
- * Персонаж в сцене: резкий арт (точка опоры — ступни, по вертикали тела), отражение на полу,
- * лужа света под ним. Он живой: дышит грудью, поводит ушами, чуть поворачивает голову. Касание его
- * не дёргает — только мягкая подсветка (искры и награду показывает сцена).
+ * Персонаж в сцене: резкий арт (точка опоры — ступни, по вертикали тела), контактная тень, отражение
+ * на полу и свет мира. Он живёт сам по себе (cat.idle): дышит, моргает, ведёт хвостом, поводит ушами,
+ * чуть поворачивает голову, переносит вес — медленно, мелко и в случайные моменты. На тапы не реагирует:
+ * тап — игровая механика, персонажа он не дёргает.
  */
 export class CatFigure {
   readonly group = new Group();
@@ -46,15 +90,22 @@ export class CatFigure {
   private depth: Mesh;
   private reflection: Mesh;
   readonly pool: Mesh;
+  /** мягкая контактная тень у лап */
+  readonly shadow: Mesh;
   /** уши: пружины подёргивания и время следующего; знак «наружу» у левого и правого уха */
-  private ears = [new Spring(190, 13), new Spring(190, 13)];
-  private earNext = [1 + Math.random() * 3, 2 + Math.random() * 4];
+  private ears = [new Spring(150, 12), new Spring(150, 12)];
+  private earNext = [2 + Math.random() * 4, 3 + Math.random() * 6];
   private earOut = [1, -1];
-  /** взгляд в сторону — медленная пружина, цель меняется изредка */
-  private glance = new Spring(9, 5.5);
-  private glanceNext = 3 + Math.random() * 4;
-  private phase = Math.random() * Math.PI * 2;
-  private flashTarget = 0;
+  private breathPhase = Math.random() * Math.PI * 2;
+  /** темп дыхания и его глубина чуть плавают — дыхание не механическое */
+  private breathRate: Drift;
+  private nextBlink: number;
+  private blinkAt = -10;
+  private tail: Drift;
+  private head: Drift;
+  private shoulders: Drift;
+  /** перенос веса: еле заметный наклон корпуса от ступней */
+  private weight = new Drift(0.005, [5, 12], 0.9, 0.3);
   private mask: { data: Uint8ClampedArray; w: number; h: number } | null = null;
   width = 1;
   ready = false;
@@ -64,6 +115,12 @@ export class CatFigure {
     readonly height: number,
     glow: Texture,
   ) {
+    const idle = cat.idle;
+    this.breathRate = new Drift(0.18, [3, 8], 0.8, 0.2);
+    this.tail = new Drift(0.075 * idle.tail, [1.6, 5.5], 1.6, 0.25);
+    this.head = new Drift(0.055 * idle.head, [3, 9], 1.3, 0.45);
+    this.shoulders = new Drift(0.012 * idle.shoulders * height, [4, 11], 1.8, 0.6);
+    this.nextBlink = 1.5 + Math.random() * idle.blinkEvery;
     const geometry = new PlaneGeometry(1, 1);
     this.body = new Mesh(geometry, this.material);
     this.depth = new Mesh(geometry, depthMaskMaterial(this.life));
@@ -78,8 +135,12 @@ export class CatFigure {
     this.pool.scale.set(height * 1.25, height * 0.62, 1);
     this.pool.position.y = 0.01;
     this.pool.renderOrder = 4;
+    this.shadow = new Mesh(new PlaneGeometry(1, 1), shadowMaterial(glow));
+    this.shadow.rotation.x = -Math.PI / 2;
+    this.shadow.position.y = 0.012;
+    this.shadow.renderOrder = 4.5;
     this.pivot.add(this.depth, this.body);
-    this.group.add(this.pivot, this.reflection, this.pool);
+    this.group.add(this.pivot, this.reflection, this.pool, this.shadow);
     this.material.uniforms.uRim.value.set(cat.accent2);
     this.material.uniforms.uEdge.value.set(cat.accent2);
     this.reflectionMaterial.uniforms.uRimStrength.value = 0;
@@ -100,6 +161,8 @@ export class CatFigure {
     this.reflection.geometry = geometry;
     this.material.uniforms.map.value = texture;
     this.reflectionMaterial.uniforms.map.value = texture;
+    const img = texture.image as HTMLImageElement;
+    this.material.uniforms.uTexel.value.set(1 / img.naturalWidth, 1 / img.naturalHeight);
     (this.depth.material as ShaderMaterial).uniforms.map!.value = texture;
     this.body.visible = this.reflection.visible = true;
     this.mask = alphaMask(texture.image as HTMLImageElement);
@@ -119,6 +182,7 @@ export class CatFigure {
     this.material.uniforms.uOpacity.value = v;
     this.reflectionMaterial.uniforms.uOpacity.value = v;
     (this.pool.material as typeof this.material).uniforms.uOpacity.value = 0.55 * v;
+    (this.shadow.material as ShaderMaterial).uniforms.uOpacity!.value = v;
   }
 
   /** яркость (коты в глубине коллекции темнее) */
@@ -140,64 +204,66 @@ export class CatFigure {
     const [cx, cy, rx, ry] = art.face.head;
     L.uHead.value.set(qx(cx), qy(cy), rx * w, ry * h);
     L.uNeck.value.set(qx(art.face.neck[0]), qy(art.face.neck[1]));
+    const tail = art.face.tail;
+    if (tail) L.uTail.value.set(qx(tail[2]), qy(tail[3]), qx(tail[0]), qy(tail[1]));
+    // глаза для моргания — в координатах текстуры (y снизу), с запасом на ресницы
+    const eyes = art.face.eyes;
+    const eye = (e: [number, number, number, number] | undefined) =>
+      e ? ([e[0], 1 - e[1], e[2] * 1.5, e[3] * 1.6] as const) : ([-1, -1, 0.001, 0.001] as const);
+    L.uEye0.value.set(...eye(eyes[0]));
+    L.uEye1.value.set(...eye(eyes[1]));
+    // контактная тень — по ширине тела у лап
+    this.shadow.scale.set(w * 0.62, h * 0.12, 1);
   }
 
-  /** Касание (сила 0…1): кот не дёргается — только мягкая подсветка, которая плавно гаснет. */
-  poke(power: number): void {
-    this.flashTarget = Math.min(0.14, this.flashTarget + 0.06 * power);
-  }
-
-  /** Жизнь: дыхание, подёргивание ушей, взгляд. */
+  /** Жизнь: каждое движение — своё, в случайные моменты, по профилю кота (у котов разный набор). */
   private live(time: number, dt: number, still: boolean): void {
     const L = this.life;
-    L.uBreath.value = still ? 0 : Math.sin((time / BREATH_PERIOD) * Math.PI * 2 + this.phase);
+    const idle = this.cat.idle;
+    if (still) {
+      L.uBreath.value = 0;
+      L.uBlink.value = 0;
+      return;
+    }
+    // дыхание: темп и глубина медленно плавают
+    const rate = 1 + this.breathRate.update(time, dt);
+    this.breathPhase += ((dt * Math.PI * 2) / idle.breathPeriod) * rate;
+    L.uBreath.value = Math.sin(this.breathPhase) * idle.breath * (0.85 + rate * 0.15);
+    // моргание: редко, иногда дважды подряд
+    if (idle.blinkEvery && time > this.nextBlink) {
+      this.blinkAt = time;
+      const double = Math.random() < 0.18;
+      this.nextBlink = time + (double ? 0.32 : idle.blinkEvery * (0.55 + Math.random() * 0.9));
+    }
+    L.uBlink.value = blinkCurve(time - this.blinkAt);
+    // уши: короткое движение в случайный момент
     for (const [i, ear] of this.ears.entries()) {
-      if (!still && time > this.earNext[i]!) {
-        // одно или два быстрых движения ухом, потом пауза 2.5–7 с
-        ear.kick(this.earOut[i]! * (3 + Math.random() * 2));
-        this.earNext[i] = time + (Math.random() < 0.25 ? 0.35 : 2.5 + Math.random() * 4.5);
+      if (idle.ears && time > this.earNext[i]!) {
+        ear.kick(this.earOut[i]! * (2 + Math.random() * 2));
+        this.earNext[i] = time + (Math.random() < 0.2 ? 0.4 : (3 + Math.random() * 7) / idle.ears);
       }
       ear.update(dt);
     }
-    const sway = still ? 0 : Math.sin(time * 0.7 + this.phase) * 0.025;
     L.uEarAngle.value.set(
-      this.earOut[0]! * (this.ears[0]!.x * 0.09 + sway),
-      this.earOut[1]! * (-this.ears[1]!.x * 0.09 + sway),
+      this.earOut[0]! * this.ears[0]!.x * 0.08,
+      this.earOut[1]! * -this.ears[1]!.x * 0.08,
     );
-    if (!still && time > this.glanceNext) {
-      // взгляд в сторону — толчок скоростью, пружина плавно возвращает голову
-      this.glance.kick((Math.random() - 0.5) * 0.22);
-      this.glanceNext = time + 3 + Math.random() * 5;
-    }
-    this.glance.update(dt);
-    const idle = still ? 0 : Math.sin(time * 0.37 + this.phase) * 0.018;
-    L.uHeadTilt.value = idle + this.glance.x;
+    L.uTailAngle.value = this.tail.update(time, dt);
+    L.uHeadTilt.value = this.head.update(time, dt);
+    L.uShoulder.value = Math.max(0, this.shoulders.update(time, dt));
   }
 
   update(time: number, dt: number, still: boolean): void {
     this.live(time, dt, still);
-    const t = still ? 0 : time;
-    let rz = 0;
-    let y = 0;
-    switch (this.cat.idle) {
-      case 'sway':
-        rz = Math.sin(t * 0.55 + this.phase) * 0.008;
-        break;
-      case 'float':
-        y = 0.05 + Math.sin(t * 0.9 + this.phase) * 0.05;
-        rz = Math.sin(t * 0.5) * 0.006;
-        break;
-      case 'breathe':
-        break;
-    }
+    const rz = still ? 0 : this.weight.update(time, dt);
     this.pivot.rotation.z = rz;
-    this.pivot.position.y = y;
     this.reflection.rotation.z = -rz;
-    this.reflection.position.y = -y;
-    // подсветка от касания плавно нарастает и плавно гаснет — без вспышки
-    this.flashTarget = Math.max(0, this.flashTarget - dt * 0.25);
-    const flash = this.material.uniforms.uFlash;
-    flash.value += (this.flashTarget - flash.value) * (1 - Math.exp(-dt * 6));
+  }
+
+  /** окружение: цвет света снизу (пол, мир) — им подсвечивается низ персонажа */
+  setAmbient(color: Color, strength: number): void {
+    this.material.uniforms.uAmbient.value.copy(color);
+    this.material.uniforms.uAmbientStrength.value = strength;
   }
 
   /** Точка экрана (NDC −1…1) попадает в силуэт? world — куда пришёлся тап (на плоскости кота). */

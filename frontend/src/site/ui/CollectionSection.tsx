@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { RARITY_COLOR } from '../../game/skins';
 import { CATS, RARITY_LABEL, catIcon } from '../cats';
-import { sceneApi, useSite } from '../store';
+import { useSite } from '../store';
 import { useAtStation } from './hooks';
 import { StationPanel } from './StationPanel';
 import { Title } from './Title';
@@ -28,42 +28,39 @@ export function CollectionSection() {
             Коллекция · {count} персонажей
           </p>
           {/* key — карточка собирается заново для каждого кота */}
-          <div key={cat.id} className="flex flex-col gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 swap-in" style={k(0)}>
-              <span className="mono text-[12px] text-[color:var(--ink-3)]">
-                {String(selected + 1).padStart(2, '0')} / {count}
-              </span>
-              <span
-                className="chip"
-                style={{ color: RARITY_COLOR[cat.rarity], borderColor: `${RARITY_COLOR[cat.rarity]}66` }}
-              >
-                <span
-                  className="inline-block h-1.5 w-1.5 rounded-full"
-                  style={{
-                    background: RARITY_COLOR[cat.rarity],
-                    boxShadow: `0 0 10px ${RARITY_COLOR[cat.rarity]}`,
-                  }}
-                />
-                {RARITY_LABEL[cat.rarity]}
-              </span>
-            </div>
-            <Title className="cat-name" text={cat.name} letters />
-            <p
-              className="mono swap-in text-[12px] uppercase tracking-[0.18em]"
-              style={{ ...k(1), color: cat.accent2 }}
+          <div key={cat.id} className="flex flex-col gap-2 sm:gap-3">
+            <span
+              className="mono swap-in text-[11px] tracking-[0.2em] text-[color:var(--ink-3)]"
+              style={k(0)}
             >
-              {cat.world}
+              {String(selected + 1).padStart(2, '0')} / {count} · {cat.world.toUpperCase()}
+            </span>
+            <Title className="cat-name" text={cat.name} letters />
+            <p className="cat-subtitle swap-in" style={{ ...k(1), color: cat.accent2 }}>
+              {cat.subtitle}
             </p>
             <p className="lead swap-in wide-only" style={k(2)}>
               {cat.story}
             </p>
-            <div className="flex flex-wrap gap-2 swap-in" style={k(3)}>
-              {cat.traits.map((t) => (
-                <span key={t} className="chip">
-                  {t}
-                </span>
-              ))}
-            </div>
+            <dl className="cat-stats swap-in" style={k(3)}>
+              <div>
+                <dt>Редкость</dt>
+                <dd style={{ color: RARITY_COLOR[cat.rarity] }}>{RARITY_LABEL[cat.rarity]}</dd>
+              </div>
+              <div>
+                <dt>Сила</dt>
+                <dd>
+                  <span className="num">{cat.power}</span>
+                  <span className="cat-power" aria-hidden>
+                    <i style={{ transform: `scaleX(${cat.power / 100})`, background: cat.accent }} />
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt>Стихия</dt>
+                <dd>{cat.element}</dd>
+              </div>
+            </dl>
           </div>
           <div className="mt-1 flex items-center gap-3 reveal" style={k(2)}>
             <button
@@ -168,8 +165,7 @@ function SwipeLayer({ onSwipe }: { onSwipe: (step: number) => void }) {
         const dy = e.clientY - s.y;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) onSwipe(dx < 0 ? 1 : -1);
         else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
-          // тап по выбранному коту — он смущается; по коту сбоку — выбрать его
-          if (sceneApi.get()?.touch(e.clientX, e.clientY)) return;
+          // тап по коту сбоку — выбрать его
           const third = window.innerWidth / 3;
           if (e.clientX < third * 0.8) onSwipe(-1);
           else if (e.clientX > window.innerWidth - third * 0.8) onSwipe(1);

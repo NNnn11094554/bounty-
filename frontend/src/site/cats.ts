@@ -7,97 +7,134 @@ import assets from './catAssets.json';
  * Персонажи сайта. Арт — те же исходники и тот же конвейер, что у скинов игры (scripts/skins:
  * compose.py → build.mjs site): персонаж с прозрачным фоном, его мир без персонажа и портрет.
  */
+/**
+ * Спокойная жизнь персонажа (всё медленно, мелко и в случайные моменты — без циклов «влево-вправо»).
+ * Значения — сила каждого движения 0…1; 0 — у этого кота такого движения нет.
+ */
+export interface IdleProfile {
+  /** дыхание корпусом и период вдоха, с */
+  breath: number;
+  breathPeriod: number;
+  /** моргание: в среднем раз в столько секунд */
+  blinkEvery: number;
+  /** хвост: медленное движение */
+  tail: number;
+  /** уши: как часто поводит (1 — обычно) */
+  ears: number;
+  /** голова: поворот и взгляд в сторону */
+  head: number;
+  /** плечи: редкое спокойное движение */
+  shoulders: number;
+}
+
 export interface SiteCat {
   id: string;
   name: string;
+  /** атмосферный подзаголовок одной строкой */
+  subtitle: string;
   rarity: Rarity;
   /** мир персонажа — подпись к атмосфере */
   world: string;
+  /** лор: 1–2 предложения */
   story: string;
+  /** сила персонажа в лоре (на экономику игры скины не влияют) */
+  power: number;
+  /** стихия / тип */
+  element: string;
   /** основной цвет света, частиц и интерфейса */
   accent: string;
   /** второй цвет: блики, край проявления */
   accent2: string;
   /** цвет тумана и фона сцены — глубокий оттенок мира */
   fog: string;
-  /** спокойная анимация: покачивание, парение или дыхание */
-  idle: 'sway' | 'float' | 'breathe';
-  /** характер одной строкой — для карточки */
-  traits: [string, string, string];
+  idle: IdleProfile;
 }
 
 export const CATS: readonly SiteCat[] = [
   {
     id: 'inferno',
     name: 'Инферно',
+    subtitle: 'Хранитель последней искры',
     rarity: 'LEGENDARY',
     world: 'Огненные пещеры',
-    story: 'Чёрный кот из пламени — лицо Meowgul. Там, где он прошёл, ещё долго тлеют искры.',
+    story: 'Чёрный кот, рождённый в сердце вулкана. Там, где он прошёл, камень ещё долго хранит тепло.',
+    power: 92,
+    element: 'Огонь',
     accent: '#ff7a1a',
     accent2: '#ffc35a',
     fog: '#120603',
-    idle: 'sway',
-    traits: ['Огонь', 'Лидер', 'Пламенный хвост'],
+    idle: { breath: 1, breathPeriod: 3.9, blinkEvery: 4.5, tail: 1, ears: 0.6, head: 0.5, shoulders: 0 },
   },
   {
     id: 'sakura_blossom',
     name: 'Сакура',
+    subtitle: 'Голос цветущего храма',
     rarity: 'EPIC',
     world: 'Храм цветущей сакуры',
-    story: 'Хранительница храма у красных тории. Лепестки кружатся там, куда она смотрит.',
+    story: 'Хранительница красных тории. Ветер приносит ей лепестки со всех садов, где о ней помнят.',
+    power: 74,
+    element: 'Ветер',
     accent: '#ff7eb6',
     accent2: '#ffd1e6',
     fog: '#160a12',
-    idle: 'breathe',
-    traits: ['Нимб', 'Шёлк', 'Лепестки'],
+    idle: { breath: 0.6, breathPeriod: 4.4, blinkEvery: 3.6, tail: 0.9, ears: 1.3, head: 0.4, shoulders: 0 },
   },
   {
     id: 'toxic',
     name: 'Токсик',
+    subtitle: 'Инженер кислотных реакторов',
     rarity: 'EPIC',
     world: 'Химзавод Неон-Сити',
-    story: 'Инженер кислотных реакторов. Светится в темноте и не снимает очки ночного видения.',
+    story: 'Чинит реакторы, к которым боятся подходить люди. Видит в темноте и не снимает очки даже во сне.',
+    power: 78,
+    element: 'Яд',
     accent: '#7dff3a',
     accent2: '#d4ff5a',
     fog: '#050c05',
-    idle: 'sway',
-    traits: ['Неон', 'Реактор', 'Ночное зрение'],
+    idle: { breath: 0.9, breathPeriod: 3.5, blinkEvery: 7, tail: 0.4, ears: 1, head: 1, shoulders: 0 },
   },
   {
     id: 'desert_nomad',
     name: 'Странник',
+    subtitle: 'Проводник песчаных бурь',
     rarity: 'RARE',
     world: 'Барханы Песчаной цитадели',
-    story: 'Ищет потерянные караваны среди дюн. Знает каждый путь к цитадели на горизонте.',
+    story:
+      'Знает каждую тропу к цитадели на горизонте. Лётные очки — память о караване, который он не бросил.',
+    power: 63,
+    element: 'Песок',
     accent: '#f2a65a',
     accent2: '#ffd9a0',
     fog: '#130b06',
-    idle: 'breathe',
-    traits: ['Песок', 'Плащ', 'Лётные очки'],
+    idle: { breath: 0.7, breathPeriod: 4.1, blinkEvery: 3.2, tail: 0.5, ears: 0.5, head: 0.4, shoulders: 1 },
   },
   {
     id: 'crystal_prince',
     name: 'Кристальный принц',
+    subtitle: 'Наследник подземной короны',
     rarity: 'MYTHIC',
     world: 'Аметистовые руины',
-    story: 'Наследник подземного королевства. Кристаллы растут там, где он стоит дольше минуты.',
+    story: 'Последний из королевского рода руин. Кристаллы растут там, где он стоит дольше минуты.',
+    power: 97,
+    element: 'Кристалл',
     accent: '#8f7bff',
     accent2: '#8fd8ff',
     fog: '#07071a',
-    idle: 'float',
-    traits: ['Кристаллы', 'Броня', 'Корона'],
+    idle: { breath: 1, breathPeriod: 4.6, blinkEvery: 5, tail: 0.3, ears: 0.4, head: 0.8, shoulders: 0.4 },
   },
   {
     id: 'lunar_witch',
     name: 'Лунная ведьма',
+    subtitle: 'Чары полной луны',
     rarity: 'LEGENDARY',
     world: 'Город под полной луной',
     story: 'Колдует фиолетовым огнём над крышами старого города. Посох помнит сотню заклинаний.',
+    power: 88,
+    element: 'Луна',
     accent: '#b04dff',
     accent2: '#e3b8ff',
     fog: '#0b0620',
-    idle: 'float',
-    traits: ['Луна', 'Чары', 'Посох'],
+    idle: { breath: 0.6, breathPeriod: 4.2, blinkEvery: 4, tail: 1, ears: 0, head: 0.6, shoulders: 0 },
   },
 ];
 
@@ -124,6 +161,8 @@ export interface CatArt {
     head: [number, number, number, number];
     neck: [number, number];
     ears: Array<[number, number, number, number]>;
+    /** хвост: [основание x, y, кончик x, y] */
+    tail: [number, number, number, number] | null;
   };
 }
 

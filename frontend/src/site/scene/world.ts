@@ -200,6 +200,7 @@ export class SiteWorld {
   private ring: Texture;
 
   private stations: Group[] = [];
+  private fadeables: Array<Array<{ u: { value: number }; base: number }>> = [];
   private dust: ReturnType<typeof createDust>;
   private streaks: ReturnType<typeof createStreaks>;
   private bursts = new Bursts();
@@ -453,10 +454,32 @@ export class SiteWorld {
     drop.renderOrder = 2;
     airdrop.add(drop);
 
+    // свет мира на персонажах: низ подсвечен цветом пола их станции
+    this.hero.setAmbient(new Color(HERO_CAT.accent), 0.16);
+    for (const f of this.figures) f.setAmbient(new Color(f.cat.accent), 0.12);
+    this.engineer.setAmbient(new Color('#7dff3a'), 0.14);
+    this.nomad.setAmbient(new Color('#f2a65a'), 0.12);
+    this.collectFadeables();
+
     window.addEventListener('pointermove', this.onPointer, { passive: true });
   }
 
   // ───────────────────────────── построение ─────────────────────────────
+
+  /** Прозрачность свечений и частиц станций 2–5 (кроме котов): ими управляет близость станции. */
+  private collectFadeables(): void {
+    for (let i = 2; i < 6; i++) {
+      // уже известные — с прежней исходной прозрачностью (текущая могла быть приглушена)
+      const list: Array<{ u: { value: number }; base: number }> = [...(this.fadeables[i] ?? [])];
+      this.stations[i]!.traverse((o) => {
+        const m = (o as Mesh).material as ShaderMaterial | undefined;
+        const u = m?.uniforms?.uOpacity as { value: number } | undefined;
+        if (!u || m!.uniforms.uReveal || list.some((f) => f.u === u)) return;
+        list.push({ u, base: u.value });
+      });
+      this.fadeables[i] = list;
+    }
+  }
 
   private makeBackdrop(parent: Group): Backdrop {
     const material = backdropMaterial();
@@ -565,6 +588,8 @@ export class SiteWorld {
     this.placeBackdrop(this.heroBackdrop, catArt(HERO_CAT.id), HOME, 10, v3(0, 1.6, 7));
     this.hero.reveal = 0;
     await this.showSelected();
+    // карточки активов появились после конструктора — их прозрачностью тоже управляет близость станции
+    this.collectFadeables();
     await this.precompile();
   }
 
@@ -623,11 +648,13 @@ export class SiteWorld {
     this.backdropFront = slot;
   }
 
-  /** Тап в игре. NDC — от экрана; true — попал в кота. */
+  /**
+   * Тап в игре: true — попал в кота. Это игровая механика: искры у пальца и импульс кольца энергии
+   * на полу; сам кот не реагирует.
+   */
   tap(clientX: number, clientY: number, turbo: boolean): boolean {
     const at = new Vector3();
     if (!this.hitFigure(this.hero, clientX, clientY, at)) return false;
-    this.hero.poke(turbo ? 1 : 0.7);
     at.z += 0.25;
     this.bursts.emit(
       at,
@@ -644,27 +671,6 @@ export class SiteWorld {
     const x = ((clientX - rect.left) / rect.width) * 2 - 1;
     const y = -(((clientY - rect.top) / rect.height) * 2 - 1);
     return figure.ready && figure.hit(x, y, this.camera, at);
-  }
-
-  /**
-   * Касание кота вне игры (коллекция, прокачка, задания, главная): без награды — мягкая подсветка и искры.
-   * true — палец попал в кота.
-   */
-  touch(clientX: number, clientY: number): boolean {
-    const candidates: CatFigure[] = [];
-    if (this.stations[2]!.visible) candidates.push(this.figures[this.selected]!);
-    if (this.stations[3]!.visible) candidates.push(this.engineer);
-    if (this.stations[4]!.visible) candidates.push(this.nomad);
-    if (this.stations[0]!.visible) candidates.push(this.hero);
-    const at = new Vector3();
-    for (const figure of candidates) {
-      if (!this.hitFigure(figure, clientX, clientY, at)) continue;
-      figure.poke(0.6);
-      at.z += 0.25;
-      this.bursts.emit(at, 6, [figure.cat.accent2, '#ffffff'], 0.6);
-      return true;
-    }
-    return false;
   }
 
   /** Рамка кота игры на экране, CSS px. */
@@ -761,6 +767,12 @@ export class SiteWorld {
     // ── что рисовать ──
     for (let i = 0; i < 6; i++)
       if (i !== 1) this.stations[i]!.visible = Math.abs(pos - i) < 1.4 || (i === 0 && pos < 2.4);
+    // свечения и частицы станции проявляются и гаснут плавно, а не включаются вместе со станцией
+    for (const [i, list] of this.fadeables.entries()) {
+      if (!list) continue;
+      const presence = 1 - smoothstep(0.45, 1.3, Math.abs(pos - i));
+      for (const f of list) f.u.value = f.base * presence;
+    }
 
     const reveal = introPhase(0, 1.6);
     (this.dust.material as ShaderMaterial).uniforms.uReveal!.value = reveal;
@@ -782,15 +794,20 @@ export class SiteWorld {
     const cat = CATS[selected]!;
     this.catTint.lerp(this.tmpColor.set(cat.accent), 1 - Math.exp(-dt * 2.2));
     this.catFog.lerp(this.tmpColor.set(cat.fog), 1 - Math.exp(-dt * 2.2));
+    // тон перетекает между станциями по плавной кривой (без излома у станции)
     this.fog.setRGB(0, 0, 0);
+    let total = 0;
     for (let i = 0; i < STATION_FOG.length; i++) {
-      const w = Math.max(0, 1 - Math.abs(pos - i));
+      const t = clamp01(1 - Math.abs(pos - i));
+      const w = t * t * t * (t * (t * 6 - 15) + 10);
       if (!w) continue;
       const c = i === 2 ? this.catFog : this.tmpColor.set(STATION_FOG[i]!);
       this.fog.r += c.r * w;
       this.fog.g += c.g * w;
       this.fog.b += c.b * w;
+      total += w;
     }
+    if (total > 0) this.fog.multiplyScalar(1 / total);
     globals.uFog.value.copy(this.fog);
   }
 
@@ -926,7 +943,8 @@ export class SiteWorld {
   private updateAirdrop(v: View, still: boolean): void {
     const { time, pos } = v;
     const t = still ? 0 : time;
-    this.coin.rotation.y = t * 0.45;
+    // монета медленно поворачивается туда-обратно (не встаёт ребром) и чуть парит
+    this.coin.rotation.y = Math.sin(t * 0.33) * 0.55 + Math.sin(t * 0.12 + 1) * 0.18;
     this.coin.position.y = AIRDROP.y + Math.sin(t * 0.9) * 0.12;
     for (const [i, ring] of this.gyro.entries()) {
       ring.rotation.set(t * (0.12 + i * 0.05) + i, t * (0.09 - i * 0.04) + i * 0.7, 0);

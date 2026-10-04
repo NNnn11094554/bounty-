@@ -57,6 +57,21 @@ describe('site cats ↔ art', () => {
     expect(catSize('background', 900, 2)).toBe(1800);
   });
 
+  it('every cat has lore and its own idle life (different sets, small amplitudes)', () => {
+    for (const c of CATS) {
+      expect(c.subtitle.length, c.id).toBeGreaterThan(5);
+      expect(c.story.length, c.id).toBeLessThan(140);
+      expect(c.power).toBeGreaterThan(0);
+      expect(c.power).toBeLessThanOrEqual(100);
+      expect(c.element.length).toBeGreaterThan(1);
+      for (const v of [c.idle.breath, c.idle.tail, c.idle.ears, c.idle.head, c.idle.shoulders])
+        expect(v).toBeLessThanOrEqual(1.5);
+      expect(catArt(c.id).face.tail, c.id).not.toBeNull();
+    }
+    const sets = new Set(CATS.map((c) => JSON.stringify(c.idle)));
+    expect(sets.size).toBe(CATS.length);
+  });
+
   it('cats are distinct characters: own colours and world', () => {
     expect(new Set(CATS.map((c) => c.accent)).size).toBe(CATS.length);
     expect(new Set(CATS.map((c) => c.world)).size).toBe(CATS.length);

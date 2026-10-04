@@ -111,6 +111,15 @@ export interface LifeUniforms {
   uNeck: { value: Vector2 };
   uHeadTilt: { value: number };
   uHeadDrop: { value: number };
+  /** хвост: кончик (xy) и основание (zw), угол */
+  uTail: { value: Vector4 };
+  uTailAngle: { value: number };
+  /** плечи: подъём, единицы сцены */
+  uShoulder: { value: number };
+  /** моргание 0…1 и глаза (uv: x, y снизу, rx, ry) */
+  uBlink: { value: number };
+  uEye0: { value: Vector4 };
+  uEye1: { value: Vector4 };
 }
 
 export function lifeUniforms(): LifeUniforms {
@@ -124,6 +133,12 @@ export function lifeUniforms(): LifeUniforms {
     uNeck: { value: new Vector2() },
     uHeadTilt: { value: 0 },
     uHeadDrop: { value: 0 },
+    uTail: { value: new Vector4() },
+    uTailAngle: { value: 0 },
+    uShoulder: { value: 0 },
+    uBlink: { value: 0 },
+    uEye0: { value: new Vector4(-1, -1, 0.001, 0.001) },
+    uEye1: { value: new Vector4(-1, -1, 0.001, 0.001) },
   };
 }
 
@@ -137,6 +152,9 @@ uniform vec4 uHead;
 uniform vec2 uNeck;
 uniform float uHeadTilt;
 uniform float uHeadDrop;
+uniform vec4 uTail;
+uniform float uTailAngle;
+uniform float uShoulder;
 varying vec2 vUv;
 varying float vDepth;
 vec2 rot(vec2 v, float a) {
@@ -166,6 +184,10 @@ void main() {
   float chest = smoothstep(0.25 * h, 0.48 * h, p.y) * (1.0 - smoothstep(0.58 * h, 0.8 * h, p.y));
   p.x += p.x * uBreath * 0.022 * chest;
   p.y += uBreath * 0.009 * h * smoothstep(0.3 * h, 0.75 * h, p.y);
+  // плечи: спокойный подъём верхней части корпуса (голова идёт следом)
+  p.y += uShoulder * smoothstep(0.45 * h, 0.66 * h, p.y);
+  // хвост: медленный поворот вокруг основания
+  p.xy = ear(p.xy, uTail, uTailAngle);
   // уши
   p.xy = ear(p.xy, uEar0, uEarAngle.x);
   p.xy = ear(p.xy, uEar1, uEarAngle.y);
@@ -192,8 +214,11 @@ export interface CatUniforms {
   uLight: { value: Vector2 };
   uReflect: { value: number };
   uSeed: { value: number };
-  /** вспышка при тапе */
-  uFlash: { value: number };
+  /** размер пикселя текстуры (для резкости) */
+  uTexel: { value: Vector2 };
+  /** свет снизу: цвет пола и мира */
+  uAmbient: { value: Color };
+  uAmbientStrength: { value: number };
 }
 
 /**
@@ -212,7 +237,9 @@ export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial
     uLight: { value: new Vector2(0.006, 0.01) },
     uReflect: { value: reflect ? 1 : 0 },
     uSeed: { value: Math.random() * 50 },
-    uFlash: { value: 0 },
+    uTexel: { value: new Vector2(1 / 1200, 1 / 1600) },
+    uAmbient: { value: new Color('#ffffff') },
+    uAmbientStrength: { value: 0.12 },
   };
   const material = new ShaderMaterial({
     uniforms: {
@@ -234,17 +261,50 @@ export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial
       uniform vec2 uLight;
       uniform float uReflect;
       uniform float uSeed;
-      uniform float uFlash;
+      uniform vec2 uTexel;
+      uniform vec3 uAmbient;
+      uniform float uAmbientStrength;
+      uniform float uBlink;
+      uniform vec4 uEye0;
+      uniform vec4 uEye1;
       varying vec2 vUv;
       varying float vDepth;
       ${NOISE}
       ${FOG}
       void main() {
+        vec2 uv = vUv;
+        // моргание: веко (мех над глазом) опускается сверху вниз, по краю — тень ресниц
+        float lid = 0.0;
+        float lash = 0.0;
+        if (uBlink > 0.001) {
+          for (int i = 0; i < 2; i++) {
+            vec4 eye = i == 0 ? uEye0 : uEye1;
+            vec2 e = (vUv - eye.xy) / eye.zw;
+            float inside = 1.0 - smoothstep(0.78, 1.04, length(e));
+            // край века — дуга (по краям глаза ниже, чем в середине)
+            float line = 1.0 - 2.15 * uBlink + 0.28 * e.x * e.x * uBlink;
+            float cover = smoothstep(line - 0.05, line + 0.08, e.y) * inside;
+            if (cover > lid) {
+              lid = cover;
+              // веко — мех над глазом (выше ресниц), к краю века чуть темнее
+              uv = mix(vUv, vec2(vUv.x, eye.y + eye.w * 1.45 + (e.y - line) * eye.w * 0.15), cover);
+            }
+            lash = max(lash, (1.0 - smoothstep(0.0, 0.1, abs(e.y - line))) * inside * smoothstep(0.5, 1.0, uBlink) * (1.0 - smoothstep(0.55, 0.85, abs(e.x))));
+          }
+        }
         // смещение мип-уровня −0.5: шерсть и глаза чётче, когда кот на экране меньше файла
-        vec4 c = texture2D(map, vUv, -0.5);
+        vec4 c = texture2D(map, uv, -0.5);
         if (c.a < 0.003) discard;
-        float rim = clamp(c.a - texture2D(map, vUv + uLight, -0.5).a, 0.0, 1.0);
-        vec3 col = c.rgb * uDim + uRim * rim * uRimStrength + c.rgb * uFlash;
+        // лёгкая резкость: шерсть и швы одежды чётче (без ореолов — сила небольшая)
+        vec3 blur4 = (texture2D(map, uv + vec2(uTexel.x, 0.0), -0.5).rgb + texture2D(map, uv - vec2(uTexel.x, 0.0), -0.5).rgb
+          + texture2D(map, uv + vec2(0.0, uTexel.y), -0.5).rgb + texture2D(map, uv - vec2(0.0, uTexel.y), -0.5).rgb) * 0.25;
+        c.rgb = max(c.rgb + (c.rgb - blur4) * 0.32, 0.0);
+        c.rgb *= 1.0 - lash * 0.55;
+        float rim = clamp(c.a - texture2D(map, uv + uLight, -0.5).a, 0.0, 1.0);
+        // свет мира: у пола темнее (земля закрывает свет), низ подсвечен цветом пола и мира
+        float ground = mix(0.74, 1.0, smoothstep(0.0, 0.3, vUv.y));
+        float bounce = (1.0 - smoothstep(0.0, 0.45, vUv.y)) * uAmbientStrength;
+        vec3 col = c.rgb * uDim * ground + uAmbient * bounce * c.a + uRim * rim * uRimStrength;
         float a = c.a;
         if (uReveal < 1.0) {
           float n = fbm(vUv * vec2(7.0, 11.0) + uSeed) * 0.5 + vUv.y * 0.5;
@@ -289,6 +349,27 @@ export function depthMaskMaterial(life: LifeUniforms): ShaderMaterial {
   });
   material.colorWrite = false;
   return material;
+}
+
+/** Контактная тень: мягкое тёмное пятно у лап (обычная прозрачность, не свечение). */
+export function shadowMaterial(map: Texture): ShaderMaterial {
+  const material = new ShaderMaterial({
+    uniforms: { map: { value: map }, uOpacity: { value: 1 }, uStrength: { value: 0.72 } },
+    vertexShader: DEPTH_VERTEX,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D map;
+      uniform float uOpacity;
+      uniform float uStrength;
+      varying vec2 vUv;
+      void main() {
+        float a = texture2D(map, vUv).a;
+        a = a * a * uStrength * uOpacity;
+        gl_FragColor = vec4(0.0, 0.0, 0.0, a);
+      }
+    `,
+  });
+  material.depthWrite = false;
+  return premultiplied(material);
 }
 
 /** Мир персонажа за ним: приглушён, по краям уходит в туман (виньетка). */
