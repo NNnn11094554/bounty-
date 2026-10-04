@@ -184,6 +184,15 @@ img {
   content-visibility: auto;
   contain-intrinsic-size: auto 150px;
 }
+/*
+ * Оболочка игры обрезает содержимое, но не прокручивается: overflow: hidden можно прокрутить программно
+ * (scrollIntoView, фокус) — подсказка вкладки во время въезда экрана сдвигала всю игру вбок до перезагрузки.
+ * clip — Chrome 90+, Safari 16+; старым WebView остаётся hidden.
+ */
+.shell-clip {
+  overflow: hidden;
+  overflow: clip;
+}
 /* нажатие плитки/кнопки в длинных сетках: CSS вместо JS-анимации на каждую (дешевле при открытии экрана) */
 .press {
   transition: transform 160ms var(--ease-out);

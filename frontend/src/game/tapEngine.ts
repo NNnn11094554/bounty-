@@ -72,6 +72,14 @@ export class TapEngine {
   private backoffUntil = 0;
   private listeners = new Set<Listener>();
   private syncIntervalMs = 2500;
+  private maxPerSecond = 20;
+  /**
+   * Когда пришёл последний ответ на пачку тапов (≈ когда сервер её принял). Сервер принимает в пачке не
+   * больше maxPerSecond × (секунд с прошлой пачки) + запас — столько же уходит и отсюда, остальное — следующими
+   * пачками. Иначе после обрыва связи повтор старой пачки и сразу за ним накопленные тапы попадали в доли секунды:
+   * сервер обрезал тапы и помечал игрока подозрительным.
+   */
+  private lastAckAt = 0;
   private sending = false;
   /**
    * Игра свёрнута/закрывается: неотправленные тапы держим и на устройстве — при каждом их изменении,
@@ -86,8 +94,9 @@ export class TapEngine {
 
   constructor(private readonly send: (seq: number, taps: number) => Promise<TapResponse> = defaultSend) {}
 
-  start(syncIntervalMs: number): void {
+  start(syncIntervalMs: number, maxPerSecond = 20): void {
     this.syncIntervalMs = syncIntervalMs;
+    this.maxPerSecond = maxPerSecond;
     this.stop();
     this.timer = setInterval(() => void this.flush(), this.syncIntervalMs);
   }
@@ -108,8 +117,12 @@ export class TapEngine {
 
   /** Принять состояние с сервера (вход, тапы, покупки) и пересчитать локальные значения. */
   applyServerState(state: PlayerState, now = performance.now()): void {
-    // первый ответ после входа: тапы, не дошедшие до сервера в прошлый раз (игру закрыли раньше), — в очередь
-    if (!this.snapshot) this.restoreUnsent(state);
+    // первый ответ после входа: тапы, не дошедшие до сервера в прошлый раз (игру закрыли раньше), — в очередь;
+    // окно частоты — от входа (прошлая пачка на сервере была не позже)
+    if (!this.snapshot) {
+      this.restoreUnsent(state);
+      this.lastAckAt = now;
+    }
     if (this.inflight && state.tapSeq >= this.inflight.seq) this.inflight = null;
     this.snapshot = state;
     this.snapshotAt = now;
@@ -231,10 +244,18 @@ export class TapEngine {
     };
   }
 
+  /** Сколько тапов сервер примет в пачке сейчас (как tapAllowance на сервере, с запасом на задержку сети). */
+  private batchAllowance(now: number): number {
+    const sec = Math.min(MAX_WINDOW_SEC, Math.max(0, (now - this.lastAckAt) / 1000 - RATE_SLACK_SEC));
+    return Math.floor(this.maxPerSecond * sec) + this.maxPerSecond;
+  }
+
   /** Тап: true — засчитан локально; false — не хватает энергии. */
   tap(now = performance.now()): boolean {
     const s = this.snapshot;
     if (!s) return false;
+    // очередь не растёт бесконечно (автокликер): больше, чем сервер примет за минуту, не копится
+    if (this.pending >= this.maxPerSecond * MAX_WINDOW_SEC) return false;
     const turbo = this.turboActive();
     if (!turbo) {
       this.normalizeEnergy(now);
@@ -256,9 +277,12 @@ export class TapEngine {
     if (Date.now() < this.backoffUntil) return;
     if (!this.inflight) {
       if (this.pending === 0) return;
-      this.inflight = { seq: this.nextSeq++, taps: this.pending, earned: this.pendingEarned };
-      this.pending = 0;
-      this.pendingEarned = 0;
+      // не больше, чем сервер примет за это время; остальное уйдёт следующей пачкой
+      const taps = Math.min(this.pending, this.batchAllowance(performance.now()));
+      const earned = taps === this.pending ? this.pendingEarned : (this.pendingEarned * taps) / this.pending;
+      this.inflight = { seq: this.nextSeq++, taps, earned };
+      this.pending -= taps;
+      this.pendingEarned -= earned;
       // копия на устройстве — уже с номером пачки (до отправки: игру могут закрыть, пока запрос в пути)
       this.persistUnsent();
     }
@@ -266,6 +290,7 @@ export class TapEngine {
     this.sending = true;
     try {
       const res = await this.send(batch.seq, batch.taps);
+      this.lastAckAt = performance.now();
       if (this.inflight?.seq === batch.seq) this.inflight = null;
       this.applyServerState(res.state);
       this.onSync?.(true);
@@ -284,6 +309,10 @@ export class TapEngine {
     }
   }
 }
+
+/** окно частоты тапов на сервере (GAME.tap.maxWindowSec) и запас на разброс задержки сети */
+const MAX_WINDOW_SEC = 60;
+const RATE_SLACK_SEC = 0.25;
 
 let turboMultiplier = 5;
 export function setTurboMultiplier(value: number): void {

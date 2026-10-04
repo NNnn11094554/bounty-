@@ -187,6 +187,8 @@ export function ProfileScreen() {
       ) : (
         ACHIEVEMENT_GROUPS.map((group) => {
           const items = VISIBLE_ACHIEVEMENTS.filter((a) => a.group === group);
+          // группа, где все достижения скрыты (кошелёк, штаб-квартира), — без пустого заголовка
+          if (!items.length) return null;
           return (
             <section key={group} className="cv-auto mt-4">
               <h3 className="mb-2 text-xs font-black uppercase tracking-wide text-white/45">
@@ -212,8 +214,10 @@ export function ProfileScreen() {
                       ) : (
                         <div className="skeleton h-[52px] w-[52px] rounded-[14px]" />
                       )}
+                      {/* длинное слово («Исполнительный») переносится внутри своей ячейки, а не лезет к соседям */}
                       <span
-                        className={`line-clamp-2 text-center text-[11px] font-bold leading-tight ${
+                        lang={locale}
+                        className={`line-clamp-2 w-full hyphens-auto text-center text-[11px] font-bold leading-tight [overflow-wrap:anywhere] ${
                           done ? 'text-white' : 'text-white/45'
                         }`}
                       >

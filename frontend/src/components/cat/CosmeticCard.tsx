@@ -6,6 +6,7 @@ import { lockOf, useLeagueName, type CosmeticLock } from './lock';
 import { Button } from '../Button';
 import { CoinIcon, StarIcon } from '../icons';
 import { SkinPicture } from '../hero/HeroFigure';
+import { useNearScreen } from '../../hooks/useNearScreen';
 
 /**
  * Рамка по редкости: цвет рамки и свечение RARE. Живая рамка (live) — у одного открытого предмета: EPIC —
@@ -155,6 +156,8 @@ function SkinCard({ item, owned, equipped, level, league, onOpen, onEquip, busy 
   // ширина персонажа на экране — доля ширины карточки (для выбора файла из srcset)
   const charK = (frame.height * art.aspect) / CARD_ASPECT;
   const charSizes = `(max-width: 520px) calc((50vw - 24px) * ${charK.toFixed(3)}), ${Math.round(240 * charK)}px`;
+  // картинки — когда карточка подошла к экрану (не все 20 сразу при открытии магазина)
+  const [cardRef, near] = useNearScreen<HTMLDivElement>();
   const open = () => onOpen(item);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -174,16 +177,19 @@ function SkinCard({ item, owned, equipped, level, league, onOpen, onEquip, busy 
     >
       <RarityFrame rarity={item.rarity}>
         <div
+          ref={cardRef}
           className="skin-card relative aspect-[4/5] overflow-hidden rounded-[18px] bg-night-800"
           style={skinVars(item.id)}
         >
           {/* мир персонажа — кадр сцены вокруг его места; сам персонаж — отдельный резкий слой поверх */}
-          <SkinPicture
-            skinId={item.id}
-            file="card"
-            sizes={CARD_SIZES}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          {near && (
+            <SkinPicture
+              skinId={item.id}
+              file="card"
+              sizes={CARD_SIZES}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
           {/* свет в цвете скина за персонажем и тень под ступнями — отдельные слои, персонаж не размывается */}
           <div className="skin-card-glow absolute" style={{ top: `${feet - frame.height * 62}%` }} />
           <div className="skin-card-floor absolute" style={{ top: `${feet}%` }} />

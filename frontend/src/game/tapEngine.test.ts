@@ -126,3 +126,68 @@ describe('tap engine: unsent taps survive closing the game', () => {
     expect(localStorage.getItem('meowgul.unsent.99')).not.toBeNull();
   });
 });
+
+describe('tap engine: batches never exceed what the server accepts', () => {
+  it('a burst of taps goes out in batches the size the server allows; nothing is lost or flagged', async () => {
+    const { server, send, answer } = fakeServer();
+    const e = new TapEngine(send);
+    e.start(60_000, 20);
+    e.stop();
+    // performance.now() подменяется: время идёт только по команде
+    let now = 1_000;
+    const real = performance.now.bind(performance);
+    performance.now = () => now;
+    try {
+      e.applyServerState(state({ energy: 5000, maxEnergy: 5000 }), now);
+      // 100 тапов почти сразу после входа (тремя-четырьмя пальцами)
+      for (let i = 0; i < 100; i++) expect(e.tap(now)).toBe(true);
+      now += 1_000;
+      void e.flush();
+      // за 1 с сервер принимает 20 × (1 − 0,25) + 20 = 35 — столько и уходит
+      expect(server.calls.at(-1)).toEqual({ seq: 1, taps: 35 });
+      await answer();
+      expect(e.unsentTaps).toBe(65);
+      // баланс на экране не откатывается: неотправленные тапы в нём остаются
+      expect(e.balanceNow()).toBeGreaterThanOrEqual(1000 + 100);
+      now += 2_500;
+      void e.flush();
+      expect(server.calls.at(-1)).toEqual({ seq: 2, taps: 65 });
+      await answer();
+      expect(server.taps).toBe(100);
+      expect(e.unsentTaps).toBe(0);
+    } finally {
+      performance.now = real;
+    }
+  });
+
+  it('after the network comes back, the retried batch and the taps made offline are not squeezed together', async () => {
+    const { server, send, answer } = fakeServer();
+    const e = new TapEngine(send);
+    let now = 1_000;
+    const real = performance.now.bind(performance);
+    performance.now = () => now;
+    try {
+      e.applyServerState(state({ energy: 5000, maxEnergy: 5000 }), now);
+      for (let i = 0; i < 10; i++) e.tap(now);
+      now += 2_500;
+      void e.flush(); // пачка №1 в пути, связь пропала
+      for (let i = 0; i < 200; i++) e.tap(now); // 200 тапов без связи
+      now += 10_000;
+      await answer(); // связь вернулась: ответ на №1
+      void e.flush();
+      // сразу после ответа сервер примет только запас — больше и не уходит
+      expect(server.calls.at(-1)).toEqual({ seq: 2, taps: 20 });
+      await answer();
+      now += 5_000;
+      void e.flush();
+      expect(server.calls.at(-1)!.taps).toBeLessThanOrEqual(Math.floor(20 * 4.75) + 20);
+      await answer();
+      now += 10_000;
+      void e.flush();
+      await answer();
+      expect(server.taps).toBe(210);
+    } finally {
+      performance.now = real;
+    }
+  });
+});

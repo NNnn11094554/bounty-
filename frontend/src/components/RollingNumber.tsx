@@ -13,6 +13,8 @@ interface Props {
 }
 
 const DIGITS = '0123456789';
+/** с какой длины строки («100 000 000» — 11 знаков) число может не поместиться и стоит его мерить */
+const FIT_FROM_CHARS = 12;
 
 /** Число «как на табло»: каждая цифра прокручивается отдельно. Обновление — напрямую в DOM. */
 export function RollingNumber({ getValue, className = '', glowOnJump = true, testId }: Props) {
@@ -26,19 +28,22 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
     let shown = '';
     let lastValue = -1;
     const columns: HTMLSpanElement[] = [];
+    /** когда разряд менялся в последний раз (мс) */
+    const changedAt: number[] = [];
+    const rollTransition = () =>
+      isReducedMotion() ? 'none' : `transform ${DURATION.balanceRoll}ms ${EASING.roll}`;
 
     const build = (text: string) => {
       root.textContent = '';
       columns.length = 0;
+      changedAt.length = 0;
       for (const ch of text) {
         if (DIGITS.includes(ch)) {
           const cell = document.createElement('span');
           cell.className = 'roll-cell';
           const col = document.createElement('span');
           col.className = 'roll-col';
-          col.style.transition = isReducedMotion()
-            ? 'none'
-            : `transform ${DURATION.balanceRoll}ms ${EASING.roll}`;
+          col.style.transition = rollTransition();
           col.style.transform = `translateY(-${Number(ch) * 10}%)`;
           for (const d of DIGITS) {
             const s = document.createElement('span');
@@ -63,6 +68,8 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
     // количество цифр (и при смене размера экрана), не на каждом кадре.
     const fit = () => {
       root.style.fontSize = '';
+      // до сотен миллионов число заведомо помещается — без замера (замер пересчитывает раскладку экрана)
+      if (shown.length < FIT_FROM_CHARS) return;
       const row = root.parentElement;
       if (!row) return;
       const cs = getComputedStyle(row);
@@ -105,12 +112,21 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
       lastValue = value;
       if (text.length !== shown.length) {
         build(text);
+        shown = text;
         fit();
       } else {
+        const now = performance.now();
         for (let i = 0; i < text.length; i++) {
           const ch = text[i]!;
           if (ch !== shown[i] && DIGITS.includes(ch)) {
-            columns[i]!.style.transform = `translateY(-${Number(ch) * 10}%)`;
+            const col = columns[i]!;
+            // разряд меняется чаще, чем длится прокрутка (пассивный доход капает несколько раз в секунду), —
+            // он переключается сразу: иначе цифра всё время висит между двумя значениями и не читается
+            const fast = now - (changedAt[i] ?? -Infinity) < DURATION.balanceRoll;
+            const transition = fast ? 'none' : rollTransition();
+            if (col.style.transition !== transition) col.style.transition = transition;
+            col.style.transform = `translateY(-${Number(ch) * 10}%)`;
+            changedAt[i] = now;
           }
         }
       }
