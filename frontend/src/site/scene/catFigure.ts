@@ -30,14 +30,14 @@ const BREATH_PERIOD = 3.6;
 
 /**
  * Персонаж в сцене: резкий арт (точка опоры — ступни, по вертикали тела), отражение на полу,
- * лужа света под ним. Он живой: дышит грудью, поводит ушами, чуть поворачивает голову; от касания
- * смущается — прижимает уши, опускает и отводит голову, краснеет. Тап — мягкое сжатие пружиной.
+ * лужа света под ним. Он живой: дышит грудью, поводит ушами, чуть поворачивает голову. Касание его
+ * не дёргает — только мягкая подсветка (искры и награду показывает сцена).
  */
 export class CatFigure {
   readonly group = new Group();
   /** покачивание и прыжок — внутри: group двигают станции */
   private pivot = new Group();
-  /** деформация сетки (дыхание, уши, голова, румянец) — общая для тела, отражения и глубины */
+  /** деформация сетки (дыхание, уши, голова) — общая для тела, отражения и глубины */
   private life = lifeUniforms();
   readonly material = catMaterial(this.life);
   readonly reflectionMaterial = catMaterial(this.life, true);
@@ -46,22 +46,15 @@ export class CatFigure {
   private depth: Mesh;
   private reflection: Mesh;
   readonly pool: Mesh;
-  private squash = new Spring(170, 15);
-  private tilt = new Spring(110, 12);
-  private hop = new Spring(150, 14);
   /** уши: пружины подёргивания и время следующего; знак «наружу» у левого и правого уха */
-  private ears = [new Spring(320, 15), new Spring(320, 15)];
+  private ears = [new Spring(190, 13), new Spring(190, 13)];
   private earNext = [1 + Math.random() * 3, 2 + Math.random() * 4];
   private earOut = [1, -1];
   /** взгляд в сторону — медленная пружина, цель меняется изредка */
   private glance = new Spring(9, 5.5);
   private glanceNext = 3 + Math.random() * 4;
-  /** смущение 0…1: растёт от касаний, держится и плавно проходит */
-  private shy = 0;
-  private shyTarget = 0;
-  private shyAt = -10;
-  private shySide = 1;
   private phase = Math.random() * Math.PI * 2;
+  private flashTarget = 0;
   private mask: { data: Uint8ClampedArray; w: number; h: number } | null = null;
   width = 1;
   ready = false;
@@ -147,48 +140,29 @@ export class CatFigure {
     const [cx, cy, rx, ry] = art.face.head;
     L.uHead.value.set(qx(cx), qy(cy), rx * w, ry * h);
     L.uNeck.value.set(qx(art.face.neck[0]), qy(art.face.neck[1]));
-    // щёки — под глазами; размер пятна — по ширине глаза, круглое на экране
-    const eyes = art.face.eyes;
-    const size = eyes.reduce((m, e) => m + e[2], 0) / eyes.length;
-    const cheek = (e: [number, number, number, number]) => [e[0], 1 - (e[1] + e[3] * 2.1)] as const;
-    const [a, b] = [cheek(eyes[0]!), cheek(eyes[1] ?? eyes[0]!)];
-    L.uCheeks.value.set(a[0], a[1], b[0], b[1]);
-    L.uCheekSize.value.set(size * 1.15, size * 1.15 * (w / h));
   }
 
-  /** Касание: сила 0…1 и сторона (−1 слева, 1 справа от центра). Кот смущается и мягко пружинит. */
-  poke(power: number, side: number, time: number): void {
-    this.squash.kick(4.2 * power);
-    this.tilt.kick(-side * 1.4 * power);
-    this.hop.kick(1.1 * power);
-    this.shyTarget = Math.min(1, this.shyTarget + 0.42 * power);
-    this.shyAt = time;
-    this.shySide = side;
-    for (const [i, ear] of this.ears.entries()) ear.kick(this.earOut[i]! * 3.5 * power);
-    this.material.uniforms.uFlash.value = Math.min(0.18, this.material.uniforms.uFlash.value + 0.1 * power);
+  /** Касание (сила 0…1): кот не дёргается — только мягкая подсветка, которая плавно гаснет. */
+  poke(power: number): void {
+    this.flashTarget = Math.min(0.14, this.flashTarget + 0.06 * power);
   }
 
-  /** Жизнь без касаний: дыхание, подёргивание ушей, взгляд; и как проходит смущение. */
+  /** Жизнь: дыхание, подёргивание ушей, взгляд. */
   private live(time: number, dt: number, still: boolean): void {
     const L = this.life;
     L.uBreath.value = still ? 0 : Math.sin((time / BREATH_PERIOD) * Math.PI * 2 + this.phase);
-    // смущение держится секунду после касания, потом плавно проходит; само значение догоняет цель
-    if (time - this.shyAt > 1.1) this.shyTarget = Math.max(0, this.shyTarget - dt * 0.45);
-    this.shy += (this.shyTarget - this.shy) * (1 - Math.exp(-dt * 5));
-    const shy = this.shy * this.shy * (3 - 2 * this.shy);
     for (const [i, ear] of this.ears.entries()) {
       if (!still && time > this.earNext[i]!) {
         // одно или два быстрых движения ухом, потом пауза 2.5–7 с
-        ear.kick(this.earOut[i]! * (4 + Math.random() * 3));
+        ear.kick(this.earOut[i]! * (3 + Math.random() * 2));
         this.earNext[i] = time + (Math.random() < 0.25 ? 0.35 : 2.5 + Math.random() * 4.5);
       }
       ear.update(dt);
     }
     const sway = still ? 0 : Math.sin(time * 0.7 + this.phase) * 0.025;
-    // смущённый кот прижимает уши — они уходят наружу и вниз
     L.uEarAngle.value.set(
-      this.earOut[0]! * (this.ears[0]!.x * 0.09 + shy * 0.34 + sway),
-      this.earOut[1]! * (-this.ears[1]!.x * 0.09 + shy * 0.34 + sway),
+      this.earOut[0]! * (this.ears[0]!.x * 0.09 + sway),
+      this.earOut[1]! * (-this.ears[1]!.x * 0.09 + sway),
     );
     if (!still && time > this.glanceNext) {
       // взгляд в сторону — толчок скоростью, пружина плавно возвращает голову
@@ -197,15 +171,10 @@ export class CatFigure {
     }
     this.glance.update(dt);
     const idle = still ? 0 : Math.sin(time * 0.37 + this.phase) * 0.018;
-    L.uHeadTilt.value = idle + this.glance.x + shy * 0.09 * this.shySide;
-    L.uHeadDrop.value = -shy * 0.022 * this.height;
-    L.uBlush.value = shy;
+    L.uHeadTilt.value = idle + this.glance.x;
   }
 
   update(time: number, dt: number, still: boolean): void {
-    this.squash.update(dt);
-    this.tilt.update(dt);
-    this.hop.update(dt);
     this.live(time, dt, still);
     const t = still ? 0 : time;
     let rz = 0;
@@ -221,17 +190,14 @@ export class CatFigure {
       case 'breathe':
         break;
     }
-    const sx = 1 - this.shy * 0.012;
-    const sy = 1 - this.shy * 0.008;
-    const s = this.squash.x;
-    this.pivot.scale.set(sx * (1 + s * 0.07), sy * (1 - s * 0.07), 1);
-    this.pivot.rotation.z = rz + this.tilt.x * 0.04;
-    this.pivot.position.y = y + Math.max(0, this.hop.x) * 0.12;
-    this.reflection.scale.set(this.pivot.scale.x, -this.pivot.scale.y, 1);
-    this.reflection.rotation.z = -this.pivot.rotation.z;
-    this.reflection.position.y = -this.pivot.position.y;
+    this.pivot.rotation.z = rz;
+    this.pivot.position.y = y;
+    this.reflection.rotation.z = -rz;
+    this.reflection.position.y = -y;
+    // подсветка от касания плавно нарастает и плавно гаснет — без вспышки
+    this.flashTarget = Math.max(0, this.flashTarget - dt * 0.25);
     const flash = this.material.uniforms.uFlash;
-    flash.value = Math.max(0, flash.value - dt * 1.6);
+    flash.value += (this.flashTarget - flash.value) * (1 - Math.exp(-dt * 6));
   }
 
   /** Точка экрана (NDC −1…1) попадает в силуэт? world — куда пришёлся тап (на плоскости кота). */

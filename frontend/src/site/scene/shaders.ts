@@ -111,10 +111,6 @@ export interface LifeUniforms {
   uNeck: { value: Vector2 };
   uHeadTilt: { value: number };
   uHeadDrop: { value: number };
-  /** румянец: щёки (uv: x, y снизу) и сила 0…1 */
-  uCheeks: { value: Vector4 };
-  uCheekSize: { value: Vector2 };
-  uBlush: { value: number };
 }
 
 export function lifeUniforms(): LifeUniforms {
@@ -128,9 +124,6 @@ export function lifeUniforms(): LifeUniforms {
     uNeck: { value: new Vector2() },
     uHeadTilt: { value: 0 },
     uHeadDrop: { value: 0 },
-    uCheeks: { value: new Vector4(-1, -1, -1, -1) },
-    uCheekSize: { value: new Vector2(0.05, 0.03) },
-    uBlush: { value: 0 },
   };
 }
 
@@ -232,9 +225,6 @@ export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial
     vertexShader: LIFE_VERTEX,
     fragmentShader: /* glsl */ `
       uniform sampler2D map;
-      uniform vec4 uCheeks;
-      uniform vec2 uCheekSize;
-      uniform float uBlush;
       uniform float uOpacity;
       uniform float uReveal;
       uniform float uDim;
@@ -250,18 +240,12 @@ export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial
       ${NOISE}
       ${FOG}
       void main() {
-        vec4 c = texture2D(map, vUv);
+        // смещение мип-уровня −0.5: шерсть и глаза чётче, когда кот на экране меньше файла
+        vec4 c = texture2D(map, vUv, -0.5);
         if (c.a < 0.003) discard;
-        float rim = clamp(c.a - texture2D(map, vUv + uLight).a, 0.0, 1.0);
+        float rim = clamp(c.a - texture2D(map, vUv + uLight, -0.5).a, 0.0, 1.0);
         vec3 col = c.rgb * uDim + uRim * rim * uRimStrength + c.rgb * uFlash;
         float a = c.a;
-        // румянец: мягкие розовые пятна на щеках, только по непрозрачной части лица
-        if (uBlush > 0.001) {
-          vec2 q0 = (vUv - uCheeks.xy) / uCheekSize;
-          vec2 q1 = (vUv - uCheeks.zw) / uCheekSize;
-          float b = exp(-dot(q0, q0) * 1.6) + exp(-dot(q1, q1) * 1.6);
-          col = mix(col, vec3(1.0, 0.42, 0.55) * a, clamp(b * uBlush * 0.55, 0.0, 0.6) * step(0.6, a));
-        }
         if (uReveal < 1.0) {
           float n = fbm(vUv * vec2(7.0, 11.0) + uSeed) * 0.5 + vUv.y * 0.5;
           float e = uReveal * 1.32 - n;
@@ -317,7 +301,7 @@ export function backdropMaterial(): ShaderMaterial {
       /** насколько мир растворён в тумане станции 0…1 */
       uFogMix: { value: 0 },
       /** мягкость мира (смещение мип-уровня): глубина резкости — мир позади, коты резкие */
-      uSoft: { value: 0.8 },
+      uSoft: { value: 0.3 },
       uFog: globals.uFog,
     },
     vertexShader: DEPTH_VERTEX,

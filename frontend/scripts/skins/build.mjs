@@ -102,21 +102,40 @@ async function writeCard(src, out, meta, aspect) {
 }
 
 /** Сцена (фон главного экрана и окна персонажа) во всех размерах. */
-async function writeBackground(src, out, sizes = SIZES.background) {
-  await writeSizes(sharp(src('background.png'), { limitInputPixels: false }), out, 'background', 'w', sizes, {
-    webp: { quality: 78, effort: 6 },
-    avif: { quality: 50, effort: 6 },
-  });
+async function writeBackground(
+  src,
+  out,
+  sizes = SIZES.background,
+  quality = { webp: { quality: 78, effort: 6 }, avif: { quality: 50, effort: 6 } },
+) {
+  await writeSizes(
+    sharp(src('background.png'), { limitInputPixels: false }),
+    out,
+    'background',
+    'w',
+    sizes,
+    quality,
+  );
   dropLegacy(out, 'background');
 }
 
+const CHARACTER_QUALITY = {
+  webp: { quality: 88, alphaQuality: 92, smartSubsample: true, effort: 6 },
+  avif: { quality: 64, effort: 6 },
+};
+/** сайт показывает кота крупно на весь экран — сжатие мягче: шерсть и глаза без артефактов */
+const SITE_QUALITY = {
+  character: {
+    webp: { quality: 95, alphaQuality: 100, smartSubsample: true, effort: 6 },
+    avif: { quality: 80, effort: 6, chromaSubsampling: '4:4:4' },
+  },
+  background: { webp: { quality: 86, effort: 6 }, avif: { quality: 62, effort: 6 } },
+};
+
 /** Персонаж в нескольких размерах по высоте (с прозрачным фоном). */
-async function writeCharacter(src, out, sizes) {
+async function writeCharacter(src, out, sizes, quality = CHARACTER_QUALITY) {
   const character = sharp(src('character.png'));
-  await writeSizes(character, out, 'character', 'h', sizes, {
-    webp: { quality: 88, alphaQuality: 92, smartSubsample: true, effort: 6 },
-    avif: { quality: 64, effort: 6 },
-  });
+  await writeSizes(character, out, 'character', 'h', sizes, quality);
   return character.metadata();
 }
 
@@ -132,8 +151,8 @@ async function buildSite() {
     rmSync(out, { recursive: true, force: true });
     mkdirSync(out, { recursive: true });
     const meta = JSON.parse(readFileSync(src('meta.json'), 'utf8'));
-    const { width, height } = await writeCharacter(src, out, site.sizes.character);
-    await writeBackground(src, out, site.sizes.background);
+    const { width, height } = await writeCharacter(src, out, site.sizes.character, SITE_QUALITY.character);
+    await writeBackground(src, out, site.sizes.background, SITE_QUALITY.background);
     await fit(sharp(src('icon.png')), ICON, ICON)
       .webp({ quality: 84 })
       .toFile(path.join(out, 'icon.webp'));

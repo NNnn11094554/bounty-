@@ -20,6 +20,8 @@ import { useAtStation } from './hooks';
 import { StationPanel } from './StationPanel';
 
 const k = (n: number) => ({ ['--k' as string]: n });
+/** номер станции игры */
+const GAME = 1;
 
 /** Игра: интерфейс вокруг кота — баланс, лига, уровень, бусты, энергия. Тапают по самому коту. */
 export function GameSection() {
@@ -64,7 +66,9 @@ function LeagueCard() {
   const next = LEAGUES[league + 1];
   useEffect(
     () =>
-      onTick(() => {
+      onTick((v) => {
+        // вдали от станции игры панель скрыта — DOM не трогаем
+        if (Math.abs(v.pos - GAME) > 0.6) return;
         if (!next || !balanceRef.current || !leftRef.current) return;
         const total = demoBalance();
         const ratio = Math.min(1, (total - current.threshold) / (next.threshold - current.threshold));
@@ -100,7 +104,9 @@ function LevelCard() {
   const barRef = useRef<HTMLElement>(null);
   useEffect(
     () =>
-      onTick(() => {
+      onTick((v) => {
+        // вдали от станции игры панель скрыта — DOM не трогаем
+        if (Math.abs(v.pos - GAME) > 0.6) return;
         if (!barRef.current) return;
         const from = levelThreshold(level.level);
         const to = levelThreshold(level.level + 1);
@@ -128,7 +134,9 @@ function TurboButton() {
   const timeRef = useRef<HTMLSpanElement>(null);
   useEffect(
     () =>
-      onTick(() => {
+      onTick((v) => {
+        // вдали от станции игры панель скрыта — DOM не трогаем
+        if (Math.abs(v.pos - GAME) > 0.6) return;
         if (!timeRef.current) return;
         const s = Math.ceil(turboSeconds());
         const text =
@@ -193,7 +201,9 @@ function EnergyBar() {
   const textRef = useRef<HTMLSpanElement>(null);
   useEffect(
     () =>
-      onTick(() => {
+      onTick((v) => {
+        // вдали от станции игры панель скрыта — DOM не трогаем
+        if (Math.abs(v.pos - GAME) > 0.6) return;
         const e = demoEnergy();
         const turbo = isTurbo();
         if (fillRef.current)

@@ -242,15 +242,12 @@ export class SiteWorld {
 
   private offset = new Vector3();
   private pointer = { x: 0, y: 0, tx: 0, ty: 0 };
-  private shake = { x: 0, y: 0, vx: 0, vy: 0 };
   private camPush = { x: 0, v: 0 };
   private fog = new Color();
   private tmpColor = new Color();
   private lastPos = new Vector3();
   private velocity = new Vector3();
   private readyAt = -1;
-  /** время сцены (для реакций на касание) */
-  private now = 0;
 
   constructor(private options: WorldOptions) {
     this.lite = options.lite;
@@ -281,8 +278,8 @@ export class SiteWorld {
     this.stations[1] = this.stations[0]!;
 
     const scale = this.lite ? 0.45 : matchMedia('(pointer: coarse)').matches ? 0.6 : 1;
-    this.dust = createDust(Math.round(7000 * scale), DUST_ZONES);
-    this.streaks = createStreaks(Math.round(900 * scale), STREAK_ZONES);
+    this.dust = createDust(Math.round(5200 * scale), DUST_ZONES);
+    this.streaks = createStreaks(Math.round(700 * scale), STREAK_ZONES);
     this.dust.renderOrder = 15;
     this.streaks.renderOrder = 16;
     this.scene.add(this.dust, this.streaks, this.bursts.points);
@@ -523,8 +520,9 @@ export class SiteWorld {
 
   // ───────────────────────────── загрузка ─────────────────────────────
 
+  /** Персонаж — всегда самый чёткий файл (на слабом устройстве — средний): кот главный на экране. */
   private charPx(): number {
-    return Math.min(1400, window.innerHeight * 0.68);
+    return this.lite ? Math.min(600, window.innerHeight * 0.68) : Number.POSITIVE_INFINITY;
   }
 
   private worldPx(): number {
@@ -543,36 +541,42 @@ export class SiteWorld {
     b.mesh.visible = true;
   }
 
-  /** Главное — сразу (кот и его мир), остальное — после старта, по порядку появления. */
+  /**
+   * Всё, что видно при прокрутке, грузится до вступления: все коты, их текстуры уже в видеопамяти,
+   * карточки активов, шейдеры всех станций. Во время пролёта ничего не догружается — кадры ровные.
+   * Мир кота коллекции (кроме первого) грузится при его выборе.
+   */
   async load(): Promise<void> {
-    const steps = 3;
-    let done = 0;
-    const tick = () => this.options.onProgress(++done / steps);
     const fonts = document.fonts?.ready ?? Promise.resolve();
-    await Promise.all([
-      this.loadCat(this.hero).then(tick),
-      this.setBackdrop(this.heroBackdrop, HERO_CAT).then(tick),
-      fonts.then(tick),
-    ]);
+    const jobs: Array<Promise<unknown>> = [
+      this.loadCat(this.hero),
+      this.setBackdrop(this.heroBackdrop, HERO_CAT),
+      fonts.then(() => this.buildTokenCards()),
+      ...this.figures.map((f) => this.loadCat(f)),
+    ];
+    let done = 0;
+    for (const job of jobs) void job.then(() => this.options.onProgress(++done / jobs.length));
+    await Promise.all(jobs);
+    // текстуры коллекции общие с прокачкой и заданиями
+    const texture = (id: string) =>
+      this.figures[CATS.findIndex((c) => c.id === id)]!.material.uniforms.map.value!;
+    this.engineer.setTexture(texture('toxic'), catArt('toxic'));
+    this.nomad.setTexture(texture('desert_nomad'), catArt('desert_nomad'));
     this.placeBackdrop(this.heroBackdrop, catArt(HERO_CAT.id), HOME, 10, v3(0, 1.6, 7));
     this.hero.reveal = 0;
-    // первый кадр со всеми шейдерами — до вступления, без рывка в его начале
-    this.renderer.compile(this.scene, this.camera);
-    void this.loadRest();
+    await this.showSelected();
+    await this.precompile();
   }
 
-  private async loadRest(): Promise<void> {
-    await this.buildTokenCards();
-    // коты коллекции — текстуры общие с прокачкой и заданиями
-    const order = [0, 1, 5, 2, 4, 3];
-    for (const i of order) {
-      await this.loadCat(this.figures[i]!);
-      if (CATS[i]!.id === 'toxic')
-        this.engineer.setTexture(this.figures[i]!.material.uniforms.map.value!, catArt('toxic'));
-      if (CATS[i]!.id === 'desert_nomad')
-        this.nomad.setTexture(this.figures[i]!.material.uniforms.map.value!, catArt('desert_nomad'));
-    }
-    await this.showSelected();
+  /** Шейдеры всех станций — заранее (станции временно видимы), иначе первый показ станции дёргается. */
+  private async precompile(): Promise<void> {
+    const shown = this.stations.map((g) => g.visible);
+    for (const g of this.stations) g.visible = true;
+    // параллельная компиляция — где браузер её умеет (Safari — нет), иначе обычная: идёт экран загрузки
+    if (this.renderer.extensions.has('KHR_parallel_shader_compile'))
+      await this.renderer.compileAsync(this.scene, this.camera);
+    else this.renderer.compile(this.scene, this.camera);
+    for (const [i, g] of this.stations.entries()) g.visible = shown[i]!;
   }
 
   private async buildTokenCards(): Promise<void> {
@@ -601,7 +605,7 @@ export class SiteWorld {
     if (index === this.selected) return;
     this.selected = index;
     this.selectedAt = time;
-    this.camPush.v -= 2.6;
+    this.camPush.v -= 1.6;
     void this.showSelected();
   }
 
@@ -623,8 +627,7 @@ export class SiteWorld {
   tap(clientX: number, clientY: number, turbo: boolean): boolean {
     const at = new Vector3();
     if (!this.hitFigure(this.hero, clientX, clientY, at)) return false;
-    const side = Math.sign(at.x - this.hero.group.position.x) || 1;
-    this.hero.poke(turbo ? 0.9 : 0.65, side, this.now);
+    this.hero.poke(turbo ? 1 : 0.7);
     at.z += 0.25;
     this.bursts.emit(
       at,
@@ -632,9 +635,6 @@ export class SiteWorld {
       turbo ? ['#ffe08a', '#ff7a1a', '#ffffff'] : ['#ffc93c', '#ff9a4d'],
       turbo ? 1.15 : 0.9,
     );
-    this.blushSparks(this.hero);
-    this.shake.vx += (Math.random() - 0.5) * (turbo ? 0.6 : 0.35);
-    this.shake.vy -= turbo ? 0.5 : 0.3;
     (this.energyRing.material as ShaderMaterial).uniforms.uOpacity!.value = 1;
     return true;
   }
@@ -646,15 +646,8 @@ export class SiteWorld {
     return figure.ready && figure.hit(x, y, this.camera, at);
   }
 
-  /** Розовые искорки у головы — кот смущается. */
-  private blushSparks(figure: CatFigure): void {
-    const head = new Vector3(0, figure.height * 0.82, 0.3);
-    figure.group.localToWorld(head);
-    this.bursts.emit(head, 5, ['#ff8fb3', '#ffd1e0', '#ffffff'], 0.45);
-  }
-
   /**
-   * Касание кота вне игры (коллекция, прокачка, задания, главная): без награды, кот смущается.
+   * Касание кота вне игры (коллекция, прокачка, задания, главная): без награды — мягкая подсветка и искры.
    * true — палец попал в кота.
    */
   touch(clientX: number, clientY: number): boolean {
@@ -666,9 +659,9 @@ export class SiteWorld {
     const at = new Vector3();
     for (const figure of candidates) {
       if (!this.hitFigure(figure, clientX, clientY, at)) continue;
-      const local = figure.group.worldToLocal(at.clone());
-      figure.poke(0.6, Math.sign(local.x) || 1, this.now);
-      this.blushSparks(figure);
+      figure.poke(0.6);
+      at.z += 0.25;
+      this.bursts.emit(at, 6, [figure.cat.accent2, '#ffffff'], 0.6);
       return true;
     }
     return false;
@@ -709,8 +702,10 @@ export class SiteWorld {
     } else {
       this.slowFor = this.fastFor = 0;
     }
-    if (this.slowFor > 1.5 && this.ratio > 1) {
-      this.ratio = Math.max(1, this.ratio - 0.25);
+    // на экранах ×2 и выше не ниже 1.5: коты остаются чёткими, разгружаются частицы и эффекты
+    const floor = this.baseRatio >= 2 ? 1.5 : 1;
+    if (this.slowFor > 2 && this.ratio > floor) {
+      this.ratio = Math.max(floor, this.ratio - 0.25);
       this.slowFor = 0;
       this.resize();
     } else if (this.fastFor > 8 && this.ratio < this.baseRatio) {
@@ -725,7 +720,6 @@ export class SiteWorld {
     if (v.intro >= 0 && this.readyAt < 0) this.readyAt = time;
     if (this.readyAt >= 0 && time - this.readyAt > 1) this.govern(dt);
     globals.uTime.value = time;
-    this.now = time;
     this.select(selected, time);
 
     // ── камера ──
@@ -736,16 +730,16 @@ export class SiteWorld {
     const dolly = still ? 0 : (1 - easeOutCubic(intro)) * 4.2;
     this.pointer.x += (this.pointer.tx - this.pointer.x) * (1 - Math.exp(-dt * 2.5));
     this.pointer.y += (this.pointer.ty - this.pointer.y) * (1 - Math.exp(-dt * 2.5));
-    stepSpring(this.shake, dt);
-    this.camPush.v += (-60 * this.camPush.x - 11 * this.camPush.v) * dt;
-    this.camPush.x += this.camPush.v * dt;
+    // наезд камеры при смене кота — пружина с критическим затуханием, шаги по 1/120 с
+    for (let i = 0, n = Math.ceil(dt / (1 / 120)); i < n; i++) {
+      const h = dt / n;
+      this.camPush.v += (-30 * this.camPush.x - 11 * this.camPush.v) * h;
+      this.camPush.x += this.camPush.v * h;
+    }
     const drift = still ? 0 : 1;
     this.offset.set(
-      this.pointer.x * 0.32 * drift + this.shake.x * 0.08 + Math.sin(time * 0.21) * 0.06 * drift,
-      this.pointer.y * 0.18 * drift +
-        this.shake.y * 0.08 +
-        Math.sin(time * 0.17) * 0.05 * drift +
-        dolly * 0.22,
+      this.pointer.x * 0.32 * drift + Math.sin(time * 0.21) * 0.06 * drift,
+      this.pointer.y * 0.18 * drift + Math.sin(time * 0.17) * 0.05 * drift + dolly * 0.22,
       dolly,
     );
     const toTarget = new Vector3().subVectors(s.target, s.position).normalize();
@@ -887,7 +881,7 @@ export class SiteWorld {
       bd.fade = front ? Math.min(1, bd.fade + dt / 1.3) : Math.max(0, bd.fade - dt / 0.9);
       bd.material.uniforms.uOpacity!.value = easeInOut(bd.fade);
       bd.material.uniforms.uDim!.value = 0.5;
-      bd.material.uniforms.uSoft!.value = 1.5;
+      bd.material.uniforms.uSoft!.value = 0.7;
       bd.mesh.visible = bd.fade > 0.001;
     }
   }
@@ -959,13 +953,6 @@ function catById(id: string): SiteCat {
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const easeOutCubic = (t: number) => 1 - (1 - clamp01(t)) ** 3;
 const easeInOut = (t: number) => t * t * (3 - 2 * t);
-
-function stepSpring(s: { x: number; y: number; vx: number; vy: number }, dt: number): void {
-  s.vx += (-90 * s.x - 9 * s.vx) * dt;
-  s.vy += (-90 * s.y - 9 * s.vy) * dt;
-  s.x += s.vx * dt;
-  s.y += s.vy * dt;
-}
 
 /** Карточка актива: стекло, монета токена из игры, тикер и категория. */
 function tokenCard(coin: HTMLCanvasElement, ticker: string, group: string): HTMLCanvasElement {

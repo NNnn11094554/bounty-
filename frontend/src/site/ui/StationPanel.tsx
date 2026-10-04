@@ -1,5 +1,4 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { liteDevice } from '../../game/skins';
 import { introPhase, onTick, smoothstep } from '../timeline';
 
 interface Props {
@@ -13,7 +12,7 @@ interface Props {
 
 /**
  * Интерфейс станции поверх сцены. Он двигается вместе с камерой: подходя к станции, панель выходит из
- * глубины (меньше, размыта, ниже), уходя — пролетает мимо зрителя (крупнее, размыта, выше).
+ * глубины (меньше, прозрачнее, ниже), уходя — пролетает мимо зрителя (крупнее, выше).
  * Стили пишутся напрямую в DOM каждый кадр и только когда меняются — React не перерисовывается.
  */
 export function StationPanel({ index, className = '', afterIntro = false, label, children }: Props) {
@@ -22,8 +21,6 @@ export function StationPanel({ index, className = '', afterIntro = false, label,
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // размытие полноэкранного слоя дорого на телефоне: там переход — сдвиг, масштаб и прозрачность
-    const blurOk = !liteDevice() && window.matchMedia('(pointer: fine)').matches;
     let last = '';
     let shown = false;
     return onTick((v) => {
@@ -46,17 +43,15 @@ export function StationPanel({ index, className = '', afterIntro = false, label,
         el.removeAttribute('aria-hidden');
         shown = true;
       }
-      const ad = Math.abs(d);
+      // только transform и opacity — их браузер анимирует на видеокарте, без перерисовки слоя
       const y = (-d * 90).toFixed(1);
       const s = (1 + d * 0.08).toFixed(4);
-      const blur = blurOk && ad > 0.03 ? Math.min(14, ad * 26).toFixed(1) : '0';
-      const key = `${p.toFixed(3)}|${y}|${s}|${blur}`;
+      const key = `${p.toFixed(3)}|${y}|${s}`;
       if (key === last) return;
       last = key;
       el.style.setProperty('--p', p.toFixed(3));
       el.style.opacity = Math.min(1, p * 1.6).toFixed(3);
       el.style.transform = `translate3d(0, ${y}px, 0) scale(${s})`;
-      el.style.filter = blur === '0' ? 'none' : `blur(${blur}px)`;
       el.style.pointerEvents = 'none';
       el.dataset.active = p > 0.6 ? 'true' : 'false';
     });
