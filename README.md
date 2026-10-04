@@ -70,7 +70,7 @@
   SwinIR-L ×4 по исходной плитке, затем Real-ESRGAN ×2; для карточки — Real-ESRGAN ×2 по оригиналу. Модели
   (GitHub-релизы) скачиваются при первом запуске (`pip install rembg spandrel opencv-python-headless torch`);
 - `node frontend/scripts/skins/build.mjs` — кодирование в AVIF/WebP **в нескольких размерах**
-  (`frontend/src/game/skinSizes.json`: персонаж 600/900/1200/1600 px по высоте, фон 1200/1800/2400, фон
+  (`frontend/src/game/skinSizes.json`: персонаж 600/900/1200/1600 px по высоте, фон 1200/1800/2400/3000, фон
   карточки 480/720/960 по ширине; только уменьшение) и манифест; затем `python3 frontend/scripts/skins/face.py`
   (лицо в манифест).
 - Игра берёт наименьший файл, которого хватает месту на экране в пикселях экрана (CSS px × devicePixelRatio):

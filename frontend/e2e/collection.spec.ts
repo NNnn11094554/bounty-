@@ -44,7 +44,8 @@ async function expectCharacter(page: Page, id: string) {
       const r = el.getBoundingClientRect();
       const size = Number(/-(\d+)\.webp/.exec(getComputedStyle(el).getPropertyValue('--img-webp'))![1]);
       const need = (sel.includes('character') ? r.height : r.width) * devicePixelRatio;
-      return size >= need || size >= 1600;
+      // иначе — самый большой файл (экран крупнее, чем нужно игре)
+      return size >= need || size === (sel.includes('character') ? 1600 : 3000);
     }),
   );
   expect(fits).toEqual([true, true]);
@@ -99,7 +100,7 @@ test.describe('Skins and collection', () => {
     // все картинки персонажа есть на сервере (каждый размер, AVIF и WebP)
     const sizes = {
       character: [600, 900, 1200, 1600],
-      background: [1200, 1800, 2400],
+      background: [1200, 1800, 2400, 3000],
       card: [480, 720, 960],
     };
     for (const [file, list] of Object.entries(sizes))

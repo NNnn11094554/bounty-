@@ -9,7 +9,7 @@
 //   public/assets/skins/<id>/icon.webp                       — портрет (аватар в профиле)
 // и манифест src/game/skinArt.json (пропорции, голова, центр тела — по ним раскладывается сцена).
 // Картинки не растягиваются: только уменьшение (если исходник меньше размера — размер пропускается).
-// `node scripts/skins/build.mjs card` — перекодировать только фоны карточек.
+// `node scripts/skins/build.mjs card` / `… background` — перекодировать только фоны карточек / сцены.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,7 +99,24 @@ async function writeCard(src, out, meta, aspect) {
   return frame;
 }
 
+/** Сцена (фон главного экрана и окна персонажа) во всех размерах. */
+async function writeBackground(src, out) {
+  await writeSizes(
+    sharp(src('background.png'), { limitInputPixels: false }),
+    out,
+    'background',
+    'w',
+    SIZES.background,
+    {
+      webp: { quality: 78, effort: 6 },
+      avif: { quality: 50, effort: 6 },
+    },
+  );
+  dropLegacy(out, 'background');
+}
+
 const onlyCard = process.argv.includes('card');
+const onlyBackground = process.argv.includes('background');
 const ids = readdirSync(work).filter((d) => existsSync(path.join(work, d, 'meta.json')));
 const manifest = {};
 for (const id of ids.sort()) {
@@ -113,6 +130,11 @@ for (const id of ids.sort()) {
     console.log(`[skins] ${id}: карточка`);
     continue;
   }
+  if (onlyBackground) {
+    await writeBackground(src, out);
+    console.log(`[skins] ${id}: фон`);
+    continue;
+  }
 
   const character = sharp(src('character.png'));
   await writeSizes(character, out, 'character', 'h', SIZES.character, {
@@ -122,11 +144,7 @@ for (const id of ids.sort()) {
   dropLegacy(out, 'character');
   const { width, height } = await character.metadata();
 
-  await writeSizes(sharp(src('background.png')), out, 'background', 'w', SIZES.background, {
-    webp: { quality: 78, effort: 6 },
-    avif: { quality: 50, effort: 6 },
-  });
-  dropLegacy(out, 'background');
+  await writeBackground(src, out);
 
   const card = await writeCard(src, out, meta, width / height);
 
@@ -145,7 +163,7 @@ for (const id of ids.sort()) {
   };
   console.log(`[skins] ${id}: персонаж ${width}×${height}`);
 }
-if (!onlyCard) {
+if (!onlyCard && !onlyBackground) {
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(
     `[skins] ${ids.length} скинов → ${path.relative(root, outRoot)}, манифест ${path.relative(root, manifestPath)}`,

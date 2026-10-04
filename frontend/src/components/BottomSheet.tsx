@@ -67,7 +67,7 @@ export function BottomSheet({ open, onClose, children, testId }: Props) {
               type="button"
               onClick={onClose}
               aria-label="close"
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70"
+              className="absolute right-4 top-4 z-20 grid h-8 w-8 place-items-center rounded-full bg-night-900/70 text-white/80 ring-1 ring-white/10"
               data-testid="sheet-close"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>

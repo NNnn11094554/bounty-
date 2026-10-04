@@ -185,12 +185,14 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
         <RarityFrame rarity={shown.rarity} className="w-full" live>
           {shown.kind === 'skin' ? (
             <SkinPreviewStage id={shown.id} stageRef={previewRef}>
+              {/* замок — в углу сцены, персонажа не закрывает */}
               {locked && (
-                <div className="absolute inset-0 grid place-items-center bg-black/35">
-                  <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm font-black">
-                    🔒 {lockLabel}
-                  </span>
-                </div>
+                <span
+                  className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[13px] font-black ring-1 ring-white/10"
+                  data-testid="skin-lock"
+                >
+                  🔒 {lockLabel}
+                </span>
               )}
             </SkinPreviewStage>
           ) : (
@@ -231,7 +233,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
                     : !shown.price
                       ? t('collection.howFree')
                       : shown.price.currency === 'stars'
-                        ? t('collection.howStars', { price: shown.price.amount })
+                        ? t('collection.howStars')
                         : t('collection.howLevel', {
                             level: shown.unlockLevel,
                             price: formatInt(shown.price.amount),

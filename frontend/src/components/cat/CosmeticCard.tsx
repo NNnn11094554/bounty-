@@ -100,10 +100,21 @@ interface Props {
 }
 
 /** Условие получения коротко: лига, уровень, цена или «бесплатно». */
-function Condition({ item, owned, lock }: { item: CosmeticDef; owned: boolean; lock: CosmeticLock }) {
+function Condition({
+  item,
+  owned,
+  equipped,
+  lock,
+}: {
+  item: CosmeticDef;
+  owned: boolean;
+  equipped: boolean;
+  lock: CosmeticLock;
+}) {
   const t = useT();
   const locale = useLocale();
   const lockText = useLockText();
+  if (equipped) return <span className="text-lime">✓ {t('collection.equipped')}</span>;
   if (owned) return null;
   if (lock) return <span className="text-white/70">🔒 {lockText(lock)}</span>;
   if (item.price?.currency === 'stars')
@@ -197,24 +208,22 @@ function SkinCard({ item, owned, equipped, level, league, onOpen, onEquip, busy 
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: RARITY_COLOR[item.rarity] }} />
             {t(`rarity.${item.rarity}` as MessageKey)}
           </span>
-          {(equipped || owned || locked) && (
+          {/* сверху справа — только значок (надет / закрыт): имя редкости слева целиком помещается и на 360 px */}
+          {(equipped || locked) && (
             <span
-              className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-black ${
-                equipped
-                  ? 'bg-lime text-night-900'
-                  : owned
-                    ? 'bg-white/85 text-night-900'
-                    : 'bg-black/60 text-white/80'
+              className={`absolute right-2 top-2 grid h-[22px] min-w-[22px] place-items-center rounded-full px-1 text-[11px] font-black ${
+                equipped ? 'bg-lime text-night-900' : 'bg-black/60 text-white/80'
               }`}
               data-testid={`cosmetic-status-${item.id}`}
+              aria-label={equipped ? t('collection.equipped') : undefined}
             >
-              {equipped ? `✓ ${t('collection.equipped')}` : owned ? t('collection.owned') : '🔒'}
+              {equipped ? '✓' : '🔒'}
             </span>
           )}
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-2.5 pb-2.5">
             <p className="truncate text-[15px] font-black leading-tight">{item.name[locale]}</p>
             <div className="flex min-h-[24px] items-center justify-between gap-1 text-xs font-extrabold">
-              <Condition item={item} owned={owned} lock={lock} />
+              <Condition item={item} owned={owned} equipped={equipped} lock={lock} />
               {owned && !equipped && onEquip && (
                 <Button
                   className="h-7 px-3 text-xs"
