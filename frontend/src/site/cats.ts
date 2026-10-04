@@ -143,9 +143,9 @@ export function catSize(file: CatFile, cssPx: number, ratio = pixelRatio()): num
 }
 
 export function catAsset(id: string, file: CatFile, size: number, format: 'avif' | 'webp'): string {
-  return `/assets/site/cats/${id}/${file}-${size}.${format}`;
+  return `${import.meta.env.BASE_URL}assets/site/cats/${id}/${file}-${size}.${format}`;
 }
 
 export function catIcon(id: string): string {
-  return `/assets/site/cats/${id}/icon.webp`;
+  return `${import.meta.env.BASE_URL}assets/site/cats/${id}/icon.webp`;
 }
