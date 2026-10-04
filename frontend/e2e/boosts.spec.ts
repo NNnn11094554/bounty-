@@ -22,12 +22,15 @@ test.describe('Boosts', () => {
     await expect(page.getByTestId('boost-full-energy')).toContainText(/мин/);
   });
 
-  test('multitap purchase raises tap value; insufficient funds disables the button', async ({ page }) => {
+  test('energy limit purchase raises max energy; insufficient funds disables the button; multitap is gone', async ({
+    page,
+  }) => {
     const uid = 700000302;
     await page.goto(`/?uid=${uid}&name=Покупатель`);
     await expect(page.getByTestId('office')).toBeVisible();
     await page.getByTestId('open-boosts').click();
-    await page.getByTestId('boost-multitap').click();
+    await expect(page.getByTestId('boost-multitap')).toHaveCount(0);
+    await page.getByTestId('boost-energy-limit').click();
     await expect(page.getByTestId('boost-confirm')).toBeDisabled();
     await expect(page.getByTestId('boost-confirm')).toHaveText('Недостаточно монет');
     await page.getByTestId('sheet-close').click();
@@ -36,15 +39,16 @@ test.describe('Boosts', () => {
     await markLeagueSeen(page, uid, 1);
     await page.reload();
     await page.getByTestId('open-boosts').click();
-    await page.getByTestId('boost-multitap').click();
+    await page.getByTestId('boost-energy-limit').click();
     await expect(page.getByTestId('boost-sheet')).toContainText('2K');
     await page.getByTestId('boost-confirm').click();
-    await expect(page.getByTestId('boost-multitap')).toContainText('4K');
-    await expect(page.getByTestId('boost-multitap')).toContainText('3 lvl');
+    await expect(page.getByTestId('boost-energy-limit')).toContainText('4K');
+    await expect(page.getByTestId('boost-energy-limit')).toContainText('3 lvl');
     await page.keyboard.press('Escape'); // «Назад» — как кнопка BackButton в Telegram
     await expect(page.getByTestId('boosts')).toBeHidden();
-    await expect(page.getByTestId('stat-per-tap')).toHaveText('+2');
-    // 5 000 + 2 000 (достижение «Серебряный кот») − 2 000 за Multitap
+    await expect(page.getByTestId('energy-value')).toHaveText(/ \/ 5500$/);
+    await expect(page.getByTestId('stat-per-tap')).toHaveText('+1');
+    // 5 000 + 2 000 (достижение «Серебряный кот») − 2 000 за Energy limit
     await expect(page.getByTestId('balance-value')).toHaveAttribute('aria-label', /^5\s000$/);
   });
 

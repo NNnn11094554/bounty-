@@ -38,7 +38,7 @@ describe('boosts', () => {
       left: 3,
       perDay: 3,
       activeUntil: null,
-      durationSec: 20,
+      durationSec: 60,
       multiplier: 5,
     });
     expect(state.boosts.multitap).toMatchObject({ level: 1, nextLevel: 2, price: 2000 });
@@ -92,50 +92,61 @@ describe('boosts', () => {
     expect((await c.post('/api/boost/turbo')).json()).toMatchObject({ error: { code: 'LIMIT_REACHED' } });
   });
 
-  it('multitap and energy limit cost coins and raise levels', async () => {
+  it('energy limit costs coins and raises the level; multitap is no longer sold', async () => {
     const c = await player(3005, { balance: 10_000, totalEarned: 10_000 });
-    const r1 = (await c.post('/api/boost/multitap')).json<StateResponse>().state;
-    expect(r1.multitapLevel).toBe(2);
-    expect(r1.tapValue).toBe(2);
+    const no = await c.post('/api/boost/multitap');
+    expect(no.statusCode).toBe(400);
+    expect(no.json()).toMatchObject({ error: { code: 'VALIDATION' } });
+    const r1 = (await c.post('/api/boost/energy-limit')).json<StateResponse>().state;
+    expect(r1.maxEnergy).toBe(5500);
     expect(r1.balance).toBe(8000);
     const r2 = (await c.post('/api/boost/energy-limit')).json<StateResponse>().state;
-    expect(r2.maxEnergy).toBe(5500);
-    expect(r2.balance).toBe(6000);
+    expect(r2.maxEnergy).toBe(6000);
+    expect(r2.balance).toBe(4000);
     expect(r2.totalEarned).toBe(10_000); // траты не уменьшают «всего заработано»
+    expect(r2.multitapLevel).toBe(1);
     const tx = await prisma.transaction.findMany({
       where: { type: 'boost_purchase' },
       orderBy: { id: 'asc' },
     });
-    expect(tx.map((t) => t.amount.toNumber())).toEqual([-2000, -2000]);
-    expect(tx[1]!.balanceAfter.toNumber()).toBe(6000);
+    expect(tx.map((t) => t.amount.toNumber())).toEqual([-2000, -4000]);
+    expect(tx[1]!.balanceAfter.toNumber()).toBe(4000);
+  });
+
+  it('multitap levels bought earlier are kept: taps still pay more', async () => {
+    const c = await player(3009, { multitapLevel: 7 });
+    const { state } = (await c.get('/api/state')).json<StateResponse>();
+    expect(state.tapValue).toBe(7);
   });
 
   it('cannot buy without enough coins', async () => {
     const c = await player(3006, { balance: 1999 });
-    const res = await c.post('/api/boost/multitap');
+    const res = await c.post('/api/boost/energy-limit');
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({ error: { code: 'INSUFFICIENT_FUNDS' } });
     const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 3006n } });
-    expect(user.multitapLevel).toBe(1);
+    expect(user.energyLimitLevel).toBe(1);
     expect(user.balance.toNumber()).toBe(1999);
   });
 
   it('double click / parallel purchases never overspend', async () => {
     const c = await player(3007, { balance: 5000 });
-    const results = await Promise.all(Array.from({ length: 6 }, () => c.post('/api/boost/multitap')));
+    const results = await Promise.all(Array.from({ length: 6 }, () => c.post('/api/boost/energy-limit')));
     const ok = results.filter((r) => r.statusCode === 200).length;
     const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 3007n } });
     // 2000 (ур.2) + 4000 (ур.3) > 5000, значит удаётся только одна покупка
     expect(ok).toBe(1);
-    expect(user.multitapLevel).toBe(2);
+    expect(user.energyLimitLevel).toBe(2);
     expect(user.balance.toNumber()).toBe(3000);
   });
 
   it('max level and unknown boost', async () => {
-    const c = await player(3008, { multitapLevel: 30, balance: 1e12 });
-    expect((await c.post('/api/boost/multitap')).json()).toMatchObject({ error: { code: 'LIMIT_REACHED' } });
+    const c = await player(3008, { energyLimitLevel: 30, balance: 1e12 });
+    expect((await c.post('/api/boost/energy-limit')).json()).toMatchObject({
+      error: { code: 'LIMIT_REACHED' },
+    });
     const { state } = (await c.get('/api/state')).json<StateResponse>();
-    expect(state.boosts.multitap).toMatchObject({ level: 30, nextLevel: null, price: null });
+    expect(state.boosts.energyLimit).toMatchObject({ level: 30, nextLevel: null, price: null });
     expect((await c.post('/api/boost/free-money')).statusCode).toBe(400);
   });
 });

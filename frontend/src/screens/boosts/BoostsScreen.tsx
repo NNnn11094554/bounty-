@@ -224,7 +224,7 @@ export function BoostsScreen() {
 
       <h2 className="mb-2 mt-6 text-[15px] font-extrabold">{t('boosts.paid')}</h2>
       <div className="flex flex-col gap-2.5" data-tour="paid-boosts">
-        {(['multitap', 'energyLimit'] as const).map((kind) => {
+        {(['energyLimit'] as const).map((kind) => {
           const Icon2 = ICON[kind];
           const paid = b[kind];
           return (

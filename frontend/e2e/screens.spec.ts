@@ -43,7 +43,7 @@ test('capture main screens', async ({ page }) => {
   await expect(page.getByTestId('boosts')).toBeVisible();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${dir}/02-boosts.png` });
-  await page.getByTestId('boost-multitap').click();
+  await page.getByTestId('boost-energy-limit').click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${dir}/03-boost-sheet.png` });
   await page.keyboard.press('Escape');

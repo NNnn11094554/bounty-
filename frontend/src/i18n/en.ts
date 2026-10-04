@@ -50,7 +50,7 @@ export const en: Record<MessageKey, string> = {
   'boosts.howText1':
     'Free boosts refresh every day. Full energy instantly refills your energy, Turbo makes every tap ×{x} for {sec} seconds without spending energy.',
   'boosts.howText2':
-    'Paid boosts are permanent: Multitap adds coins per tap, Energy limit adds energy capacity. Each next level costs twice as much.',
+    'The paid boost is permanent: Energy limit adds energy capacity. Each next level costs twice as much.',
   'boosts.free': 'Free daily boosters',
   'boosts.paid': 'Boosters',
   'boosts.available': '{left}/{total} available',

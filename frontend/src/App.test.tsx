@@ -45,7 +45,7 @@ const state = {
   totalTaps: 0,
   boosts: {
     fullEnergy: { left: 6, perDay: 6, cooldownUntil: null, cooldownSec: 3600 },
-    turbo: { left: 3, perDay: 3, activeUntil: null, durationSec: 20, multiplier: 5 },
+    turbo: { left: 3, perDay: 3, activeUntil: null, durationSec: 60, multiplier: 5 },
     multitap: { level: 1, nextLevel: 2, price: 2000, maxLevel: 20 },
     energyLimit: { level: 1, nextLevel: 2, price: 2000, maxLevel: 20, perLevel: 500 },
   },
@@ -64,7 +64,7 @@ const config = {
   ],
   tap: { syncIntervalMs: 2500, maxPerSecond: 20 },
   passive: { maxOfflineHours: 3 },
-  turbo: { durationSec: 20, multiplier: 5 },
+  turbo: { durationSec: 60, multiplier: 5 },
   dailyResetUtcHour: 16,
   dailyRewards: [500, 1000, 2500, 5000, 15000, 25000, 100000, 500000, 1000000, 5000000],
   referral: { regular: 5000, premium: 25000 },

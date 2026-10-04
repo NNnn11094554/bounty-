@@ -22,7 +22,7 @@ export const GAME = {
   },
   turbo: {
     /** на столько секунд тап ×multiplier без траты энергии */
-    durationSec: 20,
+    durationSec: 60,
     multiplier: 5,
   },
   passive: {
