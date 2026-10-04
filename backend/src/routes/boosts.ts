@@ -64,8 +64,10 @@ export async function boostRoutes(app: FastifyInstance): Promise<void> {
         return { state: buildPlayerState(updated, now) };
       }
 
-      const boost = type === 'multitap' ? 'multitap' : 'energyLimit';
-      const current = boost === 'multitap' ? user.multitapLevel : user.energyLimitLevel;
+      // Multitap больше не продаётся (убран из усилителей); уже купленные уровни у игроков остаются
+      if (type === 'multitap') throw new ApiError('VALIDATION', 'Multitap is no longer sold');
+      const boost = 'energyLimit';
+      const current = user.energyLimitLevel;
       const next = current + 1;
       if (next > BOOSTS[boost].maxLevel) throw new ApiError('LIMIT_REACHED', 'Maximum level reached');
       const price = boostLevelPrice(boost, next);
@@ -76,7 +78,7 @@ export async function boostRoutes(app: FastifyInstance): Promise<void> {
         user,
         [{ type: 'boost_purchase', amount: -price, meta: { boost: type, level: next } }],
         {
-          ...(boost === 'multitap' ? { multitapLevel: next } : { energyLimitLevel: next }),
+          energyLimitLevel: next,
           energy: energy.energy,
           energyUpdatedAt: energy.updatedAt,
         },

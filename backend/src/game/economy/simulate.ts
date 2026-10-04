@@ -126,7 +126,7 @@ export function simulate(
   let total = 0;
   let pph = 0;
   let taps = 0;
-  let multitap = 1;
+  const multitap = 1; // Multitap больше не продаётся
   let energyLimit = 1;
   let streak = 0;
   let bestStreak = 0;
@@ -350,14 +350,6 @@ export function simulate(
         if (price <= cheap && price <= balance) {
           balance -= price;
           energyLimit++;
-          continue;
-        }
-      }
-      if (multitap < BOOSTS.multitap.maxLevel) {
-        const price = boostLevelPrice('multitap', multitap + 1);
-        if (price <= cheap / 2 && price <= balance) {
-          balance -= price;
-          multitap++;
           continue;
         }
       }

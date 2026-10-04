@@ -139,10 +139,10 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
 
 /**
  * Достижения, которые сейчас можно получить: кошелёк TON временно скрыт (TON_WALLET_ENABLED),
- * штаб-квартир в игре больше нет.
+ * штаб-квартир в игре больше нет, Multitap убран из усилителей.
  */
 export const VISIBLE_ACHIEVEMENTS: readonly Achievement[] = ACHIEVEMENTS.filter(
-  (a) => (TON_WALLET_ENABLED || a.metric !== 'wallet') && a.metric !== 'hq',
+  (a) => (TON_WALLET_ENABLED || a.metric !== 'wallet') && a.metric !== 'hq' && a.metric !== 'multitap',
 );
 
 export function achievementById(id: string): Achievement | undefined {

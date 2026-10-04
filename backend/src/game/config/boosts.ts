@@ -5,6 +5,7 @@
 export const BOOSTS = {
   fullEnergy: { perDay: 6, cooldownSec: 3600 },
   turbo: { perDay: 3 },
+  /** Multitap убран из усилителей: новые уровни не продаются, купленные раньше остаются (монет за тап) */
   multitap: { baseCost: 1000, maxLevel: 30 },
   energyLimit: { baseCost: 1000, maxLevel: 30 },
 } as const;
