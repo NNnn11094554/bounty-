@@ -16,6 +16,38 @@ import { api, ApiError } from '../api/client';
  */
 type Listener = (state: PlayerState) => void;
 
+/** Неотправленные тапы на устройстве (на случай закрытия игры до ответа сервера). */
+interface Unsent {
+  inflight: { seq: number; taps: number; earned: number } | null;
+  pending: number;
+  pendingEarned: number;
+}
+const unsentKey = (userId: number) => `meowgul.unsent.${userId}`;
+
+function readUnsent(userId: number): Unsent | null {
+  try {
+    const raw = window.localStorage.getItem(unsentKey(userId));
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<Unsent>;
+    const inflight =
+      v.inflight && Number.isInteger(v.inflight.seq) && v.inflight.taps > 0 ? v.inflight : null;
+    const pending = Number.isInteger(v.pending) && (v.pending ?? 0) > 0 ? (v.pending as number) : 0;
+    return { inflight, pending, pendingEarned: pending ? Number(v.pendingEarned) || 0 : 0 };
+  } catch {
+    return null;
+  }
+}
+
+function writeUnsent(userId: number, unsent: Unsent | null): void {
+  try {
+    if (unsent && (unsent.inflight || unsent.pending > 0)) {
+      window.localStorage.setItem(unsentKey(userId), JSON.stringify(unsent));
+    } else window.localStorage.removeItem(unsentKey(userId));
+  } catch {
+    /* хранилище недоступно — тапы уйдут только пока игра открыта, как и раньше */
+  }
+}
+
 /** Пассивный доход за elapsedMs после снимка; пока идёт буст из магазина — ×INCOME_BOOST_MULTIPLIER. */
 function passiveIncome(s: PlayerState, elapsedMs: number): number {
   const elapsed = Math.max(0, elapsedMs);
@@ -41,6 +73,11 @@ export class TapEngine {
   private listeners = new Set<Listener>();
   private syncIntervalMs = 2500;
   private sending = false;
+  /**
+   * Игра свёрнута/закрывается: неотправленные тапы держим и на устройстве — при каждом их изменении,
+   * пока игра не вернулась на экран. Следующий вход дошлёт их (пачка с номером не засчитается дважды).
+   */
+  private keepOnDevice = false;
 
   /** результат синхронизации: для индикатора связи */
   onSync: ((ok: boolean, err?: unknown) => void) | null = null;
@@ -71,6 +108,8 @@ export class TapEngine {
 
   /** Принять состояние с сервера (вход, тапы, покупки) и пересчитать локальные значения. */
   applyServerState(state: PlayerState, now = performance.now()): void {
+    // первый ответ после входа: тапы, не дошедшие до сервера в прошлый раз (игру закрыли раньше), — в очередь
+    if (!this.snapshot) this.restoreUnsent(state);
     if (this.inflight && state.tapSeq >= this.inflight.seq) this.inflight = null;
     this.snapshot = state;
     this.snapshotAt = now;
@@ -79,7 +118,38 @@ export class TapEngine {
     const unackedTaps = this.pending + (this.inflight?.taps ?? 0);
     this.energy = Math.max(0, state.energy - (this.turboActive() ? 0 : unackedTaps * state.tapValue));
     this.energyAt = now;
+    this.persistUnsent();
     this.listeners.forEach((l) => l(state));
+  }
+
+  /** Игра ушла с экрана (свернули/закрывают): отправить, что есть, и сохранить неотправленное на устройстве. */
+  hide(): void {
+    this.keepOnDevice = true;
+    void this.flush();
+    this.persistUnsent();
+  }
+
+  /** Игра снова на экране: копия на устройстве больше не нужна — тапы уходят как обычно. */
+  show(): void {
+    this.keepOnDevice = false;
+    const id = this.snapshot?.profile.id;
+    if (id !== undefined) writeUnsent(id, null);
+  }
+
+  private persistUnsent(): void {
+    const id = this.snapshot?.profile.id;
+    if (!this.keepOnDevice || id === undefined) return;
+    writeUnsent(id, { inflight: this.inflight, pending: this.pending, pendingEarned: this.pendingEarned });
+  }
+
+  private restoreUnsent(state: PlayerState): void {
+    const saved = readUnsent(state.profile.id);
+    if (!saved) return;
+    writeUnsent(state.profile.id, null);
+    // неподтверждённая пачка уходит с тем же номером: если она всё же дошла, сервер её не повторит
+    if (saved.inflight && saved.inflight.seq > state.tapSeq && !this.inflight) this.inflight = saved.inflight;
+    this.pending += saved.pending;
+    this.pendingEarned += saved.pendingEarned;
   }
 
   serverNow(): number {
@@ -189,6 +259,8 @@ export class TapEngine {
       this.inflight = { seq: this.nextSeq++, taps: this.pending, earned: this.pendingEarned };
       this.pending = 0;
       this.pendingEarned = 0;
+      // копия на устройстве — уже с номером пачки (до отправки: игру могут закрыть, пока запрос в пути)
+      this.persistUnsent();
     }
     const batch = this.inflight;
     this.sending = true;
@@ -202,9 +274,10 @@ export class TapEngine {
       this.onSync?.(false, err);
       if (err instanceof ApiError) {
         if (err.code === 'RATE_LIMITED') this.backoffUntil = Date.now() + 10_000;
-        else if (err.code === 'VALIDATION')
+        else if (err.code === 'VALIDATION') {
           this.inflight = null; // такую пачку сервер не примет никогда
-        else if (!err.isNetwork) this.backoffUntil = Date.now() + 3_000;
+          this.persistUnsent();
+        } else if (!err.isNetwork) this.backoffUntil = Date.now() + 3_000;
       }
     } finally {
       this.sending = false;

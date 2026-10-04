@@ -23,6 +23,7 @@ import { useGame } from '../../store/game';
 import { useNav } from '../../store/nav';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
+import { useBusy } from '../../hooks/useBusy';
 
 type Kind = 'fullEnergy' | 'turbo' | 'multitap' | 'energyLimit';
 const TYPE: Record<Kind, BoostType> = {
@@ -86,7 +87,7 @@ export function BoostsScreen() {
   const pop = useNav((s) => s.pop);
   const [open, setOpen] = useState<Kind | null>(null);
   const [howOpen, setHowOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
   const now = useNow(1000);
   if (!player) return null;
   const b = player.boosts;
@@ -154,29 +155,28 @@ export function BoostsScreen() {
     };
   };
 
-  const activate = async (kind: Kind, origin: HTMLElement | null) => {
-    if (busy) return;
-    setBusy(true);
-    const res = await runAction({
-      request: () => endpoints.boost(TYPE[kind]),
-      predict: (s) => predict(kind, s),
-    });
-    setBusy(false);
-    if (!res) return;
-    haptic.notify('success');
-    if (kind === 'fullEnergy' || kind === 'turbo') {
-      playSound('reward');
-      toast.success(t(kind === 'fullEnergy' ? 'boost.energyRestored' : 'boost.turboStarted'));
+  // двойной тап по «Активировать/Купить» не тратит буст дважды
+  const activate = (kind: Kind, origin: HTMLElement | null) =>
+    run(async () => {
+      const res = await runAction({
+        request: () => endpoints.boost(TYPE[kind]),
+        predict: (s) => predict(kind, s),
+      });
+      if (!res) return;
+      haptic.notify('success');
+      if (kind === 'fullEnergy' || kind === 'turbo') {
+        playSound('reward');
+        toast.success(t(kind === 'fullEnergy' ? 'boost.energyRestored' : 'boost.turboStarted'));
+        setOpen(null);
+        pop();
+        return;
+      }
+      playSound('purchase');
+      confetti(centerOf(origin));
+      const level = res.state.boosts[kind].level;
+      toast.success(t('boost.bought', { name: view(kind).title, n: level }));
       setOpen(null);
-      pop();
-      return;
-    }
-    playSound('purchase');
-    confetti(centerOf(origin));
-    const level = res.state.boosts[kind].level;
-    toast.success(t('boost.bought', { name: view(kind).title, n: level }));
-    setOpen(null);
-  };
+    });
 
   const current = open ? view(open) : null;
   const Icon = open ? ICON[open] : null;

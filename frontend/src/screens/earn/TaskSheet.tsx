@@ -1,6 +1,6 @@
 import { formatDuration, formatInt, type TaskView } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+
 import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
 import { CoinIcon } from '../../components/icons';
@@ -14,6 +14,7 @@ import { playSound } from '../../lib/sound';
 import { useNav } from '../../store/nav';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
+import { useBusy } from '../../hooks/useBusy';
 
 interface Props {
   task: TaskView | null;
@@ -32,7 +33,7 @@ function TaskBody({ task, onClose }: { task: TaskView; onClose: () => void }) {
   const t = useT();
   const locale = useLocale();
   const now = useNow(1000);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
   const serverNow = now + (tapEngine.serverNow() - Date.now());
   const done = task.status === 'done';
   const hasLink =
@@ -40,19 +41,17 @@ function TaskBody({ task, onClose }: { task: TaskView; onClose: () => void }) {
   const waitMs = task.checkAvailableAt ? task.checkAvailableAt - serverNow : 0;
   const needsVisit = (task.type === 'LINK' || task.type === 'VIDEO') && task.status === 'new';
 
-  const check = async (origin: HTMLElement) => {
-    if (busy) return;
-    setBusy(true);
-    const res = await checkTask(task);
-    setBusy(false);
-    if (!res) return;
-    haptic.notify('success');
-    playSound('reward');
-    confetti(centerOf(origin));
-    flyCoins(centerOf(origin), 14);
-    toast.success(t('task.completed', { reward: formatInt(res.reward) }));
-    onClose();
-  };
+  const check = (origin: HTMLElement) =>
+    run(async () => {
+      const res = await checkTask(task);
+      if (!res) return;
+      haptic.notify('success');
+      playSound('reward');
+      confetti(centerOf(origin));
+      flyCoins(centerOf(origin), 14);
+      toast.success(t('task.completed', { reward: formatInt(res.reward) }));
+      onClose();
+    });
 
   return (
     <div className="flex flex-col items-center gap-3 pt-2 text-center" data-testid={`task-sheet-${task.id}`}>

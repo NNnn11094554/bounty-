@@ -1,6 +1,6 @@
 import { formatDuration, formatShort, type CardView } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
 import { CardArt, CardIcon } from '../../components/cards/CardIcon';
@@ -11,6 +11,7 @@ import { centerOf, confetti } from '../../game/effects';
 import { tapEngine } from '../../game/tapEngine';
 import { useAffordable } from '../../hooks/useAffordable';
 import { useNow } from '../../hooks/useNow';
+import { useBusy } from '../../hooks/useBusy';
 import { useLocale, useT } from '../../i18n';
 import { playSound } from '../../lib/sound';
 import { useNav } from '../../store/nav';
@@ -64,7 +65,7 @@ function CardSheetBody({ card, onClose }: { card: CardView; onClose: () => void 
   const t = useT();
   const locale = useLocale();
   const now = useNow(1000);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
   // перерисовка, когда монет становится достаточно (пассивный доход капает)
   useAffordable(card.nextPrice);
   const serverNow = now + (tapEngine.serverNow() - Date.now());
@@ -93,40 +94,39 @@ function CardSheetBody({ card, onClose }: { card: CardView; onClose: () => void 
     }
   };
 
-  const buy = async (origin: HTMLElement) => {
-    if (busy || block) return;
-    setBusy(true);
-    const res = await upgradeCard(card);
-    setBusy(false);
-    if (!res) return;
-    haptic.notify('success');
-    playSound('purchase');
-    confetti(centerOf(origin));
-    const level = res.cards.find((c) => c.id === card.id)?.level ?? card.level + 1;
-    toast.success(t('card.bought', { name: card.name[locale], n: level }));
-    if (res.combo && res.combo.reward === 0) toast.success(t('combo.found'));
-    onClose();
-  };
-
-  const unlock = async (origin: HTMLElement) => {
-    if (busy || stars === null) return;
-    haptic.impact('light');
-    setBusy(true);
-    const result = await unlockAsset(card);
-    setBusy(false);
-    if (result === 'paid') {
+  // двойной тап по «Купить» не покупает уровень дважды
+  const buy = (origin: HTMLElement) =>
+    run(async () => {
+      if (block) return;
+      const res = await upgradeCard(card);
+      if (!res) return;
       haptic.notify('success');
-      playSound('reward');
-      catMood.emit('purchase');
-      confetti(centerOf(origin), 60);
-      toast.success(
-        t('asset.unlocked', { name: card.name[locale], value: formatShort(card.nextProfit ?? 0, locale) }),
-      );
+      playSound('purchase');
+      confetti(centerOf(origin));
+      const level = res.cards.find((c) => c.id === card.id)?.level ?? card.level + 1;
+      toast.success(t('card.bought', { name: card.name[locale], n: level }));
+      if (res.combo && res.combo.reward === 0) toast.success(t('combo.found'));
       onClose();
-    } else if (result === 'pending') toast.info(t('shop.waiting'));
-    else if (result === 'outside') toast.info(t('shop.onlyTelegram'));
-    else if (result === 'failed') toast.error(t('shop.failed'));
-  };
+    });
+
+  const unlock = (origin: HTMLElement) =>
+    run(async () => {
+      if (stars === null) return;
+      haptic.impact('light');
+      const result = await unlockAsset(card);
+      if (result === 'paid') {
+        haptic.notify('success');
+        playSound('reward');
+        catMood.emit('purchase');
+        confetti(centerOf(origin), 60);
+        toast.success(
+          t('asset.unlocked', { name: card.name[locale], value: formatShort(card.nextProfit ?? 0, locale) }),
+        );
+        onClose();
+      } else if (result === 'pending') toast.info(t('shop.waiting'));
+      else if (result === 'outside') toast.info(t('shop.onlyTelegram'));
+      else if (result === 'failed') toast.error(t('shop.failed'));
+    });
 
   const paybackText =
     payback === null

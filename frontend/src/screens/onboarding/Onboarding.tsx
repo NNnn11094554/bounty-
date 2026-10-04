@@ -10,6 +10,7 @@ import { CoinIcon } from '../../components/icons';
 import { endpoints } from '../../api/endpoints';
 import { runAction } from '../../game/actions';
 import { centerOf, confetti, flyCoins } from '../../game/effects';
+import { useBusy } from '../../hooks/useBusy';
 import { useT, type MessageKey } from '../../i18n';
 import { playSound } from '../../lib/sound';
 import { useGame } from '../../store/game';
@@ -120,7 +121,7 @@ export function Onboarding() {
   const finish = useGame((s) => s.finishOnboarding);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [busy, setBusy] = useState(false);
+  const [busy, run] = useBusy();
   const last = step === SLIDES.length - 1;
 
   const go = (next: number) => {
@@ -134,21 +135,19 @@ export function Onboarding() {
     else if (info.offset.x > 60) go(step - 1);
   };
 
-  const start = async (origin: HTMLElement) => {
-    if (busy) return;
-    setBusy(true);
-    const res = await runAction({ request: () => endpoints.completeOnboarding() });
-    setBusy(false);
-    if (!res) return;
-    const point = centerOf(origin);
-    haptic.notify('success');
-    playSound('reward');
-    confetti(point, 120);
-    toast.reward(t('onboarding.done', { reward: formatInt(START_BONUS) }));
-    finish();
-    // монеты летят в баланс уже открывшегося Офиса
-    window.setTimeout(() => flyCoins(point, 16), 350);
-  };
+  const start = (origin: HTMLElement) =>
+    run(async () => {
+      const res = await runAction({ request: () => endpoints.completeOnboarding() });
+      if (!res) return;
+      const point = centerOf(origin);
+      haptic.notify('success');
+      playSound('reward');
+      confetti(point, 120);
+      toast.reward(t('onboarding.done', { reward: formatInt(START_BONUS) }));
+      finish();
+      // монеты летят в баланс уже открывшегося Офиса
+      window.setTimeout(() => flyCoins(point, 16), 350);
+    });
 
   const slide = SLIDES[step]!;
   return createPortal(

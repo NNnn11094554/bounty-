@@ -81,7 +81,8 @@ export function ComboPanel() {
             <CoinIcon size={14} className="shrink-0" />+{formatInt(combo.reward)}
           </p>
         )}
-        <p className="mt-0.5 truncate text-[11px] font-bold tabular text-white/45">
+        {/* на узком экране время переносится на вторую строку, а не обрезается («Новое через 12:57…») */}
+        <p className="mt-0.5 text-[11px] font-bold leading-tight tabular text-white/45">
           {t('combo.resetIn', { time: formatDuration(Math.max(0, nextResetAt - serverNow) / 1000) })}
         </p>
       </div>
