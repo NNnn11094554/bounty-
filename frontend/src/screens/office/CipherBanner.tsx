@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Button } from '../../components/Button';
 import { CoinIcon } from '../../components/icons';
+import { useOnTabHide, useOnTabShow } from '../../hooks/tabLayer';
 import { enterCipher, eraseLetter, exitCipher, useCipherInput } from '../../game/cipher';
 import { useLocale, useT } from '../../i18n';
 import { useDailyGames } from '../../store/dailyGames';
@@ -71,11 +72,9 @@ export function CipherBanner() {
   const shake = useCipherInput((s) => s.shake);
   const [help, setHelp] = useState(false);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useOnTabShow(() => void load());
   // уходя с Офиса, выходим из режима шифра
-  useEffect(() => exitCipher, []);
+  useOnTabHide(exitCipher);
 
   // пока шифр не введён — тонкая строка над котом: всё в одну линию, чтобы кот оставался крупным
   const row = 'mt-2 flex h-9 items-center gap-2 rounded-xl border px-2.5 shadow-card short:mt-1.5 short:h-8';

@@ -1,5 +1,5 @@
 import type { AuthResponse, GameConfig, Locale, OfflineIncome, PlayerState } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 
 export type BootStatus =
   | 'booting'

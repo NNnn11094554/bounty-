@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useLayerShown } from './tabLayer';
 
-/** Текущее время, обновляемое раз в intervalMs (для таймеров кулдаунов). */
+/**
+ * Текущее время для таймеров кулдаунов: компонент перерисовывается раз в intervalMs, а время берётся в момент
+ * рендера. В скрытой вкладке (components/TabLayer) таймер стоит; при показе компонент сразу перерисовывается
+ * с верным остатком.
+ */
 export function useNow(intervalMs = 1000, active = true): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [, setTick] = useState(0);
+  const shown = useLayerShown();
   useEffect(() => {
-    if (!active) return;
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    if (!active || !shown) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), intervalMs);
     return () => window.clearInterval(id);
-  }, [intervalMs, active]);
-  return now;
+  }, [intervalMs, active, shown]);
+  return Date.now();
 }

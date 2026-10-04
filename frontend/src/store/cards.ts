@@ -1,5 +1,5 @@
 import type { CardCategory, CardView } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 import { endpoints } from '../api/endpoints';
 import { useGame } from './game';
 

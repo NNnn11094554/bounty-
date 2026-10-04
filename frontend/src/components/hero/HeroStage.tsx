@@ -16,6 +16,7 @@ import {
 } from '../../game/skins';
 import { playSound } from '../../lib/sound';
 import { haptic } from '../../telegram/webapp';
+import { useLayerVisible } from '../../hooks/tabLayer';
 import { HeroFigure } from './HeroFigure';
 import { heroLayout } from './layout';
 
@@ -87,6 +88,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   const fxRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const handlerRef = useRef(handler);
+  const layerVisible = useLayerVisible();
   handlerRef.current = handler;
   const onPressRef = useRef(onPress);
   onPressRef.current = onPress;
@@ -345,6 +347,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       glanceFor(dx, dy, 1600);
     };
     const onMove = (e: PointerEvent) => {
+      // главная скрыта (открыта другая вкладка) — кот не следит за пальцем
+      if (!layerVisible()) return;
       if (e.pointerType === 'mouse' || e.buttons) lookAt(e.clientX, e.clientY);
     };
 
@@ -498,7 +502,8 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     };
     const runIdle = () => {
       const quiet = performance.now() - lastActivity;
-      if (!document.hidden && !onPressRef.current) {
+      // игра свёрнута или открыта другая вкладка — кот ничего не делает (никто не видит)
+      if (!document.hidden && !onPressRef.current && layerVisible()) {
         if (quiet > SLEEP_AFTER_MS) {
           if (mood !== 'sleepy') react('sleepy');
         } else if (quiet > IDLE_QUIET_MS && !reduced()) {
@@ -542,19 +547,22 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     // «усталость» и Turbo — атрибуты для CSS, меняются только при смене состояния
     let lastSleepy: boolean | null = null;
     let lastTurbo: boolean | null = null;
-    const stopFrame = onFrame(() => {
-      const h = handlerRef.current;
-      const sleepy = !onPressRef.current && h.sleepy();
-      const turbo = h.turbo();
-      if (sleepy !== lastSleepy) {
-        root.dataset.sleepy = String(sleepy);
-        lastSleepy = sleepy;
-      }
-      if (turbo !== lastTurbo) {
-        root.dataset.turbo = String(turbo);
-        lastTurbo = turbo;
-      }
-    });
+    const stopFrame = onFrame(
+      () => {
+        const h = handlerRef.current;
+        const sleepy = !onPressRef.current && h.sleepy();
+        const turbo = h.turbo();
+        if (sleepy !== lastSleepy) {
+          root.dataset.sleepy = String(sleepy);
+          lastSleepy = sleepy;
+        }
+        if (turbo !== lastTurbo) {
+          root.dataset.turbo = String(turbo);
+          lastTurbo = turbo;
+        }
+      },
+      { active: layerVisible },
+    );
 
     return () => {
       stopFrame();
@@ -572,7 +580,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       root.removeEventListener('click', noMenu);
       [...floats, ...rings, ...flashes, ...coins, ...pts].forEach((el) => el.remove());
     };
-  }, []);
+  }, [layerVisible]);
 
   const head = { x: L.cat.left + L.cat.width * art.head[0], y: L.cat.top + L.cat.height * art.head[1] };
   return (

@@ -1,5 +1,5 @@
 import { COSMETICS, playerLevel, type CosmeticDef, type CosmeticKind } from '@meowgul/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/Button';
 import { CosmeticCard } from '../../components/cat/CosmeticCard';
 import { CosmeticSheet } from '../../components/cat/CosmeticSheet';
@@ -11,6 +11,7 @@ import { useCollection } from '../../store/collection';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
+import { useOnTabShow } from '../../hooks/tabLayer';
 
 /** Сетка предметов коллекции (скины или эффекты) с окном предмета. */
 export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: string }) {
@@ -25,8 +26,12 @@ export function CosmeticGrid({ kind, testId }: { kind: CosmeticKind; testId?: st
   const [open, setOpen] = useState<CosmeticDef | null>(null);
   useNow(2000); // уровень растёт от тапов — карточки обновляются
   const level = playerLevel(tapEngine.totalEarnedNow()).level;
-  // новая лига открывает скин-награду: владение считает сервер — список обновляется
+  // при каждом открытии вкладки и когда новая лига открывает скин-награду: владение считает сервер
+  useOnTabShow(() => void load());
+  const seenLeague = useRef(league);
   useEffect(() => {
+    if (league === seenLeague.current) return;
+    seenLeague.current = league;
     void load();
   }, [load, league]);
   const items = COSMETICS.filter((c) => c.kind === kind);

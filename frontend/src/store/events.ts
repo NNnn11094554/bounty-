@@ -1,5 +1,5 @@
 import type { GoldenCoinEvent } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 
 interface EventsStore {
   /** золотая монета, которая сейчас бежит (или скоро побежит) по экрану */

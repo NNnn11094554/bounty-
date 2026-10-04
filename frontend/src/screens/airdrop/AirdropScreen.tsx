@@ -6,7 +6,7 @@ import {
   type AirdropRequirementId,
   type AirdropResponse,
 } from '@meowgul/shared';
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useState } from 'react';
 import { endpoints } from '../../api/endpoints';
 import { Button } from '../../components/Button';
 import { CardIcon } from '../../components/cards/CardIcon';
@@ -16,6 +16,7 @@ import { useLocale, useT, type MessageKey } from '../../i18n';
 import { useGame } from '../../store/game';
 import { useTasks } from '../../store/tasks';
 import { TaskSheet } from '../earn/TaskSheet';
+import { useOnTabShow } from '../../hooks/tabLayer';
 
 /** Кошелёк TON и библиотека TON Connect грузятся отдельным модулем — только когда кошелёк включён. */
 const WalletSection = TON_WALLET_ENABLED ? lazy(() => import('./WalletCard')) : null;
@@ -45,7 +46,8 @@ function useAirdrop() {
       })
       .catch(() => setFailed(true));
   }, []);
-  useEffect(load, [load]);
+  // при каждом открытии вкладки (пока грузится, видны прежние данные)
+  useOnTabShow(load);
   return { data, failed, load };
 }
 
@@ -117,9 +119,7 @@ export function AirdropScreen() {
   const tasks = useTasks((s) => s.tasks);
   const loadTasks = useTasks((s) => s.load);
   const [openId, setOpenId] = useState<string | null>(null);
-  useEffect(() => {
-    void loadTasks();
-  }, [loadTasks]);
+  useOnTabShow(() => void loadTasks());
   const extra = tasks.filter((x) => x.section === 'AIRDROP' && x.type !== 'CONNECT_WALLET');
   const openTask = openId ? (tasks.find((x) => x.id === openId) ?? null) : null;
   const percent = data ? Math.round(data.progress * 100) : 0;

@@ -10,7 +10,7 @@ import {
   type ProfileStats,
 } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { HeroBust } from '../../components/hero/HeroFigure';
@@ -24,6 +24,7 @@ import { useGame } from '../../store/game';
 import { useNav } from '../../store/nav';
 import { useProfile } from '../../store/profile';
 import { AchievementSheet } from './AchievementSheet';
+import { useOnTabShow } from '../../hooks/tabLayer';
 
 const STATS: ReadonlyArray<{ key: MessageKey; field: keyof ProfileStats; short?: boolean }> = [
   { key: 'profile.stat.taps', field: 'totalTaps' },
@@ -49,8 +50,12 @@ export function ProfileScreen() {
   const unlockedCount = player?.achievements.unlocked ?? 0;
   const [open, setOpen] = useState<Achievement | null>(null);
 
-  // перезагружаем при открытии и когда появляются новые достижения
+  // перезагружаем при каждом открытии вкладки и когда появляются новые достижения
+  useOnTabShow(() => void load());
+  const seenUnlocked = useRef(unlockedCount);
   useEffect(() => {
+    if (unlockedCount === seenUnlocked.current) return;
+    seenUnlocked.current = unlockedCount;
     void load();
   }, [load, unlockedCount]);
 
