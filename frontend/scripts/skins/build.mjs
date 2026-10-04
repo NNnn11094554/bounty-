@@ -10,6 +10,8 @@
 // и манифест src/game/skinArt.json (пропорции, голова, центр тела — по ним раскладывается сцена).
 // Картинки не растягиваются: только уменьшение (если исходник меньше размера — размер пропускается).
 // `node scripts/skins/build.mjs card` / `… background` — перекодировать только фоны карточек / сцены.
+// `node scripts/skins/build.mjs site` — персонажи сайта (src/site/catAssets.json: id и размеры) в
+// public/assets/site/cats/<id>/ (персонаж, сцена, портрет) и манифест src/site/catArt.json; игра не меняется.
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -100,19 +102,57 @@ async function writeCard(src, out, meta, aspect) {
 }
 
 /** Сцена (фон главного экрана и окна персонажа) во всех размерах. */
-async function writeBackground(src, out) {
-  await writeSizes(
-    sharp(src('background.png'), { limitInputPixels: false }),
-    out,
-    'background',
-    'w',
-    SIZES.background,
-    {
-      webp: { quality: 78, effort: 6 },
-      avif: { quality: 50, effort: 6 },
-    },
-  );
+async function writeBackground(src, out, sizes = SIZES.background) {
+  await writeSizes(sharp(src('background.png'), { limitInputPixels: false }), out, 'background', 'w', sizes, {
+    webp: { quality: 78, effort: 6 },
+    avif: { quality: 50, effort: 6 },
+  });
   dropLegacy(out, 'background');
+}
+
+/** Персонаж в нескольких размерах по высоте (с прозрачным фоном). */
+async function writeCharacter(src, out, sizes) {
+  const character = sharp(src('character.png'));
+  await writeSizes(character, out, 'character', 'h', sizes, {
+    webp: { quality: 88, alphaQuality: 92, smartSubsample: true, effort: 6 },
+    avif: { quality: 64, effort: 6 },
+  });
+  return character.metadata();
+}
+
+/** Персонажи сайта: свои id и размеры, своя папка и манифест (без карточек коллекции и лица). */
+async function buildSite() {
+  const site = JSON.parse(readFileSync(path.join(root, 'src', 'site', 'catAssets.json'), 'utf8'));
+  const siteOut = path.join(root, 'public', 'assets', 'site', 'cats');
+  const siteManifest = {};
+  for (const id of site.ids) {
+    const src = (f) => path.join(work, id, f);
+    if (!existsSync(src('meta.json'))) throw new Error(`${id}: нет .work/${id} — сначала compose.py`);
+    const out = path.join(siteOut, id);
+    rmSync(out, { recursive: true, force: true });
+    mkdirSync(out, { recursive: true });
+    const meta = JSON.parse(readFileSync(src('meta.json'), 'utf8'));
+    const { width, height } = await writeCharacter(src, out, site.sizes.character);
+    await writeBackground(src, out, site.sizes.background);
+    await fit(sharp(src('icon.png')), ICON, ICON)
+      .webp({ quality: 84 })
+      .toFile(path.join(out, 'icon.webp'));
+    siteManifest[id] = {
+      aspect: Number((width / height).toFixed(4)),
+      head: meta.head,
+      body: meta.body,
+      scene: meta.scene,
+    };
+    console.log(`[site] ${id}: персонаж ${width}×${height}`);
+  }
+  const file = path.join(root, 'src', 'site', 'catArt.json');
+  writeFileSync(file, `${JSON.stringify(siteManifest, null, 2)}\n`);
+  console.log(`[site] ${site.ids.length} персонажей → ${path.relative(root, siteOut)}`);
+}
+
+if (process.argv.includes('site')) {
+  await buildSite();
+  process.exit(0);
 }
 
 const onlyCard = process.argv.includes('card');
@@ -139,13 +179,8 @@ for (const id of ids.sort()) {
     continue;
   }
 
-  const character = sharp(src('character.png'));
-  await writeSizes(character, out, 'character', 'h', SIZES.character, {
-    webp: { quality: 88, alphaQuality: 92, smartSubsample: true, effort: 6 },
-    avif: { quality: 64, effort: 6 },
-  });
+  const { width, height } = await writeCharacter(src, out, SIZES.character);
   dropLegacy(out, 'character');
-  const { width, height } = await character.metadata();
 
   await writeBackground(src, out);
 

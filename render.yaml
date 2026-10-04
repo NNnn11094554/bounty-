@@ -69,6 +69,13 @@ services:
       - key: VITE_MINIAPP_SHORT_NAME
         value: app
     routes:
+      # сайт игры — отдельная страница сборки (frontend/site/index.html)
+      - type: rewrite
+        source: /site
+        destination: /site/index.html
+      - type: rewrite
+        source: /site/*
+        destination: /site/index.html
       # клиентская навигация (/admin и т.п.) — существующие файлы отдаются как есть
       - type: rewrite
         source: /*
@@ -79,6 +86,9 @@ services:
         name: Cache-Control
         value: public, max-age=31536000, immutable
       - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /site/index.html
         name: Cache-Control
         value: no-cache
       - path: /*

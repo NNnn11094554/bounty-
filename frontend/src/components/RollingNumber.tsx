@@ -2,6 +2,7 @@ import { formatInt } from '@meowgul/shared';
 import { useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../animations';
 import { onFrame } from '../game/frameLoop';
+import './RollingNumber.css';
 
 interface Props {
   /** вызывается каждый кадр; целая часть показывается */

@@ -111,36 +111,6 @@ textarea {
   padding-bottom: max(var(--tg-safe-bottom, 0px), var(--safe-bottom));
 }
 
-/* Табло баланса */
-.roll {
-  display: inline-flex;
-  align-items: flex-end;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.roll-cell {
-  display: inline-block;
-  height: 1.2em;
-  overflow: hidden;
-  position: relative;
-  vertical-align: bottom;
-}
-.roll-col {
-  display: flex;
-  flex-direction: column;
-  will-change: transform;
-}
-.roll-col > span {
-  height: 1.2em;
-  line-height: 1.2em;
-  text-align: center;
-}
-.roll-sep {
-  display: inline-block;
-  width: 0.28em;
-  line-height: 1.2em;
-}
-
 /* картинки в игре — не «ссылки»: долгое нажатие не открывает системное меню (сохранить/открыть) */
 img {
   -webkit-touch-callout: none;

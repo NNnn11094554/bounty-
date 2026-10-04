@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#05040a" />
+    <meta name="color-scheme" content="dark" />
+    <title>Meowgul — чёрный кот и его криптоимперия</title>
+    <meta
+      name="description"
+      content="Meowgul — игра в Telegram: тапай чёрного кота, собирай коллекцию котов-персонажей, прокачивай активы, выполняй задания и копи очки Airdrop."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Meowgul — чёрный кот и его криптоимперия" />
+    <meta
+      property="og:description"
+      content="Тапай кота, собирай персонажей и копи очки Airdrop. Игра в Telegram."
+    />
+    <meta property="og:image" content="/assets/generated/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/assets/generated/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/assets/generated/icon-192.png" />
+    <style>
+      /* критический CSS: тёмный фон и экран загрузки — до бандла */
+      html,
+      body {
+        margin: 0;
+        background: #05040a;
+        color: #f4f1ea;
+      }
+      #site-boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #05040a;
+      }
+      #site-boot span {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-top-color: rgba(255, 201, 60, 0.9);
+        animation: boot-spin 1s linear infinite;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="site-root">
+      <div id="site-boot"><span></span></div>
+    </div>
+    <script type="module" src="/src/site/main.tsx"></script>
+  </body>
+</html>

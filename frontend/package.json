@@ -15,12 +15,16 @@
     "test:e2e:scenarios": "playwright test e2e/scenarios"
   },
   "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource-variable/nunito": "^5.2.0",
+    "@fontsource-variable/unbounded": "^5.3.0",
     "@meowgul/shared": "1.0.0",
     "@tonconnect/ui-react": "^2.4.4",
     "framer-motion": "^12.23.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "three": "^0.186.1",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -28,6 +32,7 @@
     "@testing-library/react": "^16.3.0",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.21",
     "jsdom": "^27.0.0",
