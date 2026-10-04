@@ -16,6 +16,7 @@
     "build": "npm run build -w backend && npm run build -w frontend",
     "test": "npm run test -w shared && npm run test -w backend && npm run test -w frontend",
     "test:e2e": "npm run test:e2e -w frontend",
+    "test:e2e:scenarios": "npm run test:e2e:scenarios -w frontend",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w backend && npm run typecheck -w frontend",
     "format": "prettier --write .",
