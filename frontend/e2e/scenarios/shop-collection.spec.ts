@@ -1,6 +1,6 @@
 import { db, expect, test } from './fixtures';
 
-/** Магазин и коллекция: покупки за Telegram Stars, премиальный персонаж, закрытые персонажи, эффекты. */
+/** Магазин и коллекция: покупки за Telegram Stars, премиальный эффект, бесплатные персонажи, эффекты за монеты. */
 test.describe('Scenario: shop and collection', () => {
   test('Stars purchase: coins arrive after payment, the league does not move', async ({ game, page }) => {
     await game.login(710000401, { state: { leagueLevel: 0 } });
@@ -15,50 +15,53 @@ test.describe('Scenario: shop and collection', () => {
     expect(after.leagueLevel).toBe(0);
   });
 
-  test('premium character for Stars: bought in the showcase, worn on the office, kept after a restart', async ({
+  test('premium tap effect for Stars: bought in the showcase, equipped, kept after a restart', async ({
     game,
     page,
   }) => {
     await game.login(710000402);
     await game.tab('shop');
-    await page.getByTestId('cosmetic-angel_guardian').click();
+    await page.getByTestId('shop-tabs-cosmetics').click();
+    await page.getByTestId('cosmetic-matrix').click();
     const modal = page.getByTestId('cosmetic-modal');
-    await expect(modal.getByTestId('skin-preview')).toBeVisible();
-    await expect(modal.getByTestId('cosmetic-price')).toContainText('149');
-    await expect(modal.getByTestId('cosmetic-buy')).toContainText('149');
+    await expect(modal.getByTestId('cosmetic-buy')).toContainText('99');
     await modal.getByTestId('cosmetic-buy').click();
     await expect(page.getByTestId('toast-success')).toBeVisible();
-    // купленный персонаж сразу надет
+    // купленный эффект сразу надет, персонаж не меняется
     await expect(modal.getByTestId('cosmetic-equipped')).toBeVisible();
-    await game.back();
-    await game.tab('office');
-    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'angel_guardian');
     const user = await game.user();
-    expect(user.equippedSkinId).toBe('angel_guardian');
+    expect([user.equippedSkinId, user.equippedEffectId]).toEqual(['cyber_samurai', 'matrix']);
     expect(
-      await db.purchase.count({
-        where: { userId: user.id, productId: 'skin_angel_guardian', status: 'PAID' },
-      }),
+      await db.purchase.count({ where: { userId: user.id, productId: 'effect_matrix', status: 'PAID' } }),
     ).toBe(1);
+    await game.back();
     await game.reload();
-    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'angel_guardian');
+    await game.tab('collection');
+    await page.getByTestId('collection-tabs-effect').click();
+    await expect(page.getByTestId('cosmetic-matrix')).toHaveAttribute('data-state', 'equipped');
   });
 
-  test('locked characters: a league reward cannot be bought or worn before its league', async ({
+  test('characters: all three are free from the start — no locks or prices, worn from the showcase', async ({
     game,
     page,
   }) => {
     await game.login(710000403, { state: { leagueLevel: 0 } });
     await game.tab('collection');
-    const card = page.getByTestId('cosmetic-astro_cat');
-    await expect(card).toHaveAttribute('data-state', 'locked');
-    await card.click();
+    await expect(page.getByTestId('cosmetic-cyber_samurai')).toHaveAttribute('data-state', 'equipped');
+    for (const id of ['galaxy_emperor', 'shadow_drifter'])
+      await expect(page.getByTestId(`cosmetic-${id}`)).toHaveAttribute('data-state', 'owned');
+    await page.getByTestId('cosmetic-galaxy_emperor').click();
     const modal = page.getByTestId('cosmetic-modal');
-    await expect(modal.getByTestId('skin-lock')).toContainText('Silver');
-    await expect(modal.getByTestId('cosmetic-locked')).toBeDisabled();
+    await expect(modal.getByTestId('skin-preview')).toBeVisible();
+    await expect(modal.getByTestId('skin-lock')).toHaveCount(0);
+    await expect(modal.getByTestId('cosmetic-price')).toHaveCount(0);
     await expect(modal.getByTestId('cosmetic-buy')).toHaveCount(0);
+    await modal.getByTestId('cosmetic-equip').click();
+    await expect(modal.getByTestId('cosmetic-equipped')).toBeVisible();
     await game.back();
-    await expect(page.getByTestId('cosmetic-modal').getByRole('dialog')).toBeHidden();
+    await game.tab('office');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'galaxy_emperor');
+    expect((await game.user()).equippedSkinId).toBe('galaxy_emperor');
   });
 
   test('tap effect for coins: bought when level and coins allow, and used on the next tap', async ({

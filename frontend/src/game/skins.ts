@@ -67,62 +67,9 @@ export interface SkinStyle {
 }
 
 export const SKIN_STYLES: Record<string, SkinStyle> = {
-  neon_punk: { accent: '#22d3ff', accent2: '#ff3fd8', ambient: 'neon', idle: 'bob', burst: 'neon' },
-  desert_nomad: { accent: '#ffb35c', accent2: '#ffe0a3', ambient: 'sand', idle: 'sway', burst: 'gold' },
-  sakura_blossom: {
-    accent: '#ff8ac0',
-    accent2: '#ffe0ee',
-    ambient: 'petals',
-    idle: 'breathe',
-    burst: 'petal',
-  },
-  astro_cat: { accent: '#8ec5ff', accent2: '#ffffff', ambient: 'stars', idle: 'float', burst: 'star' },
-  mecha: { accent: '#4db8ff', accent2: '#e6f4ff', ambient: 'sparks', idle: 'hover', burst: 'bolt' },
-  crystal_prince: {
-    accent: '#b48bff',
-    accent2: '#8fe3ff',
-    ambient: 'shards',
-    idle: 'hover',
-    burst: 'diamond',
-  },
-  forest_spirit: {
-    accent: '#a5e85d',
-    accent2: '#ffd36b',
-    ambient: 'fireflies',
-    idle: 'sway',
-    burst: 'spark',
-  },
-  ocean_guardian: {
-    accent: '#3fd0ff',
-    accent2: '#2a6bff',
-    ambient: 'bubbles',
-    idle: 'float',
-    burst: 'diamond',
-  },
-  inferno: { accent: '#ff7a1a', accent2: '#ffd23c', ambient: 'embers', idle: 'flicker', burst: 'gold' },
-  toxic: { accent: '#59ff3f', accent2: '#d4ff3f', ambient: 'spores', idle: 'flicker', burst: 'spark' },
-  stealth_assassin: {
-    accent: '#ff3b6b',
-    accent2: '#ffb7d5',
-    ambient: 'petals',
-    idle: 'sway',
-    burst: 'petal',
-  },
-  dark_reaper: { accent: '#8a3bff', accent2: '#c9a4ff', ambient: 'smoke', idle: 'sway', burst: 'smoke' },
-  arctic_king: { accent: '#7fd0ff', accent2: '#ffffff', ambient: 'snow', idle: 'breathe', burst: 'diamond' },
-  vampire_lord: { accent: '#ff2b4a', accent2: '#ff9a7a', ambient: 'bats', idle: 'breathe', burst: 'heart' },
-  lunar_witch: { accent: '#b45bff', accent2: '#e6d6ff', ambient: 'magic', idle: 'float', burst: 'star' },
-  royal_emperor: { accent: '#ffc93c', accent2: '#ff5a3c', ambient: 'sparks', idle: 'breathe', burst: 'gold' },
-  angel_guardian: {
-    accent: '#ffe7a3',
-    accent2: '#9fd8ff',
-    ambient: 'feathers',
-    idle: 'float',
-    burst: 'star',
-  },
-  shadow_drifter: { accent: '#a24bff', accent2: '#6a8bff', ambient: 'smoke', idle: 'sway', burst: 'smoke' },
   cyber_samurai: { accent: '#ff2a3c', accent2: '#ff9aa8', ambient: 'petals', idle: 'sway', burst: 'petal' },
   galaxy_emperor: { accent: '#7a5cff', accent2: '#ff4fd8', ambient: 'stars', idle: 'float', burst: 'star' },
+  shadow_drifter: { accent: '#a24bff', accent2: '#6a8bff', ambient: 'smoke', idle: 'sway', burst: 'smoke' },
 };
 
 /** Геометрия картинки персонажа (собирает scripts/skins): пропорции, голова, центр тела. */

@@ -63,11 +63,11 @@ test.describe('Scenario: first day', () => {
 
     // бесплатный персонаж: надевается с карточки — главный экран показывает его и его мир
     await game.tab('collection');
-    await page.getByTestId('equip-desert_nomad').click();
-    await expect(page.getByTestId('cosmetic-desert_nomad')).toHaveAttribute('data-state', 'equipped');
+    await page.getByTestId('equip-galaxy_emperor').click();
+    await expect(page.getByTestId('cosmetic-galaxy_emperor')).toHaveAttribute('data-state', 'equipped');
     await game.tab('office');
-    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'desert_nomad');
-    await expect(page.getByTestId('skin-scene')).toHaveAttribute('data-scene-skin', 'desert_nomad');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'galaxy_emperor');
+    await expect(page.getByTestId('skin-scene')).toHaveAttribute('data-scene-skin', 'galaxy_emperor');
 
     // профиль: статистика с сервера
     await game.tab('profile');
@@ -76,7 +76,7 @@ test.describe('Scenario: first day', () => {
 
     // всё сохраняется после перезапуска
     await game.reload();
-    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'desert_nomad');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'galaxy_emperor');
     await expect(page.getByTestId('stat-per-hour')).toHaveText('+133');
   });
 });

@@ -25,6 +25,8 @@ describe('skin catalog ↔ visuals', () => {
   it('every skin in the catalog has a style, art geometry and all its files in every size (AVIF + WebP)', () => {
     expect(Object.keys(SKIN_STYLES).sort()).toEqual(SKINS.map((s) => s.id).sort());
     expect(Object.keys(art).sort()).toEqual(SKINS.map((s) => s.id).sort());
+    // папок персонажей, убранных из каталога, в игре нет
+    expect(readdirSync(path.join(PUBLIC, 'assets', 'skins')).sort()).toEqual(SKINS.map((s) => s.id).sort());
     const expected = new Set(['icon.webp']);
     for (const file of ['character', 'background', 'card'] as const)
       for (const size of SKIN_SIZES[file])
@@ -65,7 +67,7 @@ describe('skin catalog ↔ visuals', () => {
 
   it('characters are distinct: own colours, scene atmosphere and animation set per skin', () => {
     const accents = new Set(SKINS.map((s) => skinStyle(s.id).accent));
-    expect(accents.size).toBeGreaterThanOrEqual(18);
+    expect(accents.size).toBe(SKINS.length);
     expect(SKINS.some((s) => (skinStyle(s.id).ambient as string) === 'rain')).toBe(false);
     const combos = new Set(
       SKINS.map((s) => `${skinStyle(s.id).ambient}/${skinStyle(s.id).idle}/${skinStyle(s.id).accent}`),

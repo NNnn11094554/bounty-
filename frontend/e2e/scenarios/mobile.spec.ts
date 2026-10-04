@@ -89,7 +89,7 @@ for (const [width, height] of SIZES) {
       await page.waitForTimeout(700);
       const modal = await worstUpscale(game);
       expect(modal.worst).toBeLessThanOrEqual(1.01);
-      await expect(page.getByTestId('cosmetic-buy')).toBeInViewport();
+      await expect(page.getByTestId('cosmetic-equip')).toBeInViewport();
       await game.back();
       expect(bad).toEqual([]);
     });

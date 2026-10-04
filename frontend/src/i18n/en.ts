@@ -454,7 +454,7 @@ export const en: Record<MessageKey, string> = {
     'Crypto assets for Telegram Stars: unlock one and it earns right away. Further levels cost coins.',
   'shop.assetsEmpty': 'Every Stars asset is already unlocked!',
   'shop.cosmeticsHint': 'Tap effects: what flies from under your finger',
-  'shop.skinsHint': 'The first 3 characters are free, 3 more are league rewards, the rest cost Stars',
+  'shop.skinsHint': 'All characters are free for now — new ones are coming soon',
   'office.collection': 'Collection',
   'nav.shop': 'Shop',
 };

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   cosmeticById,
+  resolveCosmeticId,
   SHOP_PRODUCT_IDS,
   type Locale,
   type ShopProduct,
@@ -117,20 +118,6 @@ const INVOICE_TEXT: Record<ShopProductId, Record<Locale, (g: Grant) => [string, 
       `Your cards’ passive income doubles for ${'hours' in g ? g.hours : 24} h. Stacks with an active boost`,
     ],
   },
-  skin_angel_guardian: cosmeticText('angel_guardian'),
-  skin_shadow_drifter: cosmeticText('shadow_drifter'),
-  skin_cyber_samurai: cosmeticText('cyber_samurai'),
-  skin_galaxy_emperor: cosmeticText('galaxy_emperor'),
-  skin_forest_spirit: cosmeticText('forest_spirit'),
-  skin_ocean_guardian: cosmeticText('ocean_guardian'),
-  skin_inferno: cosmeticText('inferno'),
-  skin_toxic: cosmeticText('toxic'),
-  skin_stealth_assassin: cosmeticText('stealth_assassin'),
-  skin_dark_reaper: cosmeticText('dark_reaper'),
-  skin_arctic_king: cosmeticText('arctic_king'),
-  skin_vampire_lord: cosmeticText('vampire_lord'),
-  skin_lunar_witch: cosmeticText('lunar_witch'),
-  skin_royal_emperor: cosmeticText('royal_emperor'),
   effect_matrix: cosmeticText('matrix'),
 };
 
@@ -265,6 +252,10 @@ export async function checkPreCheckout(p: PaymentInfo): Promise<string | null> {
   if (p.currency !== 'XTR' || p.totalAmount !== purchase.stars) return stale;
   if (purchase.user.isBanned) return ru ? 'Аккаунт заблокирован' : 'Your account is banned';
   const grant = purchase.grant as Grant;
+  if ('cosmetic' in grant && cosmeticById(resolveCosmeticId(grant.cosmetic))?.price?.currency !== 'stars') {
+    // предмет убрали из каталога или он стал бесплатным, пока счёт был открыт
+    return ru ? 'Этот предмет больше не продаётся' : 'This item is no longer for sale';
+  }
   if ('asset' in grant) {
     const owned = await prisma.userCard.findUnique({
       where: { userId_cardId: { userId: purchase.userId, cardId: grant.asset } },

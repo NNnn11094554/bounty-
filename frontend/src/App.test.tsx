@@ -41,7 +41,7 @@ const state = {
   tapSeq: 0,
   turboUntil: null,
   incomeBoostUntil: null,
-  cosmetics: { skin: 'neon_punk', effect: 'coins' },
+  cosmetics: { skin: 'cyber_samurai', effect: 'coins' },
   totalTaps: 0,
   boosts: {
     fullEnergy: { left: 6, perDay: 6, cooldownUntil: null, cooldownSec: 3600 },

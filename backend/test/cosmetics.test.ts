@@ -14,13 +14,15 @@ import {
   LEGACY_SKINS,
   levelThreshold,
   playerLevel,
+  SHOP_PRODUCT_IDS,
 } from '@meowgul/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { SHOP } from '../src/game/config/shop.js';
 import { prisma } from '../src/lib/db.js';
 import { setPaymentsGateway } from '../src/services/payments.js';
-import { fulfillPayment, refundPurchase } from '../src/services/shop.js';
+import { checkPreCheckout, fulfillPayment, refundPurchase } from '../src/services/shop.js';
 import { client, createApp, resetDb, tgUser } from './helpers.js';
 
 describe('collection: skins and tap effects', () => {
@@ -60,66 +62,62 @@ describe('collection: skins and tap effects', () => {
     expect(playerLevel(1e15).level).toBe(50);
   });
 
-  it('a new player owns the 3 free cats and the coin effect, wears the starting cat', async () => {
+  /** персонажи коллекции: сейчас все три бесплатные, стартовый — первый */
+  const FREE_SKINS = ['cyber_samurai', 'galaxy_emperor', 'shadow_drifter'];
+
+  it('a new player owns all 3 characters and the coin effect, wears the starting one', async () => {
     const c = await player(17001);
     expect((await c.get('/api/collection')).json<CollectionResponse>()).toEqual({
-      owned: ['neon_punk', 'desert_nomad', 'sakura_blossom', 'coins'],
-      equipped: { skin: 'neon_punk', effect: 'coins' },
+      owned: [...FREE_SKINS, 'coins'],
+      equipped: { skin: 'cyber_samurai', effect: 'coins' },
     });
     const state = (await c.get('/api/state')).json<StateResponse>().state;
-    expect(state.cosmetics).toEqual({ skin: 'neon_punk', effect: 'coins' });
+    expect(state.cosmetics).toEqual({ skin: 'cyber_samurai', effect: 'coins' });
+    const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17001n } });
+    expect(user.equippedSkinId).toBe(DEFAULT_SKIN_ID);
   });
 
   it('free skins: equipped without buying, not sold for coins, kept after reload', async () => {
     const c = await player(17003, 1_000, 50_000, 0);
-    const res = await c.post('/api/collection/desert_nomad/equip');
+    const res = await c.post('/api/collection/galaxy_emperor/equip');
     expect(res.statusCode).toBe(200);
     const body = res.json<CollectionActionResponse>();
-    expect(body.equipped.skin).toBe('desert_nomad');
-    expect(body.state.cosmetics.skin).toBe('desert_nomad');
-    expect(code(await c.post('/api/collection/sakura_blossom/buy'))).toBe('VALIDATION');
+    expect(body.equipped.skin).toBe('galaxy_emperor');
+    expect(body.state.cosmetics.skin).toBe('galaxy_emperor');
+    expect(code(await c.post('/api/collection/shadow_drifter/buy'))).toBe('VALIDATION');
     expect(await prisma.transaction.count({ where: { type: 'cosmetic_purchase' } })).toBe(0);
     expect((await prisma.user.findUniqueOrThrow({ where: { telegramId: 17003n } })).balance.toNumber()).toBe(
       50_000,
     );
     // переодеться и обратно; после «перезагрузки» надетый скин на месте
-    await c.post('/api/collection/sakura_blossom/equip');
-    await c.post('/api/collection/desert_nomad/equip');
+    await c.post('/api/collection/shadow_drifter/equip');
+    await c.post('/api/collection/galaxy_emperor/equip');
     const reloaded = (await c.post('/api/auth')).json<AuthResponse>();
-    expect(reloaded.state.cosmetics.skin).toBe('desert_nomad');
+    expect(reloaded.state.cosmetics.skin).toBe('galaxy_emperor');
   });
 
-  it('league skins: closed below the league, then owned for free (Silver, Gold, Platinum), not sold', async () => {
+  it('every character is free at any league: no league rewards, nothing granted in the database', async () => {
     const bronze = await player(17002, 1_000, 50_000, 0);
-    expect((await bronze.get('/api/collection')).json<CollectionResponse>().owned).not.toContain('astro_cat');
-    expect(code(await bronze.post('/api/collection/astro_cat/equip'))).toBe('LOCKED');
-    expect(code(await bronze.post('/api/collection/astro_cat/buy'))).toBe('VALIDATION');
-
-    const gold = await player(17008, 1_000_000, 0, 2);
-    const owned = (await gold.get('/api/collection')).json<CollectionResponse>().owned;
-    expect(owned).toEqual(expect.arrayContaining(['astro_cat', 'mecha']));
-    expect(owned).not.toContain('crystal_prince');
-    expect(code(await gold.post('/api/collection/crystal_prince/equip'))).toBe('LOCKED');
-    const res = (await gold.post('/api/collection/mecha/equip')).json<CollectionActionResponse>();
-    expect(res.state.cosmetics.skin).toBe('mecha');
-    // в базе ничего не выдаётся: владение — по лиге
-    const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17008n } });
-    expect(await prisma.userCosmetic.count({ where: { userId: user.id } })).toBe(0);
-
-    // поднялся до Platinum — третий скин лиги уже его
-    await prisma.user.update({ where: { id: user.id }, data: { leagueLevel: 3 } });
-    expect((await gold.post('/api/collection/crystal_prince/equip')).statusCode).toBe(200);
-    expect(leagueRewardSkins(1).map((s) => s.id)).toEqual(['astro_cat']);
-    expect(leagueRewardSkins(4)).toEqual([]);
+    const legend = await player(17008, 1_000_000, 0, 9);
+    for (const c of [bronze, legend]) {
+      const { owned } = (await c.get('/api/collection')).json<CollectionResponse>();
+      expect(owned.filter((id) => FREE_SKINS.includes(id))).toEqual(FREE_SKINS);
+      expect((await c.post('/api/collection/shadow_drifter/equip')).statusCode).toBe(200);
+    }
+    for (let league = 0; league <= 9; league++) expect(leagueRewardSkins(league)).toEqual([]);
+    expect(await prisma.userCosmetic.count()).toBe(0);
   });
 
-  it('cannot equip what is not owned, buy Stars items for coins or unknown items', async () => {
+  it('cannot equip what is not owned, buy Stars items for coins, free or removed items', async () => {
     const c = await player(17004, levelThreshold(30), 10_000_000_000);
-    expect(code(await c.post('/api/collection/dark_reaper/equip'))).toBe('LOCKED');
-    expect(code(await c.post('/api/collection/angel_guardian/buy'))).toBe('VALIDATION');
+    expect(code(await c.post('/api/collection/matrix/equip'))).toBe('LOCKED');
+    // эффект за Stars не продаётся за монеты даже очень богатому игроку
+    expect(code(await c.post('/api/collection/matrix/buy'))).toBe('VALIDATION');
+    expect(code(await c.post('/api/collection/cyber_samurai/buy'))).toBe('VALIDATION');
     expect((await c.post('/api/collection/free_cat/buy')).statusCode).toBe(404);
-    // скин за Stars не продаётся за монеты даже очень богатому игроку
-    expect(code(await c.post('/api/collection/royal_emperor/buy'))).toBe('VALIDATION');
+    // персонажи, убранные из коллекции, — неизвестные предметы
+    expect((await c.post('/api/collection/royal_emperor/equip')).statusCode).toBe(404);
+    expect((await c.post('/api/collection/angel_guardian/buy')).statusCode).toBe(404);
     const poor = await player(17005, levelThreshold(6), 100);
     expect(code(await poor.post('/api/collection/stars/buy'))).toBe('INSUFFICIENT_FUNDS');
     expect((await poor.get('/api/collection')).json<CollectionResponse>().owned).not.toContain('stars');
@@ -127,80 +125,53 @@ describe('collection: skins and tap effects', () => {
 
   it('effects are equipped separately from skins', async () => {
     const c = await player(17006, levelThreshold(6), 1_000_000);
+    await c.post('/api/collection/galaxy_emperor/equip');
     await c.post('/api/collection/hearts/buy');
     const res = (await c.post('/api/collection/stars/buy')).json<CollectionActionResponse>();
-    expect(res.equipped).toEqual({ skin: 'neon_punk', effect: 'stars' });
+    expect(res.equipped).toEqual({ skin: 'galaxy_emperor', effect: 'stars' });
     const back = (await c.post('/api/collection/hearts/equip')).json<CollectionActionResponse>();
-    expect(back.state.cosmetics).toEqual({ skin: 'neon_punk', effect: 'hearts' });
+    expect(back.state.cosmetics).toEqual({ skin: 'galaxy_emperor', effect: 'hearts' });
   });
 
-  it('premium skins: Stars invoice → delivered and equipped, no second invoice, refund takes it back', async () => {
+  it('Stars shop: no characters for sale; the premium effect → delivered and equipped, refund takes it back', async () => {
     setPaymentsGateway({
       createInvoiceLink: (inv) => Promise.resolve(`https://t.me/$${inv.payload}`),
       refund: () => Promise.resolve(),
     });
     const c = await player(17007);
     const shop = (await c.get('/api/shop')).json<ShopResponse>().products;
-    expect(shop.find((p) => p.id === 'skin_angel_guardian')).toMatchObject({
-      kind: 'cosmetic',
-      stars: 149,
-      owned: false,
-    });
-    // все 14 скинов за Stars — в магазине, по цене из каталога
-    const starSkins = COSMETICS.filter((s) => s.kind === 'skin' && s.price?.currency === 'stars');
-    expect(starSkins).toHaveLength(14);
-    for (const s of starSkins) {
-      expect(shop.find((p) => p.id === `skin_${s.id}`)).toMatchObject({
-        kind: 'cosmetic',
-        stars: s.price!.amount,
-        cosmeticId: s.id,
-      });
-    }
+    // в магазине — только предметы, которые каталог продаёт за Stars (сейчас это эффект «Матрица»)
+    const cosmetics = shop.filter((p) => p.kind === 'cosmetic');
+    expect(cosmetics.map((p) => p.id)).toEqual(['effect_matrix']);
+    expect(shop.some((p) => p.id.startsWith('skin_'))).toBe(false);
+    expect(cosmetics[0]).toMatchObject({ stars: 99, cosmeticId: 'matrix', owned: false });
+    expect(code(await c.post('/api/shop/invoice', { productId: 'skin_cyber_samurai' }))).toBe('VALIDATION');
 
-    const inv = (
-      await c.post('/api/shop/invoice', { productId: 'skin_angel_guardian' })
-    ).json<InvoiceResponse>();
+    const inv = (await c.post('/api/shop/invoice', { productId: 'effect_matrix' })).json<InvoiceResponse>();
     const purchase = await prisma.purchase.findUniqueOrThrow({ where: { id: inv.purchaseId } });
-    expect(
-      await fulfillPayment({
-        payload: purchase.payload,
-        fromId: 17007,
-        currency: 'XTR',
-        totalAmount: 149,
-        chargeId: 'ch-angel',
-      }),
-    ).toBe('paid');
+    const pay = { payload: purchase.payload, fromId: 17007, currency: 'XTR', totalAmount: 99 };
+    expect(await checkPreCheckout(pay)).toBeNull();
+    expect(await fulfillPayment({ ...pay, chargeId: 'ch-matrix' })).toBe('paid');
     const col = (await c.get('/api/collection')).json<CollectionResponse>();
-    expect(col.owned).toContain('angel_guardian');
-    expect(col.equipped.skin).toBe('angel_guardian');
+    expect(col.owned).toContain('matrix');
+    expect(col.equipped).toEqual({ skin: 'cyber_samurai', effect: 'matrix' });
     expect(
-      (await c.get('/api/shop')).json<ShopResponse>().products.find((p) => p.id === 'skin_angel_guardian')!
-        .owned,
+      (await c.get('/api/shop')).json<ShopResponse>().products.find((p) => p.id === 'effect_matrix')!.owned,
     ).toBe(true);
-    expect(code(await c.post('/api/shop/invoice', { productId: 'skin_angel_guardian' }))).toBe('CONFLICT');
+    expect(code(await c.post('/api/shop/invoice', { productId: 'effect_matrix' }))).toBe('CONFLICT');
 
     await refundPurchase(purchase.id);
     const after = (await c.get('/api/collection')).json<CollectionResponse>();
-    expect(after.owned).not.toContain('angel_guardian');
-    expect(after.equipped.skin).toBe('neon_punk');
+    expect(after.owned).not.toContain('matrix');
+    expect(after.equipped).toEqual({ skin: 'cyber_samurai', effect: 'coins' });
   });
-  it('catalog: 20 characters — 3 free, 3 for leagues, 14 for Stars; rarities are cosmetic only', () => {
+
+  it('catalog: 3 characters, all free, the starting one first; rarities are cosmetic only', () => {
     const skins = COSMETICS.filter((c) => c.kind === 'skin');
-    expect(skins).toHaveLength(20);
-    expect(new Set(skins.map((s) => s.id)).size).toBe(20);
-    expect(skins.filter((s) => isFreeCosmetic(s)).map((s) => s.id)).toEqual([
-      DEFAULT_SKIN_ID,
-      'desert_nomad',
-      'sakura_blossom',
-    ]);
-    expect(skins.filter((s) => s.unlockLeague !== undefined).map((s) => [s.id, s.unlockLeague])).toEqual([
-      ['astro_cat', 1],
-      ['mecha', 2],
-      ['crystal_prince', 3],
-    ]);
-    // скинов за монеты больше нет; за Stars и награды — без условия по уровню
-    expect(skins.filter((s) => s.price?.currency === 'coins')).toEqual([]);
-    expect(skins.every((s) => s.unlockLevel === 1)).toBe(true);
+    expect(skins.map((s) => s.id)).toEqual(FREE_SKINS);
+    expect(DEFAULT_SKIN_ID).toBe(FREE_SKINS[0]);
+    expect(skins.every((s) => isFreeCosmetic(s))).toBe(true);
+    expect(skins.filter((s) => s.unlockLeague !== undefined)).toEqual([]);
     for (const s of skins) {
       expect(['EPIC', 'LEGENDARY', 'MYTHIC']).toContain(s.rarity);
       expect(s.name.ru && s.name.en && s.desc.ru && s.desc.en).toBeTruthy();
@@ -213,10 +184,13 @@ describe('collection: skins and tap effects', () => {
     }
     // ни одного скина прошлой коллекции
     for (const old of Object.keys(LEGACY_SKINS)) expect(skins.some((s) => s.id === old)).toBe(false);
-    for (const next of Object.values(LEGACY_SKINS)) expect(skins.some((s) => s.id === next)).toBe(true);
+    // каждый предмет за Stars есть в магазине, и в магазине нет ничего, чего каталог не продаёт
+    const starItems = COSMETICS.filter((c) => c.price?.currency === 'stars').map((c) => c.id);
+    const shopItems = SHOP_PRODUCT_IDS.map((id) => SHOP[id].cosmeticId).filter(Boolean);
+    expect(shopItems).toEqual(starItems);
   });
 
-  it('migration: old skins become their new equivalents, equipped old skin → new default, progress kept', async () => {
+  it('migrations: old skins become their equivalents, then the starting character is Cyber Samurai', async () => {
     await player(17010, 123_456, 7_890);
     const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17010n } });
     // состояние «до миграции»: старые скины куплены, старый надет
@@ -234,81 +208,99 @@ describe('collection: skins and tap effects', () => {
     await player(17011);
     await prisma.user.update({ where: { telegramId: 17011n }, data: { equippedSkinId: 'black_crown' } });
 
-    const sql = readFileSync(
-      new URL('../prisma/migrations/20261005120000_skin_characters/migration.sql', import.meta.url),
-      'utf8',
-    );
-    const statements = sql
-      .split(/;\s*$/m)
-      .map((s) => s.replace(/^--.*$/gm, '').trim())
-      .filter(Boolean);
-    await prisma.$transaction(async (tx) => {
-      for (const st of statements) await tx.$executeRawUnsafe(st);
-    });
+    for (const name of ['20261005120000_skin_characters', '20261020120000_default_skin_cyber_samurai']) {
+      const sql = readFileSync(
+        new URL(`../prisma/migrations/${name}/migration.sql`, import.meta.url),
+        'utf8',
+      );
+      const statements = sql
+        .split(/;\s*$/m)
+        .map((s) => s.replace(/^--.*$/gm, '').trim())
+        .filter(Boolean);
+      await prisma.$transaction(async (tx) => {
+        for (const st of statements) await tx.$executeRawUnsafe(st);
+      });
+    }
 
     const after = await prisma.user.findUniqueOrThrow({
       where: { id: user.id },
       include: { cosmetics: true },
     });
-    expect(after.equippedSkinId).toBe(DEFAULT_SKIN_ID);
+    // стартовый персонаж той коллекции; убранный из каталога показывается как нынешний стартовый
+    expect(after.equippedSkinId).toBe('neon_punk');
     expect(after.equippedEffectId).toBe('hearts');
     expect(after.balance.toNumber()).toBe(7_890);
     expect(after.totalEarned.toNumber()).toBe(123_456);
+    // купленное остаётся в базе: вернётся к игроку, когда персонаж вернётся в каталог
     expect(after.cosmetics.map((c) => [c.cosmeticId, c.source]).sort()).toEqual([
       ['desert_nomad', 'coins'],
       ['hearts', 'coins'],
       ['shadow_drifter', 'stars'],
     ]);
     const other = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17011n } });
-    expect(other.equippedSkinId).toBe(DEFAULT_SKIN_ID);
+    expect(other.equippedSkinId).toBe('neon_punk');
+    const c = client(app, tgUser(17010));
+    expect((await c.get('/api/state')).json<StateResponse>().state.cosmetics).toEqual({
+      skin: DEFAULT_SKIN_ID,
+      effect: 'hearts',
+    });
+    // новый игрок после миграций — в Кибер-Самурае
+    await player(17014);
+    const fresh = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17014n } });
+    expect(fresh.equippedSkinId).toBe('cyber_samurai');
   });
 
-  it('an unknown equipped skin is shown as the default, a legacy Stars invoice delivers the new character', async () => {
+  it('removed characters: shown as the default, open invoices are declined, a late payment is kept for the player', async () => {
     const c = await player(17012);
     await prisma.user.update({ where: { telegramId: 17012n }, data: { equippedSkinId: 'golden_boss' } });
     expect((await c.get('/api/state')).json<StateResponse>().state.cosmetics.skin).toBe(DEFAULT_SKIN_ID);
     const user = await prisma.user.findUniqueOrThrow({ where: { telegramId: 17012n } });
-    const purchase = await prisma.purchase.create({
-      data: {
-        userId: user.id,
-        productId: 'skin_queen',
-        stars: 249,
-        payload: 'legacy-queen',
-        grant: { cosmetic: 'queen' },
-      },
-    });
+    const invoice = (productId: string, cosmetic: string, stars: number) =>
+      prisma.purchase.create({
+        data: { userId: user.id, productId, stars, payload: `old-${productId}`, grant: { cosmetic } },
+      });
+    // счета, выставленные до обновления: персонаж убран, стал бесплатным или это скин прошлой коллекции
+    const removed = await invoice('skin_royal_emperor', 'royal_emperor', 499);
+    const nowFree = await invoice('skin_cyber_samurai', 'cyber_samurai', 299);
+    const legacy = await invoice('skin_queen', 'queen', 249);
+    for (const p of [removed, nowFree, legacy]) {
+      expect(
+        await checkPreCheckout({ payload: p.payload, fromId: 17012, currency: 'XTR', totalAmount: p.stars }),
+      ).toBe('Этот предмет больше не продаётся');
+    }
+
+    // оплата всё же прошла (Telegram подтвердил до обновления): платёж принят, предмет записан игроку
     expect(
       await fulfillPayment({
-        payload: purchase.payload,
+        payload: removed.payload,
         fromId: 17012,
         currency: 'XTR',
-        totalAmount: 249,
-        chargeId: 'ch-legacy',
+        totalAmount: 499,
+        chargeId: 'ch-removed',
       }),
     ).toBe('paid');
+    expect(await prisma.userCosmetic.count({ where: { userId: user.id, cosmeticId: 'royal_emperor' } })).toBe(
+      1,
+    );
     const col = (await c.get('/api/collection')).json<CollectionResponse>();
-    expect(col.owned).toContain('shadow_drifter');
-    expect(col.equipped.skin).toBe('shadow_drifter');
+    expect(col.owned).not.toContain('royal_emperor');
+    expect(col.equipped.skin).toBe(DEFAULT_SKIN_ID);
+
+    // возврат звёзд забирает запись
     setPaymentsGateway({ createInvoiceLink: () => Promise.resolve(''), refund: () => Promise.resolve() });
-    await refundPurchase(purchase.id);
-    const back = (await c.get('/api/collection')).json<CollectionResponse>();
-    expect(back.owned).not.toContain('shadow_drifter');
-    expect(back.equipped.skin).toBe(DEFAULT_SKIN_ID);
+    await refundPurchase(removed.id);
+    expect(await prisma.userCosmetic.count({ where: { userId: user.id, cosmeticId: 'royal_emperor' } })).toBe(
+      0,
+    );
+    expect((await c.get('/api/collection')).json<CollectionResponse>().equipped.skin).toBe(DEFAULT_SKIN_ID);
   });
 
   it('equip validation: unknown id → 404, too long id → 400, rapid switching ends on the last request', async () => {
     const c = await player(17013, levelThreshold(5), 1_000_000);
     expect((await c.post('/api/collection/hamster_king/equip')).statusCode).toBe(404);
     expect((await c.post(`/api/collection/${'x'.repeat(41)}/equip`)).statusCode).toBe(400);
-    const order = [
-      'neon_punk',
-      'desert_nomad',
-      'sakura_blossom',
-      'neon_punk',
-      'desert_nomad',
-      'sakura_blossom',
-    ];
-    for (const id of order) expect((await c.post(`/api/collection/${id}/equip`)).statusCode).toBe(200);
-    expect((await c.get('/api/state')).json<StateResponse>().state.cosmetics.skin).toBe('sakura_blossom');
+    for (const id of [...FREE_SKINS, ...FREE_SKINS])
+      expect((await c.post(`/api/collection/${id}/equip`)).statusCode).toBe(200);
+    expect((await c.get('/api/state')).json<StateResponse>().state.cosmetics.skin).toBe('shadow_drifter');
   });
 });
