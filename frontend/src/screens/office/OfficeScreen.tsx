@@ -14,7 +14,7 @@ import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
 import { onFrame } from '../../game/frameLoop';
 import { leagueAt, leagueProgress, LEAGUE_COUNT } from '../../game/leagues';
-import { skinArt, type Rect } from '../../game/skins';
+import { noteHomeStage, skinArt, type Rect } from '../../game/skins';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT } from '../../i18n';
 import { useGame } from '../../store/game';
@@ -169,6 +169,12 @@ export function OfficeScreen({
       if (!hero) return;
       const art = skinArt(skin);
       const L = heroLayout(hero.offsetWidth, hero.offsetHeight, art.aspect, art.body).cat;
+      // для предзагрузки другого скина: какого размера картинки возьмёт главный экран
+      noteHomeStage({
+        hero: { width: hero.offsetWidth, height: hero.offsetHeight },
+        offset: { left: box.offsetLeft + hero.offsetLeft, top: box.offsetTop + hero.offsetTop },
+        box: { width: arc.clientWidth, height: arc.clientHeight },
+      });
       const next = {
         left: box.offsetLeft + hero.offsetLeft + L.left,
         top: box.offsetTop + hero.offsetTop + L.top,

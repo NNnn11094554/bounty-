@@ -442,7 +442,7 @@ export const ru = {
   'collection.howFree': 'Бесплатный персонаж — есть у всех с самого начала',
   'collection.howLeague': 'Награда за лигу: откроется бесплатно, когда вы дойдёте до лиги {league}',
   'collection.howLevel': 'Откроется на уровне {level}, затем — покупка за {price} монет',
-  'collection.howStars': 'Премиальный персонаж: покупка за ⭐ {price} в Telegram',
+  'collection.howStars': 'Премиальный персонаж: покупка за Telegram Stars',
   'collection.tryTap': 'Так будет выглядеть каждый тап',
   'shop.tab.skins': 'Скины',
   'shop.tab.boosts': 'Бусты',

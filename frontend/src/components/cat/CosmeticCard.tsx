@@ -1,6 +1,6 @@
 import { formatShort, type CosmeticDef, type Rarity } from '@meowgul/shared';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { EFFECT_PARTICLE, RARITY_COLOR } from '../../game/skins';
+import { EFFECT_PARTICLE, RARITY_COLOR, skinArt, skinVars } from '../../game/skins';
 import { useLocale, useT, type MessageKey } from '../../i18n';
 import { lockOf, useLeagueName, type CosmeticLock } from './lock';
 import { Button } from '../Button';
@@ -100,10 +100,21 @@ interface Props {
 }
 
 /** Условие получения коротко: лига, уровень, цена или «бесплатно». */
-function Condition({ item, owned, lock }: { item: CosmeticDef; owned: boolean; lock: CosmeticLock }) {
+function Condition({
+  item,
+  owned,
+  equipped,
+  lock,
+}: {
+  item: CosmeticDef;
+  owned: boolean;
+  equipped: boolean;
+  lock: CosmeticLock;
+}) {
   const t = useT();
   const locale = useLocale();
   const lockText = useLockText();
+  if (equipped) return <span className="text-lime">✓ {t('collection.equipped')}</span>;
   if (owned) return null;
   if (lock) return <span className="text-white/70">🔒 {lockText(lock)}</span>;
   if (item.price?.currency === 'stars')
@@ -123,6 +134,10 @@ function Condition({ item, owned, lock }: { item: CosmeticDef; owned: boolean; l
   return <span className="text-white/70">{t('collection.free')}</span>;
 }
 
+/** карточка 4:5; две в ряд — половина экрана без отступов (на широком экране — не больше 240 px) */
+const CARD_ASPECT = 4 / 5;
+const CARD_SIZES = '(max-width: 520px) calc(50vw - 24px), 240px';
+
 /**
  * Карточка персонажа: картинка в его мире, редкость, имя, статус (надет / есть / закрыт), условие
  * получения и кнопка «Надеть» для своих. Картинка загружается лениво — только когда карточка на экране.
@@ -133,6 +148,13 @@ function SkinCard({ item, owned, equipped, level, league, onOpen, onEquip, busy 
   const lock = lockOf(item, owned, level, league);
   const locked = Boolean(lock);
   const state = equipped ? 'equipped' : owned ? 'owned' : locked ? 'locked' : 'available';
+  // рамка персонажа в карточке (собирает scripts/skins/build.mjs): центр тела — посередине, ступни — внизу
+  const art = skinArt(item.id);
+  const frame = art.card;
+  const feet = frame.feet * 100;
+  // ширина персонажа на экране — доля ширины карточки (для выбора файла из srcset)
+  const charK = (frame.height * art.aspect) / CARD_ASPECT;
+  const charSizes = `(max-width: 520px) calc((50vw - 24px) * ${charK.toFixed(3)}), ${Math.round(240 * charK)}px`;
   const open = () => onOpen(item);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -151,38 +173,57 @@ function SkinCard({ item, owned, equipped, level, league, onOpen, onEquip, busy 
       data-state={state}
     >
       <RarityFrame rarity={item.rarity}>
-        <div className="relative aspect-[4/5] overflow-hidden rounded-[18px] bg-night-800">
+        <div
+          className="skin-card relative aspect-[4/5] overflow-hidden rounded-[18px] bg-night-800"
+          style={skinVars(item.id)}
+        >
+          {/* мир персонажа — кадр сцены вокруг его места; сам персонаж — отдельный резкий слой поверх */}
           <SkinPicture
             skinId={item.id}
-            file="preview"
-            className={`h-full w-full object-cover ${locked ? 'brightness-[0.45] saturate-[0.6]' : ''}`}
-            alt={item.name[locale]}
+            file="card"
+            sizes={CARD_SIZES}
+            className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/45 to-transparent" />
+          {/* свет в цвете скина за персонажем и тень под ступнями — отдельные слои, персонаж не размывается */}
+          <div className="skin-card-glow absolute" style={{ top: `${feet - frame.height * 62}%` }} />
+          <div className="skin-card-floor absolute" style={{ top: `${feet}%` }} />
+          <SkinPicture
+            skinId={item.id}
+            file="character"
+            sizes={charSizes}
+            alt={item.name[locale]}
+            className="skin-card-char absolute w-auto max-w-none"
+            style={{
+              height: `${frame.height * 100}%`,
+              left: `${frame.left * 100}%`,
+              bottom: `${100 - feet}%`,
+            }}
+          />
+          {locked && <div className="absolute inset-0 bg-[#090614]/55" />}
+          <div className="skin-card-shade absolute inset-0" />
           <span
-            className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+            className="skin-card-badge absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
             style={{ color: RARITY_COLOR[item.rarity] }}
           >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: RARITY_COLOR[item.rarity] }} />
             {t(`rarity.${item.rarity}` as MessageKey)}
           </span>
-          {(equipped || owned || locked) && (
+          {/* сверху справа — только значок (надет / закрыт): имя редкости слева целиком помещается и на 360 px */}
+          {(equipped || locked) && (
             <span
-              className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-black ${
-                equipped
-                  ? 'bg-lime text-night-900'
-                  : owned
-                    ? 'bg-white/85 text-night-900'
-                    : 'bg-black/60 text-white/80'
+              className={`absolute right-2 top-2 grid h-[22px] min-w-[22px] place-items-center rounded-full px-1 text-[11px] font-black ${
+                equipped ? 'bg-lime text-night-900' : 'bg-black/60 text-white/80'
               }`}
               data-testid={`cosmetic-status-${item.id}`}
+              aria-label={equipped ? t('collection.equipped') : undefined}
             >
-              {equipped ? `✓ ${t('collection.equipped')}` : owned ? t('collection.owned') : '🔒'}
+              {equipped ? '✓' : '🔒'}
             </span>
           )}
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-2.5 pb-2.5">
             <p className="truncate text-[15px] font-black leading-tight">{item.name[locale]}</p>
             <div className="flex min-h-[24px] items-center justify-between gap-1 text-xs font-extrabold">
-              <Condition item={item} owned={owned} lock={lock} />
+              <Condition item={item} owned={owned} equipped={equipped} lock={lock} />
               {owned && !equipped && onEquip && (
                 <Button
                   className="h-7 px-3 text-xs"

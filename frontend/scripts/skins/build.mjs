@@ -1,12 +1,16 @@
-// Кодирование арта скинов (результат compose.py в .work/<id>/) в файлы игры:
-//   public/assets/skins/<id>/character.{avif,webp} — персонаж с прозрачным фоном, в своём разрешении
-//   public/assets/skins/<id>/background.{avif,webp} — сцена без персонажа, продлённая за края
-//   public/assets/skins/<id>/preview.{avif,webp}    — картинка карточки коллекции: кадр 4:5 по коту
-//   public/assets/skins/<id>/icon.webp              — портрет (аватар в профиле)
+// Кодирование арта скинов (HD-результат compose.py в .work/<id>/) в файлы игры, в нескольких размерах
+// (src/game/skinSizes.json): игра берёт наименьший, которого хватает экрану (CSS px × devicePixelRatio), —
+// большая картинка не растягивается браузером из маленькой, а маленький экран не грузит лишнего.
+//   public/assets/skins/<id>/character-<высота>.{avif,webp}  — персонаж с прозрачным фоном
+//   public/assets/skins/<id>/background-<ширина>.{avif,webp} — сцена без персонажа, продлённая за края
+//   public/assets/skins/<id>/card-<ширина>.{avif,webp}       — фон карточки коллекции: кадр 4:5 из сцены
+//                                                              вокруг места персонажа (сам персонаж в карточке —
+//                                                              отдельный резкий слой поверх, рамка — manifest.card)
+//   public/assets/skins/<id>/icon.webp                       — портрет (аватар в профиле)
 // и манифест src/game/skinArt.json (пропорции, голова, центр тела — по ним раскладывается сцена).
-// Картинки не растягиваются: только уменьшение до нужного размера.
-// `node scripts/skins/build.mjs preview` — перекодировать только картинки карточек (манифест не трогается).
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+// Картинки не растягиваются: только уменьшение (если исходник меньше размера — размер пропускается).
+// `node scripts/skins/build.mjs card` / `… background` — перекодировать только фоны карточек / сцены.
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -16,37 +20,103 @@ const root = path.resolve(here, '..', '..');
 const work = path.join(here, '.work');
 const outRoot = path.join(root, 'public', 'assets', 'skins');
 const manifestPath = path.join(root, 'src', 'game', 'skinArt.json');
-
-/** не больше такой высоты персонажа и ширины фона — больше телефону не нужно */
-const CHARACTER_MAX_H = 1100;
-const BACKGROUND_MAX_W = 1500;
-/** карточка коллекции 4:5 шириной ~190 CSS px: 640×800 — чётко и на экранах ×3 */
-const PREVIEW_W = 640;
-const PREVIEW_ASPECT = 4 / 5;
+/** размеры: персонаж — по высоте, фон и карточка — по ширине (их же читает игра, src/game/skins.ts) */
+const SIZES = JSON.parse(readFileSync(path.join(root, 'src', 'game', 'skinSizes.json'), 'utf8'));
 const ICON = 512;
 
-const fit = (s, w, h) => s.resize({ width: w, height: h, fit: 'inside', withoutEnlargement: true });
+const round4 = (v) => Number(v.toFixed(4));
+const fit = (s, w, h) =>
+  s.resize({ width: w, height: h, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' });
 
-/**
- * Картинка карточки: кадр в пропорциях карточки (4:5), чтобы её не обрезал и не растягивал object-cover;
- * по горизонтали — по средней линии кота. Где кот на картинке — из сцены: фон — та же картинка, продлённая
- * в обе стороны поровну, рамка персонажа в нём известна.
- */
-async function writePreview(src, out, meta) {
-  const image = sharp(src('preview.png'));
-  const { width: pw, height: ph } = await image.metadata();
-  const { width: sw } = await sharp(src('background.png')).metadata();
-  const [charX, , charW] = meta.scene.char;
-  const bodyX = charX * sw - (sw - pw) / 2 + meta.body * charW * sw;
-  const cw = Math.min(pw, Math.round(ph * PREVIEW_ASPECT));
-  const ch = Math.min(ph, Math.round(cw / PREVIEW_ASPECT));
-  const left = Math.round(Math.max(0, Math.min(pw - cw, bodyX - cw / 2)));
-  const preview = fit(image.extract({ left, top: 0, width: cw, height: ch }), PREVIEW_W);
-  await preview.clone().webp({ quality: 82, effort: 6 }).toFile(path.join(out, 'preview.webp'));
-  await preview.clone().avif({ quality: 56, effort: 6 }).toFile(path.join(out, 'preview.avif'));
+/** Записать картинку во всех размерах (AVIF + WebP); исходник меньше размера — этот размер не нужен. */
+async function writeSizes(image, out, name, axis, sizes, quality) {
+  const meta = await image.metadata();
+  const have = axis === 'h' ? meta.height : meta.width;
+  for (const size of sizes) {
+    if (size > have) throw new Error(`${out}/${name}: исходник ${have} px меньше размера ${size}`);
+    const scaled = axis === 'h' ? fit(image.clone(), undefined, size) : fit(image.clone(), size);
+    await scaled
+      .clone()
+      .webp(quality.webp)
+      .toFile(path.join(out, `${name}-${size}.webp`));
+    await scaled
+      .clone()
+      .avif(quality.avif)
+      .toFile(path.join(out, `${name}-${size}.avif`));
+  }
 }
 
-const onlyPreview = process.argv.includes('preview');
+/** старые файлы без размера в имени (до разбиения на размеры) — удалить, чтобы не лежали мёртвым грузом */
+function dropLegacy(out, name) {
+  for (const ext of ['webp', 'avif']) rmSync(path.join(out, `${name}.${ext}`), { force: true });
+}
+
+/** Карточка коллекции 4:5: персонаж — не выше этой доли высоты, ступни — на этой высоте (доля сверху). */
+const CARD_ASPECT = 4 / 5;
+const CARD_CHAR_H = 0.86;
+const CARD_FEET = 0.92;
+
+/**
+ * Рамка персонажа в карточке (доли карточки): высота и левый край. По центру — вертикаль тела; широкий
+ * персонаж (шляпа, крылья) уменьшается, чтобы влезть по ширине.
+ */
+function cardFrame(meta, aspect) {
+  const height = Math.min(CARD_CHAR_H, CARD_ASPECT / aspect);
+  const width = (height * aspect) / CARD_ASPECT;
+  return { height, left: 0.5 - meta.body * width, feet: CARD_FEET };
+}
+
+/**
+ * Фон карточки: кадр 4:5 из сцены (без персонажа) там, где персонаж стоит в карточке, — в карточке он
+ * ложится поверх точно на своё место (как на главном экране), отдельным резким слоем.
+ */
+async function writeCard(src, out, meta, aspect) {
+  const bg = sharp(src('background.png'));
+  const { width: sw, height: sh } = await bg.metadata();
+  const [cx, cy, , chf] = meta.scene.char;
+  const frame = cardFrame(meta, aspect);
+  const charH = chf * sh;
+  const cardH = charH / frame.height;
+  const cardW = cardH * CARD_ASPECT;
+  const left = Math.round(cx * sw - frame.left * cardW);
+  const top = Math.round((cy + chf) * sh - frame.feet * cardH);
+  if (left < 0 || top < 0 || left + cardW > sw || top + cardH > sh)
+    throw new Error(`${out}: карточка за сценой`);
+  const crop = sharp(
+    await bg
+      .extract({ left, top, width: Math.round(cardW), height: Math.round(cardH) })
+      .png()
+      .toBuffer(),
+  );
+  await writeSizes(crop, out, 'card', 'w', SIZES.card, {
+    webp: { quality: 80, effort: 6 },
+    avif: { quality: 52, effort: 6 },
+  });
+  dropLegacy(out, 'preview');
+  for (const size of [480, 640, 720, 1080]) {
+    for (const ext of ['webp', 'avif']) rmSync(path.join(out, `preview-${size}.${ext}`), { force: true });
+  }
+  return frame;
+}
+
+/** Сцена (фон главного экрана и окна персонажа) во всех размерах. */
+async function writeBackground(src, out) {
+  await writeSizes(
+    sharp(src('background.png'), { limitInputPixels: false }),
+    out,
+    'background',
+    'w',
+    SIZES.background,
+    {
+      webp: { quality: 78, effort: 6 },
+      avif: { quality: 50, effort: 6 },
+    },
+  );
+  dropLegacy(out, 'background');
+}
+
+const onlyCard = process.argv.includes('card');
+const onlyBackground = process.argv.includes('background');
 const ids = readdirSync(work).filter((d) => existsSync(path.join(work, d, 'meta.json')));
 const manifest = {};
 for (const id of ids.sort()) {
@@ -54,28 +124,29 @@ for (const id of ids.sort()) {
   const out = path.join(outRoot, id);
   mkdirSync(out, { recursive: true });
   const meta = JSON.parse(readFileSync(src('meta.json'), 'utf8'));
-  if (onlyPreview) {
-    await writePreview(src, out, meta);
-    console.log(`[skins] ${id}: превью`);
+  if (onlyCard) {
+    const { width, height } = await sharp(src('character.png')).metadata();
+    await writeCard(src, out, meta, width / height);
+    console.log(`[skins] ${id}: карточка`);
+    continue;
+  }
+  if (onlyBackground) {
+    await writeBackground(src, out);
+    console.log(`[skins] ${id}: фон`);
     continue;
   }
 
-  const character = fit(sharp(src('character.png')), undefined, CHARACTER_MAX_H);
-  await character
-    .clone()
-    .webp({ quality: 88, alphaQuality: 92, smartSubsample: true, effort: 6 })
-    .toFile(path.join(out, 'character.webp'));
-  await character.clone().avif({ quality: 62, effort: 6 }).toFile(path.join(out, 'character.avif'));
-  const { width, height } = await character
-    .clone()
-    .toBuffer({ resolveWithObject: true })
-    .then((r) => r.info);
+  const character = sharp(src('character.png'));
+  await writeSizes(character, out, 'character', 'h', SIZES.character, {
+    webp: { quality: 88, alphaQuality: 92, smartSubsample: true, effort: 6 },
+    avif: { quality: 64, effort: 6 },
+  });
+  dropLegacy(out, 'character');
+  const { width, height } = await character.metadata();
 
-  const background = fit(sharp(src('background.png')), BACKGROUND_MAX_W);
-  await background.clone().webp({ quality: 76, effort: 6 }).toFile(path.join(out, 'background.webp'));
-  await background.clone().avif({ quality: 48, effort: 6 }).toFile(path.join(out, 'background.avif'));
+  await writeBackground(src, out);
 
-  await writePreview(src, out, meta);
+  const card = await writeCard(src, out, meta, width / height);
 
   await fit(sharp(src('icon.png')), ICON, ICON)
     .webp({ quality: 84 })
@@ -87,11 +158,12 @@ for (const id of ids.sort()) {
     body: meta.body,
     headBottom: meta.headBottom,
     scene: meta.scene,
+    card: { height: round4(card.height), left: round4(card.left), feet: card.feet },
     source: meta.source,
   };
-  console.log(`[skins] ${id}: ${width}×${height}`);
+  console.log(`[skins] ${id}: персонаж ${width}×${height}`);
 }
-if (!onlyPreview) {
+if (!onlyCard && !onlyBackground) {
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(
     `[skins] ${ids.length} скинов → ${path.relative(root, outRoot)}, манифест ${path.relative(root, manifestPath)}`,

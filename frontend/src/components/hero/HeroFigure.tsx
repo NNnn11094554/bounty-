@@ -6,18 +6,22 @@ import {
   skinId,
   skinImage,
   skinRarity,
+  skinSize,
+  skinSrcSet,
   skinStyle,
   skinVars,
   type SkinFile,
 } from '../../game/skins';
 
 /**
- * Картинка скина через <picture>: AVIF, если браузер умеет, иначе WebP. Картинка не принимает событий и не
+ * Картинка скина через <picture>: AVIF, если браузер умеет, иначе WebP; все размеры в srcset — браузер берёт
+ * наименьший, которого хватает месту (sizes) на этом экране. Картинка не принимает событий и не
  * перетаскивается: долгое нажатие не открывает меню «Сохранить/Открыть».
  */
 export function SkinPicture({
   skinId: id,
   file,
+  sizes,
   className = '',
   eager = false,
   alt = '',
@@ -25,6 +29,8 @@ export function SkinPicture({
 }: {
   skinId: string;
   file: SkinFile;
+  /** ширина картинки на экране (атрибут sizes), например «(max-width: 520px) 50vw, 240px» */
+  sizes: string;
   className?: string;
   /** сразу (главный экран, открытое окно) или лениво (сетка коллекции) */
   eager?: boolean;
@@ -33,9 +39,11 @@ export function SkinPicture({
 }) {
   return (
     <picture className="contents">
-      <source srcSet={skinAsset(id, file, 'avif')} type="image/avif" />
+      <source srcSet={skinSrcSet(id, file, 'avif')} sizes={sizes} type="image/avif" />
       <img
         src={skinAsset(id, file, 'webp')}
+        srcSet={skinSrcSet(id, file, 'webp')}
+        sizes={sizes}
         alt={alt}
         className={`pointer-events-none select-none ${className}`}
         draggable={false}
@@ -54,20 +62,21 @@ const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
 
 /**
  * Персонаж в полный рост — это и есть надетый скин. Слои (каждое движение — на своём элементе):
- *  - объём: медленный поворот в перспективе (transform ставит сцена) — смена позы в покое;
  *  - дыхание: бесшовный CSS-цикл от ступней (грудь поднимается, персонаж стоит на месте);
  *  - тело: картинка с «окном» под голову;
  *  - голова: та же картинка по эллипсу головы, чуть наклоняется вокруг шеи (CSS, data-pose от сцены);
  *  - глаза: радужка смещается внутри глаза (взгляд). Глаза не закрываются.
- * Тап персонажа не двигает: реагирует только взгляд и эффекты вокруг. Событий не принимает.
+ * Картинка — файл того размера, которого хватает экрану, без поворотов в объёме: персонаж — самый резкий
+ * слой сцены (свет и аура — отдельные слои под ним). Тап персонажа не двигает. Событий не принимает.
  */
 export function HeroFigure({ skinId: rawId, height }: { skinId: string; height: number }) {
   const id = skinId(rawId);
   const art = skinArt(id);
   const style = skinStyle(id);
   const width = Math.round(height * art.aspect);
-  const mask = `url(${skinAsset(id, 'character')})`;
-  const img = skinImage(id, 'character');
+  // файл того размера, которого хватает экрану (на телефоне ×3 — крупнее): браузер не растягивает картинку
+  const mask = `url(${skinAsset(id, 'character', 'webp', skinSize('character', height))})`;
+  const img = skinImage(id, 'character', height);
   const { face } = art;
   const [hx, hy, hrx, hry] = face.head;
   // голова: непрозрачна до 82% эллипса и мягко сходит на нет к краю; в теле под ней «окно» до 74% —
@@ -86,63 +95,61 @@ export function HeroFigure({ skinId: rawId, height }: { skinId: string; height: 
     >
       <div className="hero-aura absolute" style={{ left: `${art.body * 100 - 75}%` }} />
       <div className="hero-floor absolute" style={{ left: `${art.body * 100 - 42}%` }} />
-      <div className="hero-orbit absolute inset-0" style={{ transformOrigin: `${art.body * 100}% 100%` }}>
-        <div
-          className={`hero-idle idle-${style.idle} absolute inset-0`}
-          style={{ transformOrigin: `${art.body * 100}% 100%` }}
-        >
-          {/* слой реакции оставлен неподвижным: тап не двигает персонажа (проверяют e2e) */}
-          <div className="hero-react absolute inset-0" data-testid="hero-body">
-            {/* фоном div, а не <img>: долгое нажатие не вызывает меню картинки */}
+      <div
+        className={`hero-idle idle-${style.idle} absolute inset-0`}
+        style={{ transformOrigin: `${art.body * 100}% 100%` }}
+      >
+        {/* слой реакции оставлен неподвижным: тап не двигает персонажа (проверяют e2e) */}
+        <div className="hero-react absolute inset-0" data-testid="hero-body">
+          {/* фоном div, а не <img>: долгое нажатие не вызывает меню картинки */}
+          <div
+            className="hero-char skin-img absolute inset-0"
+            style={layer({ maskImage: bodyMask, WebkitMaskImage: bodyMask })}
+            data-skin-file="character"
+          />
+          <div
+            className="hero-head absolute inset-0"
+            style={{ transformOrigin: neck }}
+            data-testid="hero-head"
+          >
             <div
               className="hero-char skin-img absolute inset-0"
-              style={layer({ maskImage: bodyMask, WebkitMaskImage: bodyMask })}
-              data-skin-file="character"
+              style={layer({ maskImage: headMask, WebkitMaskImage: headMask })}
             />
-            <div
-              className="hero-head absolute inset-0"
-              style={{ transformOrigin: neck }}
-              data-testid="hero-head"
-            >
-              <div
-                className="hero-char skin-img absolute inset-0"
-                style={layer({ maskImage: headMask, WebkitMaskImage: headMask })}
-              />
-              {face.eyes.map(([ex, ey, erx, ery], i) => {
-                // окошко по глазу (чуть меньше самого глаза) — неподвижно; внутри — та же картинка персонажа,
-                // её сдвигает transform (взгляд): радужка смещается внутри глаза
-                const k = 0.92;
-                const left = (ex - erx * k) * width;
-                const top = (ey - ery * k) * height;
-                return (
+            {face.eyes.map(([ex, ey, erx, ery], i) => {
+              // окошко по глазу (чуть меньше самого глаза) — неподвижно; внутри — та же картинка персонажа,
+              // её сдвигает transform (взгляд): радужка смещается внутри глаза
+              const k = 0.92;
+              const left = (ex - erx * k) * width;
+              const top = (ey - ery * k) * height;
+              return (
+                <div
+                  key={i}
+                  className="eye-iris absolute overflow-hidden"
+                  style={{ left, top, width: erx * 2 * k * width, height: ery * 2 * k * height }}
+                  data-testid="hero-eye"
+                  data-reach={(Math.min(erx * width, ery * height) * 0.2).toFixed(2)}
+                >
                   <div
-                    key={i}
-                    className="eye-iris absolute overflow-hidden"
-                    style={{ left, top, width: erx * 2 * k * width, height: ery * 2 * k * height }}
-                    data-testid="hero-eye"
-                    data-reach={(Math.min(erx * width, ery * height) * 0.2).toFixed(2)}
-                  >
-                    <div
-                      className="eye-iris-img skin-img absolute"
-                      style={layer({
-                        left: -left,
-                        top: -top,
-                        width,
-                        height,
-                        backgroundSize: '100% 100%',
-                      })}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            {/* свет и тень строго по силуэту: маска — сама картинка персонажа */}
-            <div
-              className="hero-shade absolute inset-0"
-              style={{ maskImage: mask, WebkitMaskImage: mask }}
-              aria-hidden
-            />
+                    className="eye-iris-img skin-img absolute"
+                    style={layer({
+                      left: -left,
+                      top: -top,
+                      width,
+                      height,
+                      backgroundSize: '100% 100%',
+                    })}
+                  />
+                </div>
+              );
+            })}
           </div>
+          {/* свет и тень строго по силуэту: маска — сама картинка персонажа */}
+          <div
+            className="hero-shade absolute inset-0"
+            style={{ maskImage: mask, WebkitMaskImage: mask }}
+            aria-hidden
+          />
         </div>
       </div>
     </div>

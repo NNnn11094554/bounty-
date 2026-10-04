@@ -443,7 +443,7 @@ export const en: Record<MessageKey, string> = {
   'collection.howFree': 'Free character — everyone has it from the start',
   'collection.howLeague': 'League reward: unlocks for free when you reach {league} league',
   'collection.howLevel': 'Unlocks at level {level}, then buy it for {price} coins',
-  'collection.howStars': 'Premium character: buy it for ⭐ {price} in Telegram',
+  'collection.howStars': 'Premium character: purchase with Telegram Stars',
   'collection.tryTap': 'This is how every tap will look',
   'shop.tab.skins': 'Skins',
   'shop.tab.boosts': 'Boosts',

@@ -1,7 +1,7 @@
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { haptic } from '../telegram/webapp';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold';
 
 interface Props extends HTMLMotionProps<'button'> {
   variant?: Variant;
@@ -15,6 +15,8 @@ const STYLES: Record<Variant, string> = {
   ghost: 'bg-transparent text-white/80',
   danger:
     'bg-[#d63a4a] text-white shadow-[0_8px_20px_rgba(214,58,74,0.35),inset_0_1px_0_rgba(255,255,255,0.3)]',
+  // покупка за Telegram Stars: золото звезды
+  gold: 'bg-gradient-to-br from-[#ffe48f] via-[#ffc93c] to-[#f39c12] text-night-900 shadow-[0_10px_26px_rgba(243,156,18,0.38),inset_0_1px_0_rgba(255,255,255,0.55)]',
 };
 
 /** Кнопка с пружинящим нажатием и тактильным откликом. */

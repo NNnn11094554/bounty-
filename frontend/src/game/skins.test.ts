@@ -1,17 +1,20 @@
 import { COSMETICS, DEFAULT_SKIN_ID, LEGACY_SKINS } from '@meowgul/shared';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { heroLayout } from '../components/hero/layout';
 import art from './skinArt.json';
 import {
   liteDevice,
+  pickSize,
   resetLiteDevice,
   sceneRect,
   skinArt,
   skinAsset,
   skinIcon,
+  skinSrcSet,
   skinStyle,
+  SKIN_SIZES,
   SKIN_STYLES,
 } from './skins';
 
@@ -19,20 +22,44 @@ const SKINS = COSMETICS.filter((c) => c.kind === 'skin');
 const PUBLIC = path.resolve(__dirname, '..', '..', 'public');
 
 describe('skin catalog ↔ visuals', () => {
-  it('every skin in the catalog has a style, art geometry and all its files (AVIF + WebP)', () => {
+  it('every skin in the catalog has a style, art geometry and all its files in every size (AVIF + WebP)', () => {
     expect(Object.keys(SKIN_STYLES).sort()).toEqual(SKINS.map((s) => s.id).sort());
     expect(Object.keys(art).sort()).toEqual(SKINS.map((s) => s.id).sort());
+    const expected = new Set(['icon.webp']);
+    for (const file of ['character', 'background', 'card'] as const)
+      for (const size of SKIN_SIZES[file])
+        for (const format of ['avif', 'webp'] as const) expected.add(`${file}-${size}.${format}`);
     for (const { id } of SKINS) {
-      for (const file of ['character', 'background', 'preview'] as const) {
-        for (const format of ['avif', 'webp'] as const) {
-          const f = path.join(PUBLIC, skinAsset(id, file, format));
-          expect(existsSync(f), f).toBe(true);
-          // не пустышка и не гигант: телефону хватает
-          expect(statSync(f).size).toBeGreaterThan(2_000);
-          expect(statSync(f).size).toBeLessThan(600_000);
+      // ровно эти файлы: старых (без размера, превью) не осталось
+      expect(readdirSync(path.join(PUBLIC, 'assets', 'skins', id)).sort(), id).toEqual([...expected].sort());
+      for (const file of ['character', 'background', 'card'] as const) {
+        for (const size of SKIN_SIZES[file]) {
+          for (const format of ['avif', 'webp'] as const) {
+            const f = path.join(PUBLIC, skinAsset(id, file, format, size));
+            // не пустышка и не гигант: телефону хватает
+            expect(statSync(f).size, f).toBeGreaterThan(2_000);
+            expect(statSync(f).size, f).toBeLessThan(700_000);
+          }
         }
       }
       expect(existsSync(path.join(PUBLIC, skinIcon(id)))).toBe(true);
+    }
+  });
+
+  it('files have the pixels their name promises: nothing was upscaled to fill the size', () => {
+    for (const { id } of SKINS) {
+      for (const file of ['character', 'background', 'card'] as const) {
+        for (const size of SKIN_SIZES[file]) {
+          const { width, height } = webpSize(path.join(PUBLIC, skinAsset(id, file, 'webp', size)));
+          // персонаж — по высоте, фон и карточка — по ширине (±1 px округления)
+          expect(
+            Math.abs((file === 'character' ? height : width) - size),
+            `${id}/${file}-${size}`,
+          ).toBeLessThanOrEqual(1);
+          if (file === 'character') expect(width / height).toBeCloseTo(skinArt(id).aspect, 2);
+          if (file === 'card') expect(width / height).toBeCloseTo(4 / 5, 2);
+        }
+      }
     }
   });
 
@@ -79,14 +106,64 @@ describe('skin catalog ↔ visuals', () => {
   });
 
   it('unknown and old skin ids fall back to the default character (no old assets are ever requested)', () => {
-    expect(skinAsset('nope', 'character')).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/character.webp`);
+    expect(skinAsset('nope', 'character')).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/character-1600.webp`);
     for (const old of Object.keys(LEGACY_SKINS)) {
-      expect(skinAsset(old, 'background', 'avif')).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/background.avif`);
+      expect(skinAsset(old, 'background', 'avif', 1200)).toBe(
+        `/assets/skins/${DEFAULT_SKIN_ID}/background-1200.avif`,
+      );
       expect(skinIcon(old)).toBe(`/assets/skins/${DEFAULT_SKIN_ID}/icon.webp`);
     }
     expect(existsSync(path.join(PUBLIC, 'assets', 'generated', 'hero'))).toBe(false);
   });
 });
+
+describe('file size for the screen', () => {
+  it('takes the smallest file with enough pixels, the largest when none is enough', () => {
+    expect(pickSize('character', 500)).toBe(600);
+    expect(pickSize('character', 1037)).toBe(1200);
+    expect(pickSize('character', 1200)).toBe(1200);
+    expect(pickSize('character', 5000)).toBe(1600);
+    expect(pickSize('background', 2140)).toBe(2400);
+    expect(pickSize('card', 475)).toBe(480);
+  });
+
+  it('srcset lists every size with the real file width (characters by their proportions)', () => {
+    const id = SKINS[0]!.id;
+    const a = skinArt(id).aspect;
+    expect(skinSrcSet(id, 'card', 'avif')).toBe(
+      SKIN_SIZES.card.map((w) => `/assets/skins/${id}/card-${w}.avif ${w}w`).join(', '),
+    );
+    expect(skinSrcSet(id, 'character', 'webp')).toBe(
+      SKIN_SIZES.character
+        .map((h) => `/assets/skins/${id}/character-${h}.webp ${Math.round(h * a)}w`)
+        .join(', '),
+    );
+  });
+
+  it('the character fits its collection card: centred, feet on the floor, not wider than the card', () => {
+    for (const { id } of SKINS) {
+      const { card, aspect, body } = skinArt(id);
+      const width = (card.height * aspect) / (4 / 5);
+      expect(card.height, id).toBeGreaterThan(0.6);
+      expect(card.height, id).toBeLessThanOrEqual(0.86);
+      expect(width, id).toBeLessThanOrEqual(1.0001);
+      expect(card.left + body * width, id).toBeCloseTo(0.5, 3);
+      expect(card.feet).toBeGreaterThan(card.height);
+    }
+  });
+});
+
+/** Размер картинки WebP из заголовка (VP8, VP8L, VP8X). */
+function webpSize(file: string): { width: number; height: number } {
+  const b = readFileSync(file);
+  const kind = b.toString('ascii', 12, 16);
+  if (kind === 'VP8X') return { width: 1 + b.readUIntLE(24, 3), height: 1 + b.readUIntLE(27, 3) };
+  if (kind === 'VP8L') {
+    const bits = b.readUInt32LE(21);
+    return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >> 14) & 0x3fff) };
+  }
+  return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff };
+}
 
 describe('stage layout', () => {
   it('the character stands on the floor, body centred, tap zone covers it with a margin', () => {

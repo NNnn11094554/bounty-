@@ -1,7 +1,7 @@
 import { formatInt, playerLevel, type CosmeticDef } from '@meowgul/shared';
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { centerOf, confetti } from '../../game/effects';
-import { RARITY_COLOR, skinArt } from '../../game/skins';
+import { RARITY_COLOR, skinArt, snapPx } from '../../game/skins';
 import { tapEngine } from '../../game/tapEngine';
 import { useLocale, useT, type MessageKey } from '../../i18n';
 import { playSound } from '../../lib/sound';
@@ -19,7 +19,8 @@ import { lockOf, useLeagueName } from './lock';
 
 /**
  * Большой просмотр персонажа: он в полный рост в своём мире — фон стоит так, что персонаж на своём месте
- * (как на главном экране), со спокойной анимацией и атмосферой.
+ * (как на главном экране), со спокойной анимацией и атмосферой. Персонаж — крупный и резкий (файл под размер
+ * экрана, позиция — в целых пикселях), свет и затемнение краёв — отдельные слои вокруг.
  */
 function SkinPreviewStage({
   id,
@@ -41,15 +42,21 @@ function SkinPreviewStage({
     return () => ro.disconnect();
   }, [stageRef]);
   const art = skinArt(id);
-  const height = Math.max(0, Math.min(250, size.height - 30));
+  // персонаж — почти во всю высоту сцены; широкий (шляпа, крылья) — не шире 92% сцены
+  const height = Math.round(Math.max(0, Math.min(size.height - 26, (size.width * 0.92) / art.aspect)));
   const width = height * art.aspect;
   const fit = size.width
-    ? { left: size.width / 2 - width * art.body, top: size.height - 12 - height, width, height }
+    ? {
+        left: snapPx(size.width / 2 - width * art.body),
+        top: snapPx(size.height - 14 - height),
+        width,
+        height,
+      }
     : null;
   return (
     <div
       ref={stageRef}
-      className="relative h-[300px] overflow-hidden rounded-[18px] short:h-[240px]"
+      className="skin-stage relative h-[min(52vh,420px)] overflow-hidden rounded-[18px] short:h-[min(44vh,300px)]"
       data-testid="skin-preview"
     >
       <SkinScene key={id} skinId={id} fit={fit} />
@@ -58,6 +65,7 @@ function SkinPreviewStage({
           <HeroFigure skinId={id} height={height} />
         </div>
       )}
+      <div className="skin-stage-vignette pointer-events-none absolute inset-0" />
       {children}
     </div>
   );
@@ -131,7 +139,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
     let action;
     if (equipped)
       action = (
-        <Button block className="h-12" variant="secondary" disabled data-testid="cosmetic-equipped">
+        <Button block className="h-14 text-base" variant="secondary" disabled data-testid="cosmetic-equipped">
           {t('collection.equippedBtn')}
         </Button>
       );
@@ -139,7 +147,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
       action = (
         <Button
           block
-          className="h-12"
+          className="h-14 text-base"
           loading={busy === shown.id}
           onClick={() => void onEquip()}
           data-testid="cosmetic-equip"
@@ -149,7 +157,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
       );
     else if (lock)
       action = (
-        <Button block className="h-12" variant="secondary" disabled data-testid="cosmetic-locked">
+        <Button block className="h-14 text-base" variant="secondary" disabled data-testid="cosmetic-locked">
           {lock.by === 'league'
             ? t('collection.lockedLeague', { league: leagueName(lock.league) })
             : t('collection.locked', { level: lock.level })}
@@ -159,7 +167,8 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
       action = (
         <Button
           block
-          className="h-12"
+          className="h-14 text-base"
+          variant={shown.price?.currency === 'stars' ? 'gold' : 'primary'}
           loading={busy === shown.id}
           disabled={noFunds}
           onClick={() => void onBuy()}
@@ -176,12 +185,14 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
         <RarityFrame rarity={shown.rarity} className="w-full" live>
           {shown.kind === 'skin' ? (
             <SkinPreviewStage id={shown.id} stageRef={previewRef}>
+              {/* замок — в углу сцены, персонажа не закрывает */}
               {locked && (
-                <div className="absolute inset-0 grid place-items-center bg-black/35">
-                  <span className="rounded-full bg-black/70 px-3 py-1.5 text-sm font-black">
-                    🔒 {lockLabel}
-                  </span>
-                </div>
+                <span
+                  className="absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1.5 text-[13px] font-black ring-1 ring-white/10"
+                  data-testid="skin-lock"
+                >
+                  🔒 {lockLabel}
+                </span>
               )}
             </SkinPreviewStage>
           ) : (
@@ -191,43 +202,58 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
           )}
         </RarityFrame>
         <p
-          className="mt-4 text-[11px] font-black uppercase tracking-[0.18em]"
+          className="mt-4 text-[11px] font-black uppercase tracking-[0.2em]"
           style={{ color: RARITY_COLOR[shown.rarity] }}
+          data-testid="cosmetic-rarity"
         >
           {t(`rarity.${shown.rarity}` as MessageKey)}
           {shown.price?.currency === 'stars' && ` · ${t('collection.premium')}`}
           {shown.unlockLeague !== undefined && ` · ${t('collection.leagueReward')}`}
         </p>
-        <h2 className="mt-1 text-[24px] font-black leading-tight" data-testid="cosmetic-name">
+        <h2 className="mt-1 text-[26px] font-black leading-tight" data-testid="cosmetic-name">
           {shown.name[locale]}
         </h2>
-        <p className="mt-2 max-w-[320px] text-sm font-semibold leading-snug text-white/65">
+        <p className="mt-1.5 max-w-[330px] text-sm font-semibold leading-snug text-white/65">
           {shown.desc[locale]}
         </p>
         {shown.kind === 'effect' && (
           <p className="mt-1 text-xs font-bold text-white/40">{t('collection.tryTap')}</p>
         )}
         {shown.kind === 'skin' && (
-          <div className="mt-3 w-full rounded-2xl bg-white/5 px-3 py-2 text-left" data-testid="skin-how-to">
-            <p className="text-[11px] font-black uppercase tracking-wide text-white/45">
-              {t('collection.howTo')}
-            </p>
-            <p className="text-[13px] font-bold text-white/80">
-              {shown.unlockLeague !== undefined
-                ? t('collection.howLeague', { league: leagueName(shown.unlockLeague) })
-                : !shown.price
-                  ? t('collection.howFree')
-                  : shown.price.currency === 'stars'
-                    ? t('collection.howStars', { price: shown.price.amount })
-                    : t('collection.howLevel', {
-                        level: shown.unlockLevel,
-                        price: formatInt(shown.price.amount),
-                      })}
-            </p>
-          </div>
+          <>
+            <div className="sheet-divider mt-4 h-px w-full" />
+            <div className="mt-3 flex w-full items-center gap-3 text-left" data-testid="skin-how-to">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-black uppercase tracking-wide text-white/45">
+                  {t('collection.howTo')}
+                </p>
+                <p className="text-[13px] font-bold leading-snug text-white/80">
+                  {shown.unlockLeague !== undefined
+                    ? t('collection.howLeague', { league: leagueName(shown.unlockLeague) })
+                    : !shown.price
+                      ? t('collection.howFree')
+                      : shown.price.currency === 'stars'
+                        ? t('collection.howStars')
+                        : t('collection.howLevel', {
+                            level: shown.unlockLevel,
+                            price: formatInt(shown.price.amount),
+                          })}
+                </p>
+              </div>
+              {shown.price && !isOwned && (
+                <span
+                  className="flex shrink-0 items-center gap-1.5 text-[26px] font-black tabular text-gold"
+                  data-testid="cosmetic-price"
+                >
+                  {shown.price.currency === 'stars' ? <StarIcon size={24} /> : <CoinIcon size={24} />}
+                  {formatInt(shown.price.amount)}
+                </span>
+              )}
+            </div>
+          </>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs font-extrabold empty:hidden">
           {shown.unlockLeague !== undefined && (
             <span
               className={`rounded-full px-3 py-1 ${league >= shown.unlockLeague ? 'bg-lime/15 text-lime' : 'bg-white/10 text-white/70'}`}
@@ -245,7 +271,7 @@ export function CosmeticSheet({ item, onClose }: { item: CosmeticDef | null; onC
               {t('collection.yourLevel', { level })}
             </span>
           )}
-          {shown.price && !isOwned && (
+          {shown.kind !== 'skin' && shown.price && !isOwned && (
             <span className="flex items-center gap-1 rounded-full bg-gold/15 px-3 py-1 text-gold">
               {shown.price.currency === 'stars' ? <StarIcon size={14} /> : <CoinIcon size={14} />}
               {formatInt(shown.price.amount)}
