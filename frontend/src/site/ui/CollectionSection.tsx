@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { RARITY_COLOR } from '../../game/skins';
 import { CATS, RARITY_LABEL, catIcon } from '../cats';
-import { useSite } from '../store';
+import { sceneApi, useSite } from '../store';
 import { useAtStation } from './hooks';
 import { StationPanel } from './StationPanel';
 import { Title } from './Title';
@@ -168,7 +168,8 @@ function SwipeLayer({ onSwipe }: { onSwipe: (step: number) => void }) {
         const dy = e.clientY - s.y;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) onSwipe(dx < 0 ? 1 : -1);
         else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
-          // тап по коту сбоку — выбрать его
+          // тап по выбранному коту — он смущается; по коту сбоку — выбрать его
+          if (sceneApi.get()?.touch(e.clientX, e.clientY)) return;
           const third = window.innerWidth / 3;
           if (e.clientX < third * 0.8) onSwipe(-1);
           else if (e.clientX > window.innerWidth - third * 0.8) onSwipe(1);

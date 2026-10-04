@@ -47,6 +47,8 @@ ColorManagement.enabled = false;
 /** Высота персонажа в единицах сцены. */
 const CAT_H = 3.2;
 const STEP = (Math.PI * 2) / CATS.length;
+/** собственная частота пружины поворота кольца коллекции, рад/с (~1.3 с на соседа) */
+const RING_OMEGA = 3.4;
 
 /** Где стоят станции. */
 const HOME = new Vector3(0, 0, 0);
@@ -215,6 +217,7 @@ export class SiteWorld {
   // коллекция
   private figures: CatFigure[] = [];
   private ringAngle = 0;
+  private ringVel = 0;
   private selected = 0;
   private selectedAt = 0;
   private backdrops: Backdrop[] = [];
@@ -246,6 +249,8 @@ export class SiteWorld {
   private lastPos = new Vector3();
   private velocity = new Vector3();
   private readyAt = -1;
+  /** время сцены (для реакций на касание) */
+  private now = 0;
 
   constructor(private options: WorldOptions) {
     this.lite = options.lite;
@@ -616,24 +621,57 @@ export class SiteWorld {
 
   /** Тап в игре. NDC — от экрана; true — попал в кота. */
   tap(clientX: number, clientY: number, turbo: boolean): boolean {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -(((clientY - rect.top) / rect.height) * 2 - 1);
     const at = new Vector3();
-    if (!this.hero.hit(x, y, this.camera, at)) return false;
+    if (!this.hitFigure(this.hero, clientX, clientY, at)) return false;
     const side = Math.sign(at.x - this.hero.group.position.x) || 1;
-    this.hero.poke(turbo ? 1 : 0.75, side);
+    this.hero.poke(turbo ? 0.9 : 0.65, side, this.now);
     at.z += 0.25;
     this.bursts.emit(
       at,
-      turbo ? 22 : 12,
+      turbo ? 18 : 10,
       turbo ? ['#ffe08a', '#ff7a1a', '#ffffff'] : ['#ffc93c', '#ff9a4d'],
-      turbo ? 1.3 : 1,
+      turbo ? 1.15 : 0.9,
     );
-    this.shake.vx += (Math.random() - 0.5) * (turbo ? 1.4 : 0.8);
-    this.shake.vy -= turbo ? 1.2 : 0.7;
+    this.blushSparks(this.hero);
+    this.shake.vx += (Math.random() - 0.5) * (turbo ? 0.6 : 0.35);
+    this.shake.vy -= turbo ? 0.5 : 0.3;
     (this.energyRing.material as ShaderMaterial).uniforms.uOpacity!.value = 1;
     return true;
+  }
+
+  private hitFigure(figure: CatFigure, clientX: number, clientY: number, at: Vector3): boolean {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((clientY - rect.top) / rect.height) * 2 - 1);
+    return figure.ready && figure.hit(x, y, this.camera, at);
+  }
+
+  /** Розовые искорки у головы — кот смущается. */
+  private blushSparks(figure: CatFigure): void {
+    const head = new Vector3(0, figure.height * 0.82, 0.3);
+    figure.group.localToWorld(head);
+    this.bursts.emit(head, 5, ['#ff8fb3', '#ffd1e0', '#ffffff'], 0.45);
+  }
+
+  /**
+   * Касание кота вне игры (коллекция, прокачка, задания, главная): без награды, кот смущается.
+   * true — палец попал в кота.
+   */
+  touch(clientX: number, clientY: number): boolean {
+    const candidates: CatFigure[] = [];
+    if (this.stations[2]!.visible) candidates.push(this.figures[this.selected]!);
+    if (this.stations[3]!.visible) candidates.push(this.engineer);
+    if (this.stations[4]!.visible) candidates.push(this.nomad);
+    if (this.stations[0]!.visible) candidates.push(this.hero);
+    const at = new Vector3();
+    for (const figure of candidates) {
+      if (!this.hitFigure(figure, clientX, clientY, at)) continue;
+      const local = figure.group.worldToLocal(at.clone());
+      figure.poke(0.6, Math.sign(local.x) || 1, this.now);
+      this.blushSparks(figure);
+      return true;
+    }
+    return false;
   }
 
   /** Рамка кота игры на экране, CSS px. */
@@ -687,6 +725,7 @@ export class SiteWorld {
     if (v.intro >= 0 && this.readyAt < 0) this.readyAt = time;
     if (this.readyAt >= 0 && time - this.readyAt > 1) this.govern(dt);
     globals.uTime.value = time;
+    this.now = time;
     this.select(selected, time);
 
     // ── камера ──
@@ -801,7 +840,19 @@ export class SiteWorld {
     const target = -this.selected * STEP;
     let diff = target - this.ringAngle;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    this.ringAngle += diff * (1 - Math.exp(-dt * (still ? 60 : 3.6)));
+    // кольцо поворачивается пружиной: плавный разгон и мягкая остановка, без рывка в начале
+    if (still) {
+      this.ringAngle += diff;
+      this.ringVel = 0;
+    } else {
+      const steps = Math.ceil(dt / (1 / 120));
+      for (let i = 0; i < steps; i++) {
+        const h = dt / steps;
+        const d = Math.atan2(Math.sin(target - this.ringAngle), Math.cos(target - this.ringAngle));
+        this.ringVel += (RING_OMEGA * RING_OMEGA * d - 2 * RING_OMEGA * this.ringVel) * h;
+        this.ringAngle += this.ringVel * h;
+      }
+    }
     const settled = smoothstep(0.35, 1.1, time - this.selectedAt);
     // на широком экране справа — текст: коты с той стороны уходят в тень, чтобы не спорить с ним
     const wide = landscapeness(this.width / this.height);

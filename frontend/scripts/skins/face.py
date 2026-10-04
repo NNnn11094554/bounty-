@@ -7,6 +7,7 @@ x, rx — от ширины, y, ry — от высоты). Скрипт доба
           — слой наклона головы;
   neck  — точка поворота головы [x, y].
 Запуск: python3 scripts/skins/face.py (после build.mjs; картинки — public/assets/skins/<id>/character-1600.webp).
+`python3 scripts/skins/face.py site` — то же для котов сайта (src/site/catArt.json) плюс уши (EARS).
 """
 import json
 from pathlib import Path
@@ -41,40 +42,75 @@ EYES = {
 }
 
 
+def face_for(alpha, a, eyes):
+    """Эллипс головы и шея по силуэту и глазам (доли картинки)."""
+    H, W = alpha.shape
+    hx, hb = a['head'][0], a['headBottom']
+    cols = slice(max(0, int((hx - 0.3) * W)), min(W, int((hx + 0.3) * W)))
+    rows = np.where((alpha[: int(hb * H), cols] > 128).any(axis=1))[0]
+    top = rows[0] / H if len(rows) else 0
+    ry = (hb - top) / 2 * 1.06
+    cy = (top + hb) / 2
+    # глаза целиком — в непрозрачной части головы (до 75% эллипса), иначе при наклоне край глаза
+    # смешался бы с неподвижной копией в теле
+    for _, y, _, ey in eyes:
+        ry = max(ry, (abs(y - cy) + ey) / 0.7)
+    # персонажи в три четверти: лицо смещено от центра головы — эллипс сдвигается к глазам
+    eyes_mid = (min(x - ex for x, _, ex, _ in eyes) + max(x + ex for x, _, ex, _ in eyes)) / 2
+    cx = (hx + eyes_mid) / 2
+    rx_px = ry * H * 0.95
+    for x, y, ex, _ in eyes:
+        dy = min(0.7, abs(y - cy) / ry)
+        rx_px = max(rx_px, (abs(x - cx) + ex) * W / (0.75**2 - dy**2) ** 0.5)
+    return {
+        'eyes': eyes,
+        'head': [round(cx, 4), round(cy, 4), round(rx_px / W, 4), round(ry, 4)],
+        'neck': [round(hx, 4), round(hb, 4)],
+    }
+
+
+# уши котов сайта: [кончик x, y, основание x, y] в долях картинки персонажа — размечены вручную по сетке
+# (как глаза); у Лунной ведьмы уши под шляпой — не двигаются
+EARS = {
+    'inferno': [[0.62, 0.01, 0.6, 0.12], [0.98, 0.146, 0.905, 0.217]],
+    'sakura_blossom': [[0.52, 0.023, 0.484, 0.16], [0.915, 0.143, 0.85, 0.21]],
+    'toxic': [[0.584, 0.014, 0.58, 0.15], [0.955, 0.154, 0.89, 0.2]],
+    'desert_nomad': [[0.54, 0.009, 0.58, 0.103], [0.937, 0.12, 0.89, 0.16]],
+    'crystal_prince': [[0.424, 0.009, 0.44, 0.109], [0.83, 0.12, 0.775, 0.166]],
+    'lunar_witch': [],
+}
+
+
+def main_site():
+    """Сайт игры: лицо и уши котов сайта в src/site/catArt.json (картинки — public/assets/site/cats)."""
+    path = ROOT / 'src' / 'site' / 'catArt.json'
+    art = json.loads(path.read_text())
+    for cat, a in art.items():
+        im = np.asarray(
+            Image.open(ROOT / 'public' / 'assets' / 'site' / 'cats' / cat / 'character-1600.webp').convert('RGBA')
+        )
+        alpha = im[..., 3]
+        # нижний край головы ≈ 1.9 × центр головы по высоте (как в compose.py)
+        a['headBottom'] = round(min(0.45, a['head'][1] * 1.9), 4)
+        face = face_for(alpha, a, EYES[cat])
+        face['ears'] = EARS[cat]
+        a['face'] = face
+    path.write_text(json.dumps(art, indent=2, ensure_ascii=False) + '\n')
+    print(f'face: {len(art)} site cats')
+
+
 def main():
     art = json.loads(ART.read_text())
     for skin, eyes in EYES.items():
         if skin not in art:  # персонаж убран из коллекции (разметка — под его прежний арт)
             continue
         im = np.asarray(Image.open(ROOT / 'public' / 'assets' / 'skins' / skin / 'character-1600.webp').convert('RGBA'))
-        H, W = im.shape[:2]
-        alpha = im[..., 3]
-        a = art[skin]
-        hx, hb = a['head'][0], a['headBottom']
-        cols = slice(max(0, int((hx - 0.3) * W)), min(W, int((hx + 0.3) * W)))
-        rows = np.where((alpha[: int(hb * H), cols] > 128).any(axis=1))[0]
-        top = rows[0] / H if len(rows) else 0
-        ry = (hb - top) / 2 * 1.06
-        cy = (top + hb) / 2
-        # глаза целиком — в непрозрачной части головы (до 75% эллипса), иначе при наклоне край глаза
-        # смешался бы с неподвижной копией в теле
-        for _, y, _, ey in eyes:
-            ry = max(ry, (abs(y - cy) + ey) / 0.7)
-        # персонажи в три четверти: лицо смещено от центра головы — эллипс сдвигается к глазам
-        eyes_mid = (min(x - ex for x, _, ex, _ in eyes) + max(x + ex for x, _, ex, _ in eyes)) / 2
-        cx = (hx + eyes_mid) / 2
-        rx_px = ry * H * 0.95
-        for x, y, ex, _ in eyes:
-            dy = min(0.7, abs(y - cy) / ry)
-            rx_px = max(rx_px, (abs(x - cx) + ex) * W / (0.75**2 - dy**2) ** 0.5)
-        a['face'] = {
-            'eyes': eyes,
-            'head': [round(cx, 4), round(cy, 4), round(rx_px / W, 4), round(ry, 4)],
-            'neck': [round(hx, 4), round(hb, 4)],
-        }
+        art[skin]['face'] = face_for(im[..., 3], art[skin], eyes)
     ART.write_text(json.dumps(art, indent=2, ensure_ascii=False) + '\n')
     print(f'face: {len([s for s in EYES if s in art])} skins')
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+
+    main_site() if 'site' in sys.argv[1:] else main()

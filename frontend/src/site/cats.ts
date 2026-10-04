@@ -118,6 +118,13 @@ export interface CatArt {
   head: [number, number];
   body: number;
   scene: { aspect: number; char: [number, number, number, number] };
+  /** лицо (scripts/skins/face.py site): глаза [x, y, rx, ry], эллипс головы, шея, уши [кончик xy, основание xy] */
+  face: {
+    eyes: Array<[number, number, number, number]>;
+    head: [number, number, number, number];
+    neck: [number, number];
+    ears: Array<[number, number, number, number]>;
+  };
 }
 
 const ART = art as unknown as Record<string, CatArt>;

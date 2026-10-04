@@ -31,6 +31,12 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
     useSite.getState().setNoWebgl();
   };
   canvas.addEventListener('webglcontextlost', onLost);
+  // касание кота прямо по сцене (где сверху нет слоя игры или коллекции)
+  const onDown = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    world.touch(e.clientX, e.clientY);
+  };
+  canvas.addEventListener('pointerdown', onDown);
 
   let selected = useSite.getState().selected;
   const unsubscribe = useSite.subscribe((s) => {
@@ -39,6 +45,7 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
   const stop = onTick((v) => world.frame(v, selected));
   sceneApi.set({
     tap: (x, y, turbo) => world.tap(x, y, turbo),
+    touch: (x, y) => world.touch(x, y),
     catRect: () => world.catRect(),
   });
 
@@ -56,6 +63,7 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
     sceneApi.set(null);
     window.removeEventListener('resize', onResize);
     canvas.removeEventListener('webglcontextlost', onLost);
+    canvas.removeEventListener('pointerdown', onDown);
     world.dispose();
   };
 }

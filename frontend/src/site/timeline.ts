@@ -10,8 +10,13 @@ export const LAST_STATION = STATIONS.length - 1;
 export const STEP_SCREENS = 1.5;
 /** доля перехода в начале и в конце, где камера ещё (уже) стоит на станции */
 const HOLD = 0.14;
-/** насколько быстро камера догоняет прокрутку (1/с): ~0.6 с до цели */
-const FOLLOW = 5.2;
+/**
+ * Камера догоняет прокрутку пружиной с критическим затуханием: разгоняется и тормозит плавно, без рывка
+ * в первый кадр и без перелёта. Собственная частота, рад/с: ~1 с до цели.
+ */
+const OMEGA = 4.4;
+/** скорость камеры, станций/с (состояние пружины) */
+let velocity = 0;
 
 export interface View {
   /** куда ведёт прокрутка, в станциях */
@@ -113,6 +118,8 @@ export function startTimeline(spacer: HTMLElement): () => void {
   };
   // ручная прокрутка во время перелёта — перелёт уступает ей
   const cancelFlight = () => {
+    // пружина продолжает с текущей скоростью перелёта — без остановки на месте
+    if (flight) velocity = view.speed;
     flight = null;
   };
 
@@ -138,12 +145,23 @@ export function startTimeline(spacer: HTMLElement): () => void {
     if (flight) {
       const k = clamp01((view.time - flight.start) / flight.duration);
       view.pos = flight.from + (flight.to - flight.from) * easeInOutCubic(k);
-      if (k >= 1) flight = null;
+      if (k >= 1) {
+        flight = null;
+        velocity = 0;
+      }
     } else if (view.reduced) {
       view.pos = view.target;
     } else {
-      view.pos += (view.target - view.pos) * (1 - Math.exp(-dt * FOLLOW));
-      if (Math.abs(view.target - view.pos) < 1e-4) view.pos = view.target;
+      const steps = Math.ceil(dt / (1 / 120));
+      const h = dt / steps;
+      for (let i = 0; i < steps; i++) {
+        velocity += (OMEGA * OMEGA * (view.target - view.pos) - 2 * OMEGA * velocity) * h;
+        view.pos += velocity * h;
+      }
+      if (Math.abs(view.target - view.pos) < 1e-4 && Math.abs(velocity) < 1e-3) {
+        view.pos = view.target;
+        velocity = 0;
+      }
     }
     view.speed = (view.pos - prev) / dt;
     ticks.forEach((cb) => cb(view));

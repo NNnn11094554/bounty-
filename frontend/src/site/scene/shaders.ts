@@ -5,6 +5,7 @@ import {
   OneMinusSrcAlphaFactor,
   ShaderMaterial,
   Vector2,
+  Vector4,
   type Texture,
 } from 'three';
 
@@ -92,6 +93,99 @@ function additive(material: ShaderMaterial): ShaderMaterial {
   return material;
 }
 
+/**
+ * «Живой» персонаж: сетка картинки деформируется в вершинном шейдере, сам арт не меняется — пиксели едут
+ * вместе с вершинами. Координаты — в единицах сцены от ступней (x — от вертикали тела, y — вверх).
+ */
+export interface LifeUniforms {
+  /** высота персонажа */
+  uHeight: { value: number };
+  /** вдох −1…1: грудь шире, плечи и голова чуть выше */
+  uBreath: { value: number };
+  /** уши: кончик (xy) и основание (zw); угол поворота вокруг основания */
+  uEar0: { value: Vector4 };
+  uEar1: { value: Vector4 };
+  uEarAngle: { value: Vector2 };
+  /** голова: центр и полуоси эллипса, шея (точка поворота), наклон и опускание */
+  uHead: { value: Vector4 };
+  uNeck: { value: Vector2 };
+  uHeadTilt: { value: number };
+  uHeadDrop: { value: number };
+  /** румянец: щёки (uv: x, y снизу) и сила 0…1 */
+  uCheeks: { value: Vector4 };
+  uCheekSize: { value: Vector2 };
+  uBlush: { value: number };
+}
+
+export function lifeUniforms(): LifeUniforms {
+  return {
+    uHeight: { value: 1 },
+    uBreath: { value: 0 },
+    uEar0: { value: new Vector4() },
+    uEar1: { value: new Vector4() },
+    uEarAngle: { value: new Vector2() },
+    uHead: { value: new Vector4(0, 0, 0.001, 0.001) },
+    uNeck: { value: new Vector2() },
+    uHeadTilt: { value: 0 },
+    uHeadDrop: { value: 0 },
+    uCheeks: { value: new Vector4(-1, -1, -1, -1) },
+    uCheekSize: { value: new Vector2(0.05, 0.03) },
+    uBlush: { value: 0 },
+  };
+}
+
+const LIFE_VERTEX = /* glsl */ `
+uniform float uHeight;
+uniform float uBreath;
+uniform vec4 uEar0;
+uniform vec4 uEar1;
+uniform vec2 uEarAngle;
+uniform vec4 uHead;
+uniform vec2 uNeck;
+uniform float uHeadTilt;
+uniform float uHeadDrop;
+varying vec2 vUv;
+varying float vDepth;
+vec2 rot(vec2 v, float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
+}
+// ухо поворачивается вокруг основания; сила спадает к краям уха — голова рядом не рвётся
+vec2 ear(vec2 p, vec4 e, float angle) {
+  vec2 tip = e.xy;
+  vec2 base = e.zw;
+  vec2 axis = tip - base;
+  float len = max(length(axis), 1e-4);
+  axis /= len;
+  vec2 d = p - base;
+  float along = dot(d, axis) / len;
+  float across = abs(d.x * axis.y - d.y * axis.x) / len;
+  float w = smoothstep(-0.35, 0.3, along) * (1.0 - smoothstep(1.25, 1.6, along))
+    * (1.0 - smoothstep(0.45, 0.95, across));
+  return base + rot(d, angle * w);
+}
+void main() {
+  vUv = uv;
+  vec3 p = position;
+  float h = uHeight;
+  // дыхание: грудь шире на вдохе, плечи и голова чуть поднимаются; ступни на месте
+  float chest = smoothstep(0.25 * h, 0.48 * h, p.y) * (1.0 - smoothstep(0.58 * h, 0.8 * h, p.y));
+  p.x += p.x * uBreath * 0.022 * chest;
+  p.y += uBreath * 0.009 * h * smoothstep(0.3 * h, 0.75 * h, p.y);
+  // уши
+  p.xy = ear(p.xy, uEar0, uEarAngle.x);
+  p.xy = ear(p.xy, uEar1, uEarAngle.y);
+  // голова: наклон вокруг шеи, плавно гаснет к краю эллипса головы
+  vec2 hd = (p.xy - uHead.xy) / uHead.zw;
+  float wh = 1.0 - smoothstep(0.8, 1.2, length(hd));
+  p.xy = mix(p.xy, uNeck + rot(p.xy - uNeck, uHeadTilt) + vec2(0.0, uHeadDrop), wh);
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vDepth = -mv.z;
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
 export interface CatUniforms {
   map: { value: Texture | null };
   uOpacity: { value: number };
@@ -113,7 +207,7 @@ export interface CatUniforms {
  * Персонаж: резкий арт без изменений + контровой свет по краю силуэта со стороны света мира,
  * проявление из искр, отражение на полу (uReflect) и туман.
  */
-export function catMaterial(reflect = false): ShaderMaterial & { uniforms: CatUniforms } {
+export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial & { uniforms: CatUniforms } {
   const uniforms: CatUniforms = {
     map: { value: null },
     uOpacity: { value: 1 },
@@ -128,10 +222,19 @@ export function catMaterial(reflect = false): ShaderMaterial & { uniforms: CatUn
     uFlash: { value: 0 },
   };
   const material = new ShaderMaterial({
-    uniforms: { ...uniforms, uFog: globals.uFog, uFogNear: globals.uFogNear, uFogFar: globals.uFogFar },
-    vertexShader: DEPTH_VERTEX,
+    uniforms: {
+      ...uniforms,
+      ...life,
+      uFog: globals.uFog,
+      uFogNear: globals.uFogNear,
+      uFogFar: globals.uFogFar,
+    },
+    vertexShader: LIFE_VERTEX,
     fragmentShader: /* glsl */ `
       uniform sampler2D map;
+      uniform vec4 uCheeks;
+      uniform vec2 uCheekSize;
+      uniform float uBlush;
       uniform float uOpacity;
       uniform float uReveal;
       uniform float uDim;
@@ -152,6 +255,13 @@ export function catMaterial(reflect = false): ShaderMaterial & { uniforms: CatUn
         float rim = clamp(c.a - texture2D(map, vUv + uLight).a, 0.0, 1.0);
         vec3 col = c.rgb * uDim + uRim * rim * uRimStrength + c.rgb * uFlash;
         float a = c.a;
+        // румянец: мягкие розовые пятна на щеках, только по непрозрачной части лица
+        if (uBlush > 0.001) {
+          vec2 q0 = (vUv - uCheeks.xy) / uCheekSize;
+          vec2 q1 = (vUv - uCheeks.zw) / uCheekSize;
+          float b = exp(-dot(q0, q0) * 1.6) + exp(-dot(q1, q1) * 1.6);
+          col = mix(col, vec3(1.0, 0.42, 0.55) * a, clamp(b * uBlush * 0.55, 0.0, 0.6) * step(0.6, a));
+        }
         if (uReveal < 1.0) {
           float n = fbm(vUv * vec2(7.0, 11.0) + uSeed) * 0.5 + vUv.y * 0.5;
           float e = uReveal * 1.32 - n;
@@ -180,10 +290,10 @@ export function catMaterial(reflect = false): ShaderMaterial & { uniforms: CatUn
  * Глубина силуэта (без цвета): частицы за котом не просвечивают сквозь него, а мягкий край меха
  * (альфа < 0.5) глубину не пишет — там частицы видны, как и должны.
  */
-export function depthMaskMaterial(): ShaderMaterial {
+export function depthMaskMaterial(life: LifeUniforms): ShaderMaterial {
   const material = new ShaderMaterial({
-    uniforms: { map: { value: null } },
-    vertexShader: DEPTH_VERTEX,
+    uniforms: { map: { value: null }, ...life },
+    vertexShader: LIFE_VERTEX,
     fragmentShader: /* glsl */ `
       uniform sampler2D map;
       varying vec2 vUv;
