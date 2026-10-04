@@ -102,7 +102,7 @@ export async function boot(): Promise<void> {
     setTurboMultiplier(res.config.turbo.multiplier);
     wireEngine();
     tapEngine.applyServerState(res.state);
-    tapEngine.start(res.config.tap.syncIntervalMs);
+    tapEngine.start(res.config.tap.syncIntervalMs, res.config.tap.maxPerSecond);
     store.applyAuth(res);
     if (res.referral) {
       // кот радуется новому другу, когда появится на экране

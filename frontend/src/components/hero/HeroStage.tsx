@@ -6,6 +6,7 @@ import { centerOf, confetti } from '../../game/effects';
 import { onFrame } from '../../game/frameLoop';
 import {
   EFFECT_PARTICLE,
+  liteDevice,
   skinArt,
   skinId as knownSkin,
   skinStyle,
@@ -111,6 +112,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     const fx = fxRef.current;
     if (!root || !hit || !fx) return;
     const reduced = () => isReducedMotion();
+    const lite = liteDevice();
 
     // ── лицо: взгляд и наклон головы (глаза не закрываются) ──
     /** взгляд: −1…1 по каждой оси — радужка смещается внутри глаза (transform прямо на картинке в окошке) */
@@ -163,7 +165,7 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     const spawnFloat = (x: number, y: number, text: string, scale: number) => {
       const el = floats[fi++ % FLOAT_POOL]!;
       el.getAnimations().forEach((a) => a.cancel());
-      el.textContent = text;
+      if (el.textContent !== text) el.textContent = text;
       const drift = (Math.random() - 0.5) * 40;
       el.animate(
         [
@@ -206,10 +208,15 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     /** частицы эффекта тапа (надетая «косметика») */
     const spawnParticles = (x: number, y: number, count: number, kind = effectRef.current, spread = 1) => {
       if (reduced()) return;
-      for (let i = 0; i < count; i++) {
+      // слабое устройство: вдвое меньше частиц (каждая — своя анимация на видеокарте)
+      const n = lite ? Math.ceil(count / 2) : count;
+      for (let i = 0; i < n; i++) {
         const el = pts[pi++ % PT_POOL]!;
-        el.className = `tap-pt pt pt-${kind}`;
-        el.textContent = kind === 'code' ? (Math.random() < 0.5 ? '0' : '1') : '';
+        // класс и текст меняются только при смене вида: лишняя запись в DOM — пересчёт стилей на каждом тапе
+        const cls = `tap-pt pt pt-${kind}`;
+        if (el.className !== cls) el.className = cls;
+        const text = kind === 'code' ? (Math.random() < 0.5 ? '0' : '1') : '';
+        if (el.textContent !== text) el.textContent = text;
         const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * spread;
         const dist = 45 + Math.random() * 45;
         const dx = Math.cos(angle) * dist;

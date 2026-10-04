@@ -94,8 +94,11 @@ export function GameShell() {
   const stack = useNav((s) => s.stack);
   const push = useNav((s) => s.push);
   const pop = useNav((s) => s.pop);
+  const setTab = useNav((s) => s.setTab);
   const top = stack[stack.length - 1];
   useBackHandler(stack.length > 0, pop);
+  // «Назад» на вкладке (не главной) — на главную: аппаратная кнопка Android не закрывает игру с полпути
+  useBackHandler(stack.length === 0 && tab !== 'office', () => setTab('office'));
   useDayRollover();
   useLevelUp();
   const reduced = isReducedMotion();
@@ -119,7 +122,8 @@ export function GameShell() {
   }, []);
 
   return (
-    <div className="pt-safe pb-safe relative mx-auto flex h-full max-w-[520px] flex-col overflow-hidden">
+    // shell-clip: обрезка без прокрутки — scrollIntoView/фокус во время въезда экрана не сдвигают всю игру вбок
+    <div className="shell-clip pt-safe pb-safe relative mx-auto flex h-full max-w-[520px] flex-col">
       <main className="relative min-h-0 flex-1">
         {/*
           Вкладки переключают десятки раз за игру: старая исчезает сразу, новая проявляется за 150 мс только
