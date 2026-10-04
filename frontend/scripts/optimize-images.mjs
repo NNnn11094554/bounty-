@@ -16,7 +16,7 @@ const DEFAULT_SKIN = /DEFAULT_SKIN_ID = '([a-z_]+)'/.exec(cosmetics)?.[1];
 if (!DEFAULT_SKIN) throw new Error('DEFAULT_SKIN_ID not found');
 const skinDir = path.join(root, 'public', 'assets', 'skins', DEFAULT_SKIN);
 const PORTRAIT = path.join(skinDir, 'icon.webp');
-const CHARACTER = path.join(skinDir, 'character.webp');
+const CHARACTER = path.join(skinDir, 'character-1600.webp');
 const input = readFileSync(PORTRAIT);
 const srcMtime = Math.max(statSync(PORTRAIT).mtimeMs, statSync(CHARACTER).mtimeMs);
 const fresh = (file) => existsSync(file) && statSync(file).mtimeMs >= srcMtime;

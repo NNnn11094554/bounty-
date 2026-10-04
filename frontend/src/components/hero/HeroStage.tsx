@@ -2,7 +2,6 @@ import { formatShort, type Locale } from '@meowgul/shared';
 import { useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../../animations';
 import { catMood, type CatEvent } from '../../game/catMood';
-import { CatMotion } from '../../game/catMotion';
 import { centerOf, confetti } from '../../game/effects';
 import { onFrame } from '../../game/frameLoop';
 import {
@@ -10,6 +9,7 @@ import {
   skinArt,
   skinId as knownSkin,
   skinStyle,
+  snapPx,
   skinVars,
   type ParticleKind,
 } from '../../game/skins';
@@ -97,8 +97,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
   const art = skinArt(skin);
   const artRef = useRef(art);
   artRef.current = art;
-  /** новый скин — новые слои: текущий поворот ставится на них сразу */
-  const reapplyRef = useRef<() => void>();
   const burstRef = useRef<ParticleKind>(skinStyle(skin).burst);
   burstRef.current = skinStyle(skin).burst;
   const L = heroLayout(width, height, art.aspect, art.body);
@@ -114,52 +112,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
     if (!root || !hit || !fx) return;
     const reduced = () => isReducedMotion();
 
-    // ── смена позы в покое: медленный поворот в объёме на пружинах (тапы его не трогают) ──
-    const motion = new CatMotion();
-    let yawNow = 0;
-    let pitchNow = 0;
-    let raf = 0;
-    let last = 0;
-    const apply = () => {
-      const t = motion.transforms();
-      // объём: transform прямо на слой поворота и на тень на полу — без CSS-переменных на всём персонаже
-      // (переменная на родителе пересчитывала бы стили каждого слоя внутри на каждом кадре)
-      const yaw = Math.round(t.yaw * 1000) / 1000;
-      const pitch = Math.round(t.pitch * 1000) / 1000;
-      if (yaw === yawNow && pitch === pitchNow) return;
-      yawNow = yaw;
-      pitchNow = pitch;
-      const still = !yaw && !pitch;
-      const orbit = root.querySelector<HTMLElement>('.hero-orbit');
-      const floor = root.querySelector<HTMLElement>('.hero-floor');
-      if (orbit) orbit.style.transform = still ? '' : `rotateY(${yaw}deg) rotateX(${pitch}deg)`;
-      if (floor)
-        floor.style.transform = still ? '' : `translate3d(${-0.9 * yaw}%, 0, 0) scaleX(${1 + pitch * 0.02})`;
-    };
-    reapplyRef.current = () => {
-      yawNow = Number.NaN;
-      apply();
-    };
-    const frame = (now: number) => {
-      raf = 0;
-      const dt = last ? (now - last) / 1000 : 1 / 60;
-      last = now;
-      const active = motion.advance(dt);
-      apply();
-      if (active) raf = requestAnimationFrame(frame);
-      else last = 0;
-    };
-    const kick = () => {
-      if (reduced()) {
-        motion.advance(10);
-        apply();
-        return;
-      }
-      if (!raf) {
-        last = 0;
-        raf = requestAnimationFrame(frame);
-      }
-    };
     // ── лицо: взгляд и наклон головы (глаза не закрываются) ──
     /** взгляд: −1…1 по каждой оси — радужка смещается внутри глаза (transform прямо на картинке в окошке) */
     const gaze = (gx: number, gy: number) => {
@@ -366,8 +318,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
         case 'sleepy':
           setMood('sleepy');
           gaze(0, 0.5);
-          motion.orbitTo(0, -1.2);
-          kick();
           break;
       }
     };
@@ -417,8 +367,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       if (mood === 'sleepy') {
         setMood('');
         gaze(0, 0);
-        motion.orbitTo(0, 0);
-        kick();
         react('happy');
       }
     };
@@ -538,22 +486,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
           break;
       }
     };
-    // в покое персонаж медленно поворачивается то чуть в одну, то в другую сторону — живой объём
-    let orbitTimer = 0;
-    const scheduleOrbit = () => {
-      orbitTimer = window.setTimeout(
-        () => {
-          if (!document.hidden && !reduced() && performance.now() - lastActivity > 2_600) {
-            if (mood === 'sleepy') motion.orbitTo(0, -1.2);
-            else motion.orbitTo((Math.random() * 2 - 1) * 3.5, Math.random() * 1.2 - 0.3);
-            kick();
-          }
-          scheduleOrbit();
-        },
-        3_200 + Math.random() * 3_400,
-      );
-    };
-    scheduleOrbit();
     const scheduleIdle = () => {
       idleTimer = window.setTimeout(runIdle, IDLE_MIN_MS + Math.random() * IDLE_SPREAD_MS);
     };
@@ -621,11 +553,9 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       stopFrame();
       offMood();
       window.clearTimeout(idleTimer);
-      window.clearTimeout(orbitTimer);
       window.clearTimeout(moodTimer);
       window.clearTimeout(gazeBack);
       window.clearTimeout(poseTimer);
-      if (raf) cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pointermove', onMove);
       root.removeEventListener('pointerdown', onDown);
@@ -636,7 +566,6 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       [...floats, ...rings, ...flashes, ...coins, ...pts].forEach((el) => el.remove());
     };
   }, []);
-  useEffect(() => reapplyRef.current?.(), [skin]);
 
   const head = { x: L.cat.left + L.cat.width * art.head[0], y: L.cat.top + L.cat.height * art.head[1] };
   return (
@@ -648,8 +577,13 @@ export function HeroStage({ width, height, handler, locale, sleepyLabel, skinId,
       data-skin={skin}
     >
       {/* смена скина: новый персонаж мягко проявляется на том же месте */}
-      <div key={skin} className="hero-enter absolute" style={{ left: L.cat.left, top: L.cat.top }}>
-        <HeroFigure skinId={skin} height={L.cat.height} />
+      {/* позиция и высота — в целых пикселях экрана: картинка ложится на пиксели без пересэмплирования */}
+      <div
+        key={skin}
+        className="hero-enter absolute"
+        style={{ left: snapPx(L.cat.left), top: snapPx(L.cat.top) }}
+      >
+        <HeroFigure skinId={skin} height={Math.round(L.cat.height)} />
       </div>
       <div
         className="hero-zzz pointer-events-none absolute text-2xl font-black text-white/80"

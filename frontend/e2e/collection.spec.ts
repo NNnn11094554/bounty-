@@ -27,13 +27,27 @@ async function expectCharacter(page: Page, id: string) {
   await expect(page.locator('.hero-fig')).toHaveAttribute('data-figure-skin', id);
   await expect(page.locator('.hero-fig [data-skin-file="character"]')).toHaveAttribute(
     'style',
-    new RegExp(`/assets/skins/${id}/character\\.avif.*/assets/skins/${id}/character\\.webp`),
+    new RegExp(`/assets/skins/${id}/character-\\d+\\.avif.*/assets/skins/${id}/character-\\d+\\.webp`),
   );
   await expect(page.getByTestId('skin-scene')).toHaveAttribute('data-scene-skin', id);
   await expect(page.locator('[data-testid="skin-scene"] [data-skin-file="background"]')).toHaveAttribute(
     'style',
-    new RegExp(`/assets/skins/${id}/background\\.webp`),
+    new RegExp(`/assets/skins/${id}/background-\\d+\\.webp`),
   );
+  // файл не меньше места на экране (в пикселях экрана): браузер ничего не растягивает
+  const fits = await page.evaluate(() =>
+    [
+      '.hero-fig [data-skin-file="character"]',
+      '[data-testid="skin-scene"] [data-skin-file="background"]',
+    ].map((sel) => {
+      const el = document.querySelector<HTMLElement>(sel)!;
+      const r = el.getBoundingClientRect();
+      const size = Number(/-(\d+)\.webp/.exec(getComputedStyle(el).getPropertyValue('--img-webp'))![1]);
+      const need = (sel.includes('character') ? r.height : r.width) * devicePixelRatio;
+      return size >= need || size >= 1600;
+    }),
+  );
+  expect(fits).toEqual([true, true]);
 }
 
 test.describe('Skins and collection', () => {
@@ -82,12 +96,18 @@ test.describe('Skins and collection', () => {
 
     await page.getByTestId('nav-office').click();
     await expectCharacter(page, 'desert_nomad');
-    // все картинки персонажа есть на сервере (AVIF и WebP)
-    for (const file of ['character', 'background', 'preview'])
-      for (const ext of ['avif', 'webp']) {
-        const res = await page.request.get(`/assets/skins/desert_nomad/${file}.${ext}`);
-        expect(res.ok(), `${file}.${ext}`).toBe(true);
-      }
+    // все картинки персонажа есть на сервере (каждый размер, AVIF и WebP)
+    const sizes = {
+      character: [600, 900, 1200, 1600],
+      background: [1200, 1800, 2400],
+      card: [480, 720, 960],
+    };
+    for (const [file, list] of Object.entries(sizes))
+      for (const size of list)
+        for (const ext of ['avif', 'webp']) {
+          const res = await page.request.get(`/assets/skins/desert_nomad/${file}-${size}.${ext}`);
+          expect(res.ok(), `${file}-${size}.${ext}`).toBe(true);
+        }
     await page.reload();
     await expectCharacter(page, 'desert_nomad');
 

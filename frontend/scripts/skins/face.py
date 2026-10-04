@@ -6,7 +6,7 @@ x, rx — от ширины, y, ry — от высоты). Скрипт доба
   head  — эллипс головы [x, y, rx, ry] (от макушки с ушами/короной до подбородка, глаза — целиком внутри)
           — слой наклона головы;
   neck  — точка поворота головы [x, y].
-Запуск: python3 scripts/skins/face.py (после build.mjs; картинки — public/assets/skins/<id>/character.webp).
+Запуск: python3 scripts/skins/face.py (после build.mjs; картинки — public/assets/skins/<id>/character-1600.webp).
 """
 import json
 from pathlib import Path
@@ -44,7 +44,7 @@ EYES = {
 def main():
     art = json.loads(ART.read_text())
     for skin, eyes in EYES.items():
-        im = np.asarray(Image.open(ROOT / 'public' / 'assets' / 'skins' / skin / 'character.webp').convert('RGBA'))
+        im = np.asarray(Image.open(ROOT / 'public' / 'assets' / 'skins' / skin / 'character-1600.webp').convert('RGBA'))
         H, W = im.shape[:2]
         alpha = im[..., 3]
         a = art[skin]

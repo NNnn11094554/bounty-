@@ -1,13 +1,17 @@
 """Сборка арта скинов из листа коллекции (assets-src/skins/collection.png).
 
 Шаги (python3 compose.py [индексы]):
-  1. плитка персонажа → апскейл ×4 (Real-ESRGAN anime 6B, ONNX, CPU);
+  1. плитка персонажа → апскейл ×4 (Real-ESRGAN anime 6B, CPU) — по нему строятся маска и раскладка;
+     HD-слой ×2 к нему же (hd.png): для листа — SwinIR-L ×4 по исходной плитке и Real-ESRGAN ×2,
+     для карточек высокого разрешения — Real-ESRGAN ×2 по оригиналу без сжатия. Из HD-слоя режутся
+     персонаж, фон, картинка карточки и портрет — геометрия (маска, рамки, разметка глаз) та же;
   2. маска персонажа (BiRefNet через rembg), вырез мини-превью из угла плитки;
   3. персонаж (RGBA, обрезан по силуэту);
   4. фон сцены: место персонажа, мини-превью и уголки рамки дорисовывает big-lama; сцена продлевается за
      края (зеркально, к краю мягче и темнее — там интерфейс), чтобы в игре персонаж стоял точно на своём
      месте и закрывал его, а фон заполнял экран;
-  5. картинка карточки (мини-превью дорисовано) и портрет — PNG в .work/<id>/; кодирование — build.mjs.
+  5. портрет — PNG в .work/<id>/; кодирование — build.mjs (несколько размеров: игра берёт тот, что нужен
+     экрану, — без растягивания в браузере; фон карточки коллекции — кадр из сцены, персонаж поверх).
 Модели скачиваются в .work/models при первом запуске (см. README, раздел «Скины»).
 """
 import json, os, sys, urllib.request
@@ -55,7 +59,12 @@ MASK_HINTS = {
 RELEASES = {
     'big-lama.pt': 'https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt',
     'esrgan.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth',
+    'x2plus.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth',
+    'swinir-l.pth': 'https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/'
+                    '003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth',
 }
+# HD-слой: во сколько раз он больше up.png (персонаж на главном экране — до ~1400 px на экранах ×3)
+HD = 2
 
 
 def model(name):
@@ -66,15 +75,45 @@ def model(name):
     return path
 
 
+_SR = {}
+
+
+def sr(img, name, tile=384, pad=24):
+    """Супер-разрешение (spandrel: Real-ESRGAN, SwinIR) на CPU по плиткам с перекрытием — без швов."""
+    import torch
+    from spandrel import ModelLoader
+    if name not in _SR:
+        _SR[name] = ModelLoader().load_from_file(model(name)).eval()
+    net = _SR[name]
+    s = net.scale
+    h, w = img.shape[:2]
+    x = torch.from_numpy(img[:, :, ::-1].astype(np.float32).transpose(2, 0, 1).copy())[None] / 255
+    out = torch.zeros((1, 3, h * s, w * s))
+    with torch.no_grad():
+        for y0 in range(0, h, tile):
+            for x0 in range(0, w, tile):
+                y1, x1 = min(h, y0 + tile), min(w, x0 + tile)
+                ya, xa, yb, xb = max(0, y0 - pad), max(0, x0 - pad), min(h, y1 + pad), min(w, x1 + pad)
+                r = net(x[:, :, ya:yb, xa:xb])
+                out[:, :, y0 * s:y1 * s, x0 * s:x1 * s] = \
+                    r[:, :, (y0 - ya) * s:(y1 - ya) * s, (x0 - xa) * s:(x1 - xa) * s]
+    y = out[0].clamp(0, 1).numpy().transpose(1, 2, 0)[:, :, ::-1]
+    return (y * 255 + 0.5).astype(np.uint8)
+
+
 def upscale(tile):
-    import onnxruntime as ort, subprocess
-    onnx_path = os.path.join(MODELS, 'esrgan.onnx')
-    if not os.path.exists(onnx_path):
-        subprocess.check_call([sys.executable, os.path.join(HERE, 'esrgan_onnx.py'), model('esrgan.pth'), onnx_path])
-    sess = ort.InferenceSession(onnx_path, providers=['CPUExecutionProvider'])
-    x = tile[:, :, ::-1].astype(np.float32).transpose(2, 0, 1)[None] / 255
-    y = sess.run(None, {'input': x})[0][0]
-    return (np.clip(y, 0, 1).transpose(1, 2, 0)[:, :, ::-1] * 255 + 0.5).astype(np.uint8)
+    """Плитка листа ×4 (anime 6B) — основа маски и раскладки (результат кэшируется в up.png)."""
+    return sr(tile, 'esrgan.pth')
+
+
+def soft_hole(hole, sigma):
+    """Дыра 0/255 → вес 0…1 с мягким краем (как вклейка big-lama)."""
+    inside = (hole > 127).astype(np.float32)
+    return np.maximum(inside, cv2.GaussianBlur(inside, (0, 0), sigma))[..., None]
+
+
+def x2(img, size, interp=cv2.INTER_CUBIC):
+    return cv2.resize(img, size, interpolation=interp)
 
 
 def segment(img):
@@ -157,9 +196,9 @@ def push_pull(img, w):
     return img * w[..., None] + up * (1 - w[..., None])
 
 
-def extend(base, pads):
+def extend(base, pads, k=1):
     """Продлить сцену за края: цвета картинки плавно продолжаются (без полос и повторов), к краю —
-    темнее (там интерфейс)."""
+    темнее (там интерфейс). k — масштаб картинки относительно up.png (размытие продолжения — то же)."""
     pt, pb, pl, pr = pads
     bh, bw = base.shape[:2]
     H, W = bh + pt + pb, bw + pl + pr
@@ -168,7 +207,7 @@ def extend(base, pads):
     known = np.zeros((H, W), np.float32)
     known[pt:pt + bh, pl:pl + bw] = 1
     filled = push_pull(canvas, known)
-    filled = cv2.GaussianBlur(filled, (0, 0), 6)
+    filled = cv2.GaussianBlur(filled, (0, 0), 6 * k)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     dy = np.maximum(np.maximum(pt - yy, yy - (pt + bh - 1)), 0) / max(1, max(pt, pb))
     dx = np.maximum(np.maximum(pl - xx, xx - (pl + bw - 1)), 0) / max(1, max(pl, pr))
@@ -227,8 +266,23 @@ def build(i):
     pad = 6
     bx0, bx1 = max(0, xs.min() - pad), min(w, xs.max() + pad + 1)
     by0, by1 = max(0, ys.min() - pad), min(h, ys.max() + 1)
+    # раскладка (голова, тело, сцена) — по маске в размере up.png, как раньше: разметка глаз не съезжает
     char = np.dstack([up, alpha])[by0:by1, bx0:bx1]
-    cv2.imwrite(os.path.join(out, 'character.png'), char)
+
+    # HD-слой ×2 (кэш hd.png): из него — персонаж, фон, картинка карточки и портрет
+    hd_path = os.path.join(out, 'hd.png')
+    hd_src = os.path.join(ROOT, 'assets-src', 'skins', 'hires', f'{sid}.webp') if hires else SRC
+    if os.path.exists(hd_path) and os.path.getmtime(hd_path) > os.path.getmtime(hd_src):
+        hd = cv2.imread(hd_path)
+    else:
+        # карточка уже детальная — ×2; плитка листа маленькая (~250 px) — SwinIR ×4, затем ×2
+        hd = sr(card[:bottom], 'x2plus.pth') if hires else sr(sr(cv2.imread(SRC)[y0:y1, x0:x1], 'swinir-l.pth'), 'x2plus.pth')
+        cv2.imwrite(hd_path, hd)
+    H2, W2 = h * HD, w * HD
+    assert hd.shape[:2] == (H2, W2), (sid, hd.shape, H2, W2)
+    alpha_hd = x2(alpha, (W2, H2))
+    cv2.imwrite(os.path.join(out, 'character.png'),
+                np.dstack([hd, alpha_hd])[by0 * HD:by1 * HD, bx0 * HD:bx1 * HD])
 
     ch, cw = char.shape[:2]
     a = char[:, :, 3].astype(np.float32)
@@ -257,27 +311,25 @@ def build(i):
     # у карточек высокого разрешения по краю — рамка со скруглёнными углами: в фон и превью она не идёт
     edge = 18 if hires else 0
     trim = lambda im: im[edge:, edge:w - edge] if edge else im
-    base = trim(filled)
-    bh, bw = base.shape[:2]
+    trim_hd = lambda im: im[edge * HD:, edge * HD:W2 - edge * HD] if edge else im
+    bh, bw = trim(filled).shape[:2]
     # сцена шире и выше картинки: края дорисовываются, персонаж остаётся на своём месте
     pl, pr = int(bw * SCENE_PAD['left']), int(bw * SCENE_PAD['right'])
     pt, pb = int(bh * SCENE_PAD['top']), int(bh * SCENE_PAD['bottom'])
-    scene = extend(base, (pt, pb, pl, pr))
+    SH, SW = bh + pt + pb, bw + pl + pr
+    # фон в HD: детали — из HD-слоя, место персонажа и рамки — дорисовка big-lama (её в игре закрывает персонаж)
+    wgt = soft_hole(x2(hole, (W2, H2), cv2.INTER_NEAREST), 2.5 * HD)
+    filled_hd = (hd * (1 - wgt) + x2(filled, (W2, H2)) * wgt + 0.5).astype(np.uint8)
+    scene = extend(trim_hd(filled_hd), (pt * HD, pb * HD, pl * HD, pr * HD), HD)
+    assert scene.shape[:2] == (SH * HD, SW * HD)
     cv2.imwrite(os.path.join(out, 'background.png'), scene)
-    SH, SW = scene.shape[:2]
     scene_char = [(bx0 - edge + pl) / SW, (by0 - edge + pt) / SH, cw / SW, ch / SH]
-
-    # карточка коллекции: исходная картинка, мини-превью дорисовано
-    card_path = os.path.join(out, 'preview.png')
-    if not (os.path.exists(card_path) and os.path.getmtime(card_path) > os.path.getmtime(mask_path)):
-        card = lama(up, (cv2.dilate(inset, np.ones((15, 15), np.uint8)) & ~((m > 0.5) * 255).astype(np.uint8)) | frame)
-        cv2.imwrite(card_path, trim(card))
 
     # портрет: голова и плечи на фоне сцены
     size = int(min(ch * 0.46, cw * 1.0))
     cx, cy = bx0 + head_x * cw, by0 + head_y * ch + size * 0.14
     px0 = int(np.clip(cx - size / 2, 0, w - size)); py0 = int(np.clip(cy - size / 2, 0, h - size))
-    cv2.imwrite(os.path.join(out, 'icon.png'), up[py0:py0 + size, px0:px0 + size])
+    cv2.imwrite(os.path.join(out, 'icon.png'), hd[py0 * HD:(py0 + size) * HD, px0 * HD:(px0 + size) * HD])
 
     meta = {
         'width': int(cw), 'height': int(ch), 'source': 'card' if hires else 'sheet',

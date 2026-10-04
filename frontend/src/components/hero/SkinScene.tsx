@@ -105,7 +105,7 @@ export function SkinScene({
         <div
           className="scene-bg skin-img absolute"
           style={{
-            ...skinImage(id, 'background'),
+            ...skinImage(id, 'background', bg.width),
             left: bg.left,
             top: bg.top,
             width: bg.width,

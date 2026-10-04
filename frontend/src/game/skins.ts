@@ -1,6 +1,8 @@
 import { cosmeticById, DEFAULT_SKIN_ID, type Rarity } from '@meowgul/shared';
 import type { CSSProperties } from 'react';
+import { heroLayout } from '../components/hero/layout';
 import art from './skinArt.json';
+import sizes from './skinSizes.json';
 
 /** Частицы из-под пальца (эффект тапа) и всплески реакций кота. */
 export type ParticleKind =
@@ -138,6 +140,11 @@ export interface SkinArt {
    * персонаж на экране стоял точно там, где стоял в своём мире, и закрывал своё место на картинке.
    */
   scene: { aspect: number; char: [number, number, number, number] };
+  /**
+   * Персонаж в карточке коллекции 4:5 (доли карточки): высота, левый край и ступни (сверху). Фон карточки —
+   * кадр сцены вокруг этого места (card-*.webp), персонаж ложится поверх отдельным резким слоем.
+   */
+  card: { height: number; left: number; feet: number };
   /** лицо для «живого» персонажа (scripts/skins/face.py) */
   face: SkinFace;
 }
@@ -211,21 +218,72 @@ export function skinRarity(id: string | undefined): Rarity {
   return cosmeticById(known(id))?.rarity ?? 'EPIC';
 }
 
-export type SkinFile = 'character' | 'background' | 'preview';
+export type SkinFile = 'character' | 'background' | 'card';
 
-/** Картинка скина: AVIF и WebP (браузер выберет сам через <picture>). */
-export function skinAsset(id: string | undefined, file: SkinFile, format: 'avif' | 'webp' = 'webp'): string {
-  return `/assets/skins/${known(id)}/${file}.${format}`;
+/**
+ * Размеры файлов скина (собирает scripts/skins/build.mjs): персонаж — по высоте, фон и карточка — по ширине.
+ * Берётся наименьший, которого хватает экрану (CSS px × плотность пикселей): браузер не растягивает
+ * маленькую картинку на большое место (мыло), а маленький экран не грузит лишнего.
+ */
+export const SKIN_SIZES: Record<SkinFile, readonly number[]> = sizes;
+
+/** Плотность пикселей экрана (1…4). */
+export function pixelRatio(): number {
+  const r = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  return Math.min(4, Math.max(1, r));
+}
+
+/** Координата в целых пикселях экрана: слой с картинкой не сдвинут на долю пикселя (без размытия). */
+export function snapPx(v: number): number {
+  const r = pixelRatio();
+  return Math.round(v * r) / r;
+}
+
+/** Наименьший размер файла, в котором хватает пикселей (need — в пикселях экрана); иначе самый большой. */
+export function pickSize(file: SkinFile, need: number): number {
+  const list = SKIN_SIZES[file];
+  return list.find((size) => size >= need) ?? list[list.length - 1]!;
+}
+
+/**
+ * Размер файла под место на экране: cssPx — высота персонажа или ширина фона/карточки в CSS px.
+ * Персонажу — запас 2% на «дыхание» (он чуть растягивается вверх от ступней).
+ */
+export function skinSize(file: SkinFile, cssPx: number): number {
+  return pickSize(file, cssPx * pixelRatio() * (file === 'character' ? 1.02 : 1));
+}
+
+/** Картинка скина нужного размера: AVIF и WebP (браузер выберет сам). По умолчанию — самый большой. */
+export function skinAsset(
+  id: string | undefined,
+  file: SkinFile,
+  format: 'avif' | 'webp' = 'webp',
+  size: number = SKIN_SIZES[file][SKIN_SIZES[file].length - 1]!,
+): string {
+  return `/assets/skins/${known(id)}/${file}-${size}.${format}`;
+}
+
+/**
+ * srcset: все размеры с шириной файла — браузер сам берёт нужный под sizes и плотность экрана. У персонажа
+ * размер — высота, ширина файла — по его пропорциям.
+ */
+export function skinSrcSet(id: string | undefined, file: SkinFile, format: 'avif' | 'webp'): string {
+  const k = file === 'character' ? skinArt(id).aspect : 1;
+  return SKIN_SIZES[file]
+    .map((size) => `${skinAsset(id, file, format, size)} ${Math.round(size * k)}w`)
+    .join(', ');
 }
 
 /**
  * Картинка скина фоном div (а не <img>: долгое нажатие в WebView не откроет меню картинки): CSS-переменные
- * для класса .skin-img — AVIF через image-set, где браузер это умеет, иначе WebP.
+ * для класса .skin-img — AVIF через image-set, где браузер это умеет, иначе WebP. cssPx — место на экране
+ * (высота персонажа, ширина фона): по нему выбирается размер файла.
  */
-export function skinImage(id: string | undefined, file: SkinFile): CSSProperties {
+export function skinImage(id: string | undefined, file: SkinFile, cssPx: number): CSSProperties {
+  const size = skinSize(file, cssPx);
   return {
-    ['--img-avif' as string]: `url(${skinAsset(id, file, 'avif')})`,
-    ['--img-webp' as string]: `url(${skinAsset(id, file, 'webp')})`,
+    ['--img-avif' as string]: `url(${skinAsset(id, file, 'avif', size)})`,
+    ['--img-webp' as string]: `url(${skinAsset(id, file, 'webp', size)})`,
   };
 }
 
@@ -293,15 +351,52 @@ export function resetLiteDevice(value: boolean | null = null): void {
   lite = value;
 }
 
+/** Где на главном экране стоит персонаж (сообщает OfficeScreen): по этому выбираются размеры для предзагрузки. */
+interface HomeStage {
+  /** область персонажа (HeroStage) */
+  hero: { width: number; height: number };
+  /** её левый верхний угол в координатах сцены */
+  offset: { left: number; top: number };
+  /** сцена (фон) */
+  box: { width: number; height: number };
+}
+let home: HomeStage | null = null;
+export function noteHomeStage(stage: HomeStage): void {
+  home = stage;
+}
+
+/** Размеры картинок, которые возьмёт главный экран для этого скина (те же, что выберут HeroFigure и SkinScene). */
+export function homeSizes(id: string): { character: number; background: number } {
+  if (!home) {
+    const h = typeof window !== 'undefined' ? window.innerHeight : 800;
+    return { character: skinSize('character', h * 0.45), background: skinSize('background', h * 0.8) };
+  }
+  const a = skinArt(id);
+  const L = heroLayout(home.hero.width, home.hero.height, a.aspect, a.body).cat;
+  const fit = {
+    left: home.offset.left + L.left,
+    top: home.offset.top + L.top,
+    width: L.width,
+    height: L.height,
+  };
+  return {
+    character: skinSize('character', L.height),
+    background: skinSize('background', sceneRect(id, fit, home.box).width),
+  };
+}
+
 const preloaded = new Map<string, Promise<void>>();
 
 /**
- * Загрузить и декодировать картинки скина заранее (персонаж и фон), чтобы смена прошла без «мигания».
- * Никогда не падает и не ждёт дольше timeoutMs: медленная сеть не блокирует надевание.
+ * Загрузить и декодировать картинки скина заранее (персонаж и фон тех размеров, что возьмёт главный экран),
+ * чтобы смена прошла без «мигания». Никогда не падает и не ждёт дольше timeoutMs: медленная сеть не
+ * блокирует надевание.
  */
 export function preloadSkin(id: string, timeoutMs = 1500): Promise<void> {
   const key = known(id);
-  let p = preloaded.get(key);
+  const need = homeSizes(key);
+  const cacheKey = `${key}:${need.character}:${need.background}`;
+  let p = preloaded.get(cacheKey);
   if (!p) {
     const load = (src: string) =>
       new Promise<void>((resolve) => {
@@ -317,10 +412,10 @@ export function preloadSkin(id: string, timeoutMs = 1500): Promise<void> {
       });
     const format = avifPreferred() ? 'avif' : 'webp';
     p = Promise.all([
-      load(skinAsset(key, 'character', format)),
-      load(skinAsset(key, 'background', format)),
+      load(skinAsset(key, 'character', format, need.character)),
+      load(skinAsset(key, 'background', format, need.background)),
     ]).then(() => undefined);
-    preloaded.set(key, p);
+    preloaded.set(cacheKey, p);
   }
   return Promise.race([p, new Promise<void>((r) => setTimeout(r, timeoutMs))]);
 }

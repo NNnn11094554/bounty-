@@ -189,7 +189,7 @@ img {
   transition: transform 160ms var(--ease-out);
 }
 .press:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 [data-motion='reduced'] .press:active {
   transform: none;
@@ -237,18 +237,10 @@ img {
   background-color: #0e1640;
 }
 /*
- * Слои движения (каждый — своё, без конфликтов):
- * объём (поворот в перспективе: сцена ставит transform прямо на слой) → спокойная анимация скина (CSS-цикл).
- * Все движения маленькие и от ступней — персонаж стоит на месте. Отдельный слой видеокарты — только у этих
- * двух: голова, глаза, свет и тень рисуются внутри них (меньше слоёв — меньше работы на каждый кадр).
+ * Персонаж — самый резкий слой: без поворотов в объёме (они пересэмплировали картинку на каждом кадре).
+ * Отдельный слой видеокарты — только у спокойной анимации (дыхание от ступней): голова, глаза, свет и тень
+ * рисуются внутри него.
  */
-.hero-fig {
-  perspective: 900px;
-  perspective-origin: 50% 45%;
-}
-.hero-orbit {
-  will-change: transform;
-}
 /*
  * свет и тень по силуэту: блик сверху-слева и мягкая тень справа — одним слоем внутри персонажа, обычным
  * наложением (режимы наложения заставляли видеокарту перечитывать всё под персонажем на каждом кадре)
@@ -966,7 +958,6 @@ img {
 
 /* Упрощённые анимации: кот неподвижен, без парящих частиц */
 [data-motion='reduced'] .hero-idle,
-[data-motion='reduced'] .hero-orbit,
 [data-motion='reduced'] .hero-aura,
 [data-motion='reduced'] .hero-enter,
 [data-motion='reduced'] .scene-bg,
@@ -976,6 +967,73 @@ img {
 [data-motion='reduced'] .cat-orbit,
 [data-motion='reduced'] .orbit-pt {
   animation: none !important;
+}
+
+/* ── Карточка персонажа: мир → свет → тень → персонаж (резкий слой) → подписи ── */
+.skin-card-glow {
+  left: 50%;
+  width: 92%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 38%, transparent),
+    color-mix(in srgb, var(--accent2) 10%, transparent) 60%,
+    transparent
+  );
+}
+.skin-card-floor {
+  left: 50%;
+  width: 70%;
+  height: 9%;
+  transform: translate(-50%, -55%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(0, 0, 0, 0.6),
+    color-mix(in srgb, var(--accent) 20%, transparent) 65%,
+    transparent
+  );
+}
+/* сверху — лёгкое затемнение под бейджи, снизу — под имя и цену; персонаж посередине не затемнён */
+.skin-card-shade {
+  background:
+    linear-gradient(180deg, rgba(6, 4, 14, 0.55) 0%, rgba(6, 4, 14, 0) 22%),
+    linear-gradient(0deg, rgba(4, 3, 10, 0.94) 0%, rgba(4, 3, 10, 0.62) 22%, rgba(4, 3, 10, 0) 48%);
+}
+.skin-card-badge {
+  background: rgba(8, 6, 18, 0.62);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 35%, transparent);
+}
+/* персонаж в карточке чуть приподнимается при наведении мышью (на телефоне — только нажатие) */
+.skin-card-char {
+  transition: transform 220ms var(--ease-out);
+  transform-origin: 50% 100%;
+}
+@media (hover: hover) and (pointer: fine) {
+  .press:hover .skin-card-char {
+    transform: translateY(-1.5%);
+  }
+}
+[data-motion='reduced'] .skin-card-char {
+  transition: none;
+}
+
+/* окно персонажа: края сцены мягко уходят в тень — персонаж в центре остаётся главным */
+.skin-stage-vignette {
+  background:
+    radial-gradient(ellipse 75% 60% at 50% 58%, transparent 55%, rgba(6, 4, 14, 0.45) 100%),
+    linear-gradient(0deg, rgba(6, 4, 14, 0.5) 0%, rgba(6, 4, 14, 0) 18%);
+}
+.sheet-divider {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14) 20%,
+    rgba(255, 255, 255, 0.14) 80%,
+    transparent
+  );
 }
 
 /* ── Рамки карточек по редкости ──────────────────────────────────────────── */
@@ -993,6 +1051,17 @@ img {
   border-radius: 18.5px;
   background: linear-gradient(180deg, #221a38 0%, #15101f 100%);
   height: 100%;
+}
+/* глянец: тонкий блик по верхней кромке и глубина снизу — поверх содержимого, без событий */
+.rc-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -14px 24px -18px rgba(0, 0, 0, 0.7);
 }
 .rc-common {
   --rc: #8b93a7;
