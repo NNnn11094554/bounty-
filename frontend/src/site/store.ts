@@ -29,9 +29,9 @@ export const useSite = create<SiteState>((set) => ({
 
 /** Что интерфейс может попросить у сцены (сцена грузится отдельным чанком). */
 export interface SceneApi {
-  /** тап по экрану в игре: true — попал в кота (сцена сама ответит частицами и реакцией) */
+  /** тап по экрану в игре: true — попал в кота (сцена сама ответит искрами и подсветкой) */
   tap: (clientX: number, clientY: number, turbo: boolean) => boolean;
-  /** касание кота вне игры (без награды): true — попал, кот смущается */
+  /** касание кота вне игры (без награды): true — попал (мягкая подсветка и искры) */
   touch: (clientX: number, clientY: number) => boolean;
   /** рамка кота игры на экране (CSS px) — для всплывающих наград и подсказки */
   catRect: () => { x: number; y: number; width: number; height: number } | null;
