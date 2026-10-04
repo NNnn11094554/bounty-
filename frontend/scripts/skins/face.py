@@ -44,6 +44,8 @@ EYES = {
 def main():
     art = json.loads(ART.read_text())
     for skin, eyes in EYES.items():
+        if skin not in art:  # персонаж убран из коллекции (разметка — под его прежний арт)
+            continue
         im = np.asarray(Image.open(ROOT / 'public' / 'assets' / 'skins' / skin / 'character-1600.webp').convert('RGBA'))
         H, W = im.shape[:2]
         alpha = im[..., 3]
@@ -71,7 +73,7 @@ def main():
             'neck': [round(hx, 4), round(hb, 4)],
         }
     ART.write_text(json.dumps(art, indent=2, ensure_ascii=False) + '\n')
-    print(f'face: {len(EYES)} skins')
+    print(f'face: {len([s for s in EYES if s in art])} skins')
 
 
 if __name__ == '__main__':

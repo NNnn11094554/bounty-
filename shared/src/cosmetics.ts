@@ -24,7 +24,7 @@ export interface CosmeticDef {
   desc: Record<Locale, string>;
 }
 
-export const DEFAULT_SKIN_ID = 'neon_punk';
+export const DEFAULT_SKIN_ID = 'cyber_samurai';
 export const DEFAULT_EFFECT_ID = 'coins';
 
 /**
@@ -78,223 +78,22 @@ const effect = (
 ): CosmeticDef => ({ ...skin(id, rarity, unlockLevel, price, name, desc), kind: 'effect' });
 const coins = (amount: number): CosmeticPrice => ({ currency: 'coins', amount });
 const stars = (amount: number): CosmeticPrice => ({ currency: 'stars', amount });
-/** скин-награда за лигу: бесплатно, выдаётся сам, когда игрок доходит до лиги */
-const leagueSkin = (
-  id: string,
-  rarity: Rarity,
-  league: number,
-  name: [string, string],
-  desc: [string, string],
-): CosmeticDef => ({ ...skin(id, rarity, 1, null, name, desc), unlockLeague: league });
 
 /**
  * Каталог коллекции. Скины — разные персонажи (свой костюм, силуэт, сцена и анимация; оформление —
  * frontend/src/game/skins.ts). Редкость — только внешний вид: на доход, тапы и награды скины не влияют.
- * Скины: первые 3 — бесплатно у всех, следующие 3 — награда за лиги (Silver, Gold, Platinum), остальные —
- * за Telegram Stars. Эффекты тапа: открываются с уровнем и покупаются за монеты, премиальный — за Stars.
+ * Скины сейчас бесплатные у всех (остальные персонажи переделываются и вернутся позже). Скин можно сделать
+ * наградой за лигу ({ ...skin(…), unlockLeague }) или продавать за Telegram Stars (price: stars(…) и товар
+ * skin_<id> в shared/src/shop.ts) — магазин, оплата и коллекция это уже поддерживают.
+ * Эффекты тапа: открываются с уровнем и покупаются за монеты, премиальный — за Stars.
  * Цены, лиги, уровни и тексты меняются здесь — сервер и клиент берут их отсюда.
  */
 export const COSMETICS: readonly CosmeticDef[] = [
   skin(
-    'neon_punk',
-    'EPIC',
-    1,
-    null,
-    ['Неоновый Панк', 'Neon Punk'],
-    [
-      'Кибер-худи, наушники и синий ирокез. Ночной город светится вокруг — с него всё начинается.',
-      'Cyber hoodie, headphones and a blue mohawk. The night city glows around — where it all begins.',
-    ],
-  ),
-  skin(
-    'desert_nomad',
-    'EPIC',
-    1,
-    null,
-    ['Пустынный Странник', 'Desert Nomad'],
-    [
-      'Очки-гогглы, шарф от песка и походное снаряжение. Ветер гонит дюны к старой крепости.',
-      'Goggles, a sand scarf and travel gear. The wind drives the dunes towards an old fortress.',
-    ],
-  ),
-  skin(
-    'sakura_blossom',
-    'EPIC',
-    1,
-    null,
-    ['Цветок Сакуры', 'Sakura Blossom'],
-    [
-      'Розовое кимоно, нимб и цветы в волосах. Вокруг — сад и кружащиеся лепестки.',
-      'A pink kimono, a halo and flowers in the hair. A garden and swirling petals all around.',
-    ],
-  ),
-  leagueSkin(
-    'astro_cat',
-    'EPIC',
-    1,
-    ['Астрокот', 'Astro Cat'],
-    [
-      'Скафандр, шлем с антенной и Земля за спиной. Невесомость ему к лицу.',
-      'A spacesuit, a helmet with an antenna and Earth behind. Zero gravity suits him.',
-    ],
-  ),
-  leagueSkin(
-    'mecha',
-    'EPIC',
-    2,
-    ['Меха', 'Mecha'],
-    [
-      'Боевая броня с голубыми реакторами и крыльями-лезвиями. Город будущего в огнях.',
-      'Battle armour with blue reactors and blade wings. A future city in lights.',
-    ],
-  ),
-  leagueSkin(
-    'crystal_prince',
-    'EPIC',
-    3,
-    ['Кристальный Принц', 'Crystal Prince'],
-    [
-      'Корона из кристаллов и мантия с аметистами. Кристаллический лес мерцает фиолетовым.',
-      'A crown of crystals and an amethyst mantle. The crystal forest shimmers violet.',
-    ],
-  ),
-  skin(
-    'forest_spirit',
-    'LEGENDARY',
-    1,
-    stars(199),
-    ['Лесной Дух', 'Forest Spirit'],
-    [
-      'Рога из веток, мох и листья на плаще. Светлячки и лучи сквозь листву древнего леса.',
-      'Antlers of branches, moss and leaves on the cloak. Fireflies and sunbeams in an ancient forest.',
-    ],
-  ),
-  skin(
-    'ocean_guardian',
-    'LEGENDARY',
-    1,
-    stars(199),
-    ['Страж Океана', 'Ocean Guardian'],
-    [
-      'Трезубец, чешуйчатая броня и шерсть цвета волны. Пузырьки и свет из глубины.',
-      'A trident, scale armour and fur the colour of the waves. Bubbles and light from the deep.',
-    ],
-  ),
-  skin(
-    'inferno',
-    'LEGENDARY',
-    1,
-    stars(249),
-    ['Инферно', 'Inferno'],
-    [
-      'Огненный хвост, броня в раскалённых трещинах и искры вокруг. Всё вокруг горит.',
-      'A flaming tail, armour with glowing cracks and sparks around. Everything is on fire.',
-    ],
-  ),
-  skin(
-    'toxic',
-    'LEGENDARY',
-    1,
-    stars(249),
-    ['Токсик', 'Toxic'],
-    [
-      'Противогаз, кислотно-зелёные пятна и пар. Лаборатория, где что-то пошло не так.',
-      'A gas mask, acid-green stains and steam. A lab where something went wrong.',
-    ],
-  ),
-  skin(
-    'stealth_assassin',
-    'LEGENDARY',
-    1,
-    stars(299),
-    ['Тайный Ассасин', 'Stealth Assassin'],
-    [
-      'Капюшон, маска и клинок с алым отсветом. Ночной храм и падающие лепестки.',
-      'A hood, a mask and a blade with a crimson glow. A night temple and falling petals.',
-    ],
-  ),
-  skin(
-    'dark_reaper',
-    'LEGENDARY',
-    1,
-    stars(299),
-    ['Тёмный Жнец', 'Dark Reaper'],
-    [
-      'Коса с фиолетовым пламенем и рваный плащ. Луна над старым кладбищем.',
-      'A scythe with violet flame and a tattered cloak. The moon over an old graveyard.',
-    ],
-  ),
-  skin(
-    'arctic_king',
-    'MYTHIC',
-    1,
-    stars(349),
-    ['Арктический Король', 'Arctic King'],
-    [
-      'Ледяная корона, меховая мантия и посох из льда. Снег над замком на вершине.',
-      'An ice crown, a fur mantle and a staff of ice. Snow over a castle on the summit.',
-    ],
-  ),
-  skin(
-    'vampire_lord',
-    'MYTHIC',
-    1,
-    stars(399),
-    ['Лорд Вампиров', 'Vampire Lord'],
-    [
-      'Алые глаза, крылья и плащ с высоким воротником. Кровавая луна над замком.',
-      'Crimson eyes, wings and a high-collared cloak. A blood moon over the castle.',
-    ],
-  ),
-  skin(
-    'lunar_witch',
-    'MYTHIC',
-    1,
-    stars(449),
-    ['Лунная Ведьма', 'Lunar Witch'],
-    [
-      'Широкополая шляпа, посох с лунным камнем и фиолетовые чары. Полная луна над шпилями.',
-      'A wide-brimmed hat, a moonstone staff and violet spells. A full moon over the spires.',
-    ],
-  ),
-  skin(
-    'royal_emperor',
-    'MYTHIC',
-    1,
-    stars(499),
-    ['Император', 'Royal Emperor'],
-    [
-      'Золотая корона, алая мантия и золотые драконы за троном. Здесь главный — он.',
-      'A golden crown, a crimson robe and golden dragons behind the throne. This is the boss.',
-    ],
-  ),
-  skin(
-    'angel_guardian',
-    'EPIC',
-    1,
-    stars(149),
-    ['Ангел-Хранитель', 'Angel Guardian'],
-    [
-      'Белые крылья, нимб и сияющий клинок. Облака и мягкий свет небес.',
-      'White wings, a halo and a shining blade. Clouds and the soft light of the heavens.',
-    ],
-  ),
-  skin(
-    'shadow_drifter',
-    'LEGENDARY',
-    1,
-    stars(249),
-    ['Теневой Бродяга', 'Shadow Drifter'],
-    [
-      'Кепка, плащ и фиолетовые тени, что тянутся следом. Ночной мегаполис в огнях.',
-      'A cap, a cloak and violet shadows trailing behind. A night megacity in lights.',
-    ],
-  ),
-  skin(
     'cyber_samurai',
     'LEGENDARY',
     1,
-    stars(299),
+    null,
     ['Кибер-Самурай', 'Cyber Samurai'],
     [
       'Красная катана, кибер-маска и броня. Красная луна, тории и лепестки сакуры.',
@@ -305,11 +104,22 @@ export const COSMETICS: readonly CosmeticDef[] = [
     'galaxy_emperor',
     'MYTHIC',
     1,
-    stars(399),
+    null,
     ['Галактический Император', 'Galaxy Emperor'],
     [
       'Звёздная мантия, кольца планет и космическая аура. Целая галактика у его лап.',
       'A starry mantle, planetary rings and a cosmic aura. A whole galaxy at his paws.',
+    ],
+  ),
+  skin(
+    'shadow_drifter',
+    'LEGENDARY',
+    1,
+    null,
+    ['Теневой Бродяга', 'Shadow Drifter'],
+    [
+      'Кепка, плащ и фиолетовые тени, что тянутся следом. Ночной мегаполис в огнях.',
+      'A cap, a cloak and violet shadows trailing behind. A night megacity in lights.',
     ],
   ),
   effect(

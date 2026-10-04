@@ -117,7 +117,10 @@ async function writeBackground(src, out) {
 
 const onlyCard = process.argv.includes('card');
 const onlyBackground = process.argv.includes('background');
-const ids = readdirSync(work).filter((d) => existsSync(path.join(work, d, 'meta.json')));
+// только скины каталога (@meowgul/shared COSMETICS): арт персонажей, убранных из коллекции, не кодируется
+const catalog = readFileSync(path.join(root, '..', 'shared', 'src', 'cosmetics.ts'), 'utf8');
+const inCatalog = new Set(Array.from(catalog.matchAll(/skin\(\s*'([a-z_]+)'/g), (m) => m[1]));
+const ids = readdirSync(work).filter((d) => inCatalog.has(d) && existsSync(path.join(work, d, 'meta.json')));
 const manifest = {};
 for (const id of ids.sort()) {
   const src = (f) => path.join(work, id, f);

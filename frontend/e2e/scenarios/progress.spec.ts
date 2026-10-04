@@ -1,8 +1,8 @@
 import { expect, test } from './fixtures';
 
-/** Прогресс: тапы поднимают лигу (сцена и персонаж-награда), рейтинг лиги, уровень игрока. */
+/** Прогресс: тапы поднимают лигу (сцена новой лиги), рейтинг лиги, уровень игрока. */
 test.describe('Scenario: progress', () => {
-  test('taps lift the player to a new league: the scene shows the reward character, it can be worn at once', async ({
+  test('taps lift the player to a new league: the scene shows it once, the worn character stays', async ({
     game,
     page,
   }) => {
@@ -15,13 +15,14 @@ test.describe('Scenario: progress', () => {
     const scene = page.getByTestId('league-up');
     await expect(scene).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('league-up-name')).toHaveAttribute('aria-label', 'Silver');
-    await expect(page.getByTestId('league-up-reward-name')).toHaveText('Астрокот');
-    await page.getByTestId('league-up-equip').click();
+    // персонажей-наград за лиги сейчас нет: все персонажи бесплатные
+    await expect(page.getByTestId('league-up-reward')).toHaveCount(0);
+    await page.getByTestId('league-up-close').click();
     await expect(scene).toHaveCount(0);
-    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'astro_cat');
+    await expect(page.getByTestId('hero')).toHaveAttribute('data-skin', 'cyber_samurai');
     await expect(page.getByTestId('league-name')).toContainText('Silver');
     await expect.poll(async () => (await game.user()).leagueLevel).toBe(1);
-    await expect.poll(async () => (await game.user()).equippedSkinId).toBe('astro_cat');
+    expect((await game.user()).equippedSkinId).toBe('cyber_samurai');
     // сцена показывается один раз
     await game.reload();
     await expect(scene).toHaveCount(0);

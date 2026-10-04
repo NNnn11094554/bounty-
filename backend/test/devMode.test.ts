@@ -18,7 +18,7 @@ import { client, createApp, resetDb, tgUser } from './helpers.js';
 const ADMIN_ID = 999000999;
 
 /** что есть у всех без покупки: 3 бесплатных персонажа и эффект «монетки» */
-const FREE_FOR_ALL = ['neon_punk', 'desert_nomad', 'sakura_blossom', 'coins'];
+const FREE_FOR_ALL = ['cyber_samurai', 'galaxy_emperor', 'shadow_drifter', 'coins'];
 
 describe('developer mode (one account only)', () => {
   let app: FastifyInstance;
@@ -71,7 +71,7 @@ describe('developer mode (one account only)', () => {
     // и старые флаги в базе без прав админа ничего не дают
     await prisma.user.update({ where: { telegramId: 18001n }, data: { settings: { devMode: true } } });
     expect((await c.get('/api/collection')).json<CollectionResponse>().owned).toEqual(FREE_FOR_ALL);
-    expect(code(await c.post('/api/collection/galaxy_emperor/equip'))).toBe('LOCKED');
+    expect(code(await c.post('/api/collection/matrix/equip'))).toBe('LOCKED');
   });
 
   it('admin: all skins and effects are owned and can be equipped, nothing is granted in the database', async () => {
@@ -80,8 +80,8 @@ describe('developer mode (one account only)', () => {
     expect(on.state.profile.settings.devMode).toBe(true);
     const col = (await c.get('/api/collection')).json<CollectionResponse>();
     expect(col.owned.sort()).toEqual(COSMETICS.map((x) => x.id).sort());
-    const res = (await c.post('/api/collection/galaxy_emperor/equip')).json<CollectionActionResponse>();
-    expect(res.state.cosmetics.skin).toBe('galaxy_emperor');
+    const res = (await c.post('/api/collection/lightning/equip')).json<CollectionActionResponse>();
+    expect(res.state.cosmetics.effect).toBe('lightning');
     await c.post('/api/collection/matrix/equip');
     expect(await prisma.userCosmetic.count()).toBe(0);
 
@@ -89,7 +89,7 @@ describe('developer mode (one account only)', () => {
     await c.patch('/api/settings', { devMode: false });
     const after = (await c.get('/api/collection')).json<CollectionResponse>();
     expect(after.owned).toEqual(FREE_FOR_ALL);
-    expect(code(await c.post('/api/collection/royal_emperor/equip'))).toBe('LOCKED');
+    expect(code(await c.post('/api/collection/lightning/equip'))).toBe('LOCKED');
   });
 
   it('admin: every card is open (no conditions, no limited windows, no cooldowns); prices stay', async () => {

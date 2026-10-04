@@ -13,6 +13,7 @@ import {
 import type { User } from '@prisma/client';
 import type { prisma } from '../lib/db.js';
 import { ApiError } from '../lib/errors.js';
+import { logger } from '../lib/logger.js';
 import { toCoins } from '../lib/money.js';
 import { applyBalanceChanges } from './ledger.js';
 import { devModeOn } from './state.js';
@@ -81,7 +82,8 @@ export async function buyWithCoins(tx: Tx, user: User, id: string, now: Date): P
 
 /**
  * Выдать предмет (оплата Stars, админ) и надеть его. Повторная выдача ничего не меняет. Счёт,
- * выставленный за скин прошлой коллекции, выдаёт его замену из новой.
+ * выставленный за скин прошлой коллекции, выдаёт его замену из новой. Оплата за предмет, который уже убран
+ * из каталога, всё равно записывается игроку (вернётся к нему вместе с предметом), но ничего не надевает.
  */
 export async function grantCosmetic(
   tx: Tx,
@@ -90,12 +92,16 @@ export async function grantCosmetic(
   source: 'stars' | 'admin',
 ): Promise<User> {
   const id = resolveCosmeticId(grantedId);
-  const item = requireCosmetic(id);
+  const item = source === 'stars' ? cosmeticById(id) : requireCosmetic(id);
   await tx.userCosmetic.upsert({
     where: { userId_cosmeticId: { userId: user.id, cosmeticId: id } },
     create: { userId: user.id, cosmeticId: id, source },
     update: {},
   });
+  if (!item) {
+    logger.warn({ userId: user.id, cosmeticId: id }, 'paid cosmetic is not in the catalog');
+    return user;
+  }
   return tx.user.update({ where: { id: user.id }, data: equipData(item) });
 }
 
