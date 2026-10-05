@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../animations';
 import { onFrame } from '../game/frameLoop';
 import { useLayerVisible } from '../hooks/tabLayer';
+import './RollingNumber.css';
 
 interface Props {
   /** вызывается каждый кадр; целая часть показывается */

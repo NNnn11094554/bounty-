@@ -13,3 +13,4 @@ frontend/public/assets/generated/
 frontend/.cache/
 backend/.cache/
 frontend/scripts/skins/.work/
+frontend/scripts/skins/__pycache__/

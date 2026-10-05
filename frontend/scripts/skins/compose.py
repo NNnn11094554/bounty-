@@ -56,6 +56,11 @@ HOLE_GROW = 9
 MASK_HINTS = {
     'toxic': [((30, 330, 300, 735), (35, 85))],
 }
+# светлый диск за головой (луна), который маска приняла за персонажа: (область x0, y0 — доли персонажа:
+# правее x0 и выше y0) и многоугольник, который оставить (ухо внутри диска), в тех же долях
+HALO_CUTS = {
+    'cyber_samurai': ((0.54, 0.266), [(0.841, 0.145), (0.962, 0.133), (0.926, 0.194), (0.903, 0.227), (0.867, 0.194)]),
+}
 RELEASES = {
     'big-lama.pt': 'https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt',
     'esrgan.pth': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth',
@@ -220,6 +225,38 @@ def extend(base, pads, k=1):
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def cut_halo(rgba, sid):
+    """Убрать из альфы светлый диск, касающийся внешнего края силуэта (внутренние светлые детали — нет)."""
+    if sid not in HALO_CUTS:
+        return rgba
+    (fx, fy), keep = HALO_CUTS[sid]
+    h, w = rgba.shape[:2]
+    hsv = cv2.cvtColor(rgba[:, :, :3], cv2.COLOR_BGR2HSV)
+    S, V = hsv[..., 1].astype(int), hsv[..., 2].astype(int)
+    yy, xx = np.mgrid[0:h, 0:w]
+    A = rgba[:, :, 3]
+    pale = (V > 115) & (S < 160) & (xx > fx * w) & (yy < fy * h) & (A > 0)
+    outside = cv2.dilate((A < 20).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    n, lab, st, _ = cv2.connectedComponentsWithStats(pale.astype(np.uint8), connectivity=4)
+    cut = np.zeros_like(pale)
+    for i in range(1, n):
+        part = lab == i
+        if st[i, 4] > 800 and (part & outside).any():
+            cut |= part
+    cut = cv2.dilate(cut.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    cut &= pale | ((V > 90) & (S < 170))
+    a = A.copy()
+    a[cut] = 0
+    a = np.minimum(cv2.GaussianBlur(a, (3, 3), 0), A)
+    mask = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(mask, [np.array([(x * w, y * h) for x, y in keep], np.int32)], 255)
+    mask = cv2.GaussianBlur(mask, (7, 7), 0)
+    a = np.maximum(a, (A.astype(int) * mask // 255).astype(np.uint8))
+    out = rgba.copy()
+    out[:, :, 3] = a
+    return out
+
+
 def build(i):
     sid = IDS[i]
     out = os.path.join(WORK, sid)
@@ -282,7 +319,7 @@ def build(i):
     assert hd.shape[:2] == (H2, W2), (sid, hd.shape, H2, W2)
     alpha_hd = x2(alpha, (W2, H2))
     cv2.imwrite(os.path.join(out, 'character.png'),
-                np.dstack([hd, alpha_hd])[by0 * HD:by1 * HD, bx0 * HD:bx1 * HD])
+                cut_halo(np.dstack([hd, alpha_hd])[by0 * HD:by1 * HD, bx0 * HD:bx1 * HD], sid))
 
     ch, cw = char.shape[:2]
     a = char[:, :, 3].astype(np.float32)

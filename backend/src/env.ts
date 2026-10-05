@@ -16,7 +16,7 @@ const schema = z
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     DATABASE_URL: z.string().min(1, 'DATABASE_URL обязателен'),
     BOT_TOKEN: z.string().optional(),
-    BOT_USERNAME: z.string().default('meowgul_bot'),
+    BOT_USERNAME: z.string().default('meowgul_game_bot'),
     MINIAPP_SHORT_NAME: z.string().default('app'),
     WEBAPP_URL: z.string().url().default('http://localhost:5173'),
     API_URL: z.string().url().default('http://localhost:3000'),

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 
@@ -56,10 +57,19 @@ export default defineConfig(({ mode }) => {
       cssCodeSplit: true,
       chunkSizeWarningLimit: 600,
       rollupOptions: {
+        // игра (index.html) и сайт игры (site/index.html, адрес /site/) — одна сборка, общие чанки
+        input: {
+          main: fileURLToPath(new URL('./index.html', import.meta.url)),
+          site: fileURLToPath(new URL('./site/index.html', import.meta.url)),
+        },
         output: {
-          manualChunks: {
-            react: ['react', 'react-dom'],
-            motion: ['framer-motion'],
+          // по пакету, а не по имени модуля: jsx-runtime и react-dom/client (CommonJS-прокси) — тоже к React,
+          // иначе Rollup кладёт их в чанк framer-motion, и любая страница с JSX (сайт игры) грузит его целиком
+          manualChunks(id) {
+            if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
+            if (/node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return 'motion';
+            if (/node_modules[\\/]three[\\/]/.test(id)) return 'three';
+            return undefined;
           },
         },
       },
