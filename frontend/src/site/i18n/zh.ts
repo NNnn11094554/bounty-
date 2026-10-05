@@ -220,15 +220,6 @@ export const zh: Dict = {
       { title: '生态', items: ['社区功能', '竞技机制', '全新游戏系统'] },
       { title: '下一个世界', items: ['???'] },
     ],
-    worlds: '开发中的世界',
-    soon: '即将推出',
-    undiscovered: '尚未发现',
-    worldList: [
-      { name: '暗影街区', text: '一座由无声猎手与隐秘秘密统治的城市。' },
-      { name: '银河边境', text: '一个遥远的世界，宇宙能量塑造着周围的一切。' },
-      { name: '海洋王国', text: '隐藏在无垠海水之下的古老王国。' },
-      { name: '未知之地', text: '已知世界之外，有什么正在等待。' },
-    ],
   },
   community: {
     label: '社区',

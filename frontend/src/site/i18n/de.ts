@@ -235,18 +235,6 @@ export const de: Dict = {
       { title: 'Ökosystem', items: ['Community-Funktionen', 'Wettbewerbsmechaniken', 'Neue Spielsysteme'] },
       { title: 'Die nächste Welt', items: ['???'] },
     ],
-    worlds: 'Welten in Entwicklung',
-    soon: 'Demnächst',
-    undiscovered: 'Unentdeckt',
-    worldList: [
-      {
-        name: 'Schattenviertel',
-        text: 'Eine Stadt, beherrscht von lautlosen Jägern und verborgenen Geheimnissen.',
-      },
-      { name: 'Galaktische Grenze', text: 'Eine ferne Welt, in der kosmische Energie alles formt.' },
-      { name: 'Ozeanreich', text: 'Ein uraltes Königreich, verborgen unter endlosen Wassern.' },
-      { name: 'Das Unbekannte', text: 'Jenseits der bekannten Welt wartet etwas.' },
-    ],
   },
   community: {
     label: 'Community',

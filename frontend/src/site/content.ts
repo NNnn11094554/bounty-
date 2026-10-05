@@ -51,14 +51,6 @@ export const LINKS = {
 /** Ступени редкости по порядку (цвет — как в игре, подписи — в словаре). */
 export const TIERS: readonly Rarity[] = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
 
-/** Миры в разработке: чей мир показан на карточке (null — неизвестный мир). Все — в будущем. */
-export const WORLDS: ReadonlyArray<string | null> = [
-  'stealth_assassin',
-  'galaxy_emperor',
-  'ocean_guardian',
-  null,
-];
-
 /** Слагаемые пути игрока (иконки; подписи — в словаре, без обещаний наград и сумм). */
 export const JOURNEY_PILLARS = ['Activity', 'Progression', 'Achievements', 'Community'] as const;
 

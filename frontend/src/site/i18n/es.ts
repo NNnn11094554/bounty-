@@ -241,18 +241,6 @@ export const es: Dict = {
       },
       { title: 'El siguiente mundo', items: ['???'] },
     ],
-    worlds: 'Mundos en desarrollo',
-    soon: 'Próximamente',
-    undiscovered: 'Sin descubrir',
-    worldList: [
-      {
-        name: 'Distrito Sombrío',
-        text: 'Una ciudad gobernada por cazadores silenciosos y secretos ocultos.',
-      },
-      { name: 'Frontera Galáctica', text: 'Un mundo lejano donde la energía cósmica lo moldea todo.' },
-      { name: 'Reino Oceánico', text: 'Un reino ancestral oculto bajo aguas infinitas.' },
-      { name: 'Lo desconocido', text: 'Algo espera más allá del mundo conocido.' },
-    ],
   },
   community: {
     label: 'Comunidad',

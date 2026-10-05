@@ -252,18 +252,6 @@ export const fr: Dict = {
       },
       { title: 'Le prochain monde', items: ['???'] },
     ],
-    worlds: 'Mondes en développement',
-    soon: 'Bientôt',
-    undiscovered: 'Inexploré',
-    worldList: [
-      {
-        name: 'Quartier des Ombres',
-        text: 'Une ville régie par des chasseurs silencieux et des secrets bien gardés.',
-      },
-      { name: 'Frontière Galactique', text: 'Un monde lointain où l’énergie cosmique façonne tout.' },
-      { name: 'Royaume de l’Océan', text: 'Un royaume ancestral caché sous des eaux sans fin.' },
-      { name: 'L’inconnu', text: 'Quelque chose attend au-delà du monde connu.' },
-    ],
   },
   community: {
     label: 'Communauté',

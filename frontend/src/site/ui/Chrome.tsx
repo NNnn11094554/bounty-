@@ -198,7 +198,6 @@ export function Nav() {
           </div>
         </nav>
         <div className="nav-right">
-          <Socials className="nav-socials" />
           <LangSwitch />
           <PlayButton className="btn-sm nav-play" />
           <button

@@ -1,6 +1,5 @@
 import { useId, useState } from 'react';
-import { catAsset } from '../cats';
-import { NAV, ROADMAP, WORLDS, sectionIndex } from '../content';
+import { NAV, ROADMAP, sectionIndex } from '../content';
 import { fmt, useT } from '../i18n';
 import { flyTo } from '../timeline';
 import { PawMark, PlayButton, Socials } from './Chrome';
@@ -8,10 +7,7 @@ import { CheckIcon } from './icons';
 import { k } from './reveal';
 import { Label, Section, Words } from './Section';
 
-/**
- * 6. Roadmap и будущее: четыре фазы и миры, которые готовятся (все — с пометкой Coming soon, не выдаются за
- * готовые). В сцене — маяки фаз уходят вдаль, последний мерцает.
- */
+/** 6. Roadmap: четыре фазы проекта. В сцене — маяки фаз уходят вдаль. */
 export function RoadmapSection() {
   const t = useT();
   return (
@@ -49,37 +45,6 @@ export function RoadmapSection() {
           </li>
         ))}
       </ol>
-      <div className="worlds-block" data-rv="up" style={k(4)}>
-        <p className="tag">{t.roadmap.worlds}</p>
-        <ul className="worlds">
-          {WORLDS.map((cat, i) => (
-            <li key={i} className="world" data-unknown={!cat}>
-              {cat ? (
-                <picture className="world-art" aria-hidden>
-                  <source type="image/avif" srcSet={catAsset(cat, 'background', 1200, 'avif')} />
-                  <img
-                    src={catAsset(cat, 'background', 1200, 'webp')}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    width={600}
-                    height={760}
-                  />
-                </picture>
-              ) : (
-                <span className="world-art world-void" aria-hidden>
-                  ?
-                </span>
-              )}
-              <div className="world-text">
-                <span className="soon">{cat ? t.roadmap.soon : t.roadmap.undiscovered}</span>
-                <h3 className="h4">{t.roadmap.worldList[i]!.name}</h3>
-                <p className="small">{t.roadmap.worldList[i]!.text}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
     </Section>
   );
 }

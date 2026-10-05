@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { webpSize } from '../test/images';
 import assets from './catAssets.json';
 import { CAT_SIZES, CATS, HERO_CAT, STRONGEST_CAT, catArt, catAsset, catIcon, catSize } from './cats';
-import { AIRDROP_REQS, GAME_FACTS, LEAGUES, NAV, ROADMAP, SECTIONS, WORLDS } from './content';
+import { AIRDROP_REQS, GAME_FACTS, LEAGUES, NAV, ROADMAP, SECTIONS } from './content';
 import { LOCALES, detectLocale, fmt, type Dict } from './i18n';
 import { de } from './i18n/de';
 import { en } from './i18n/en';
@@ -172,13 +172,12 @@ describe('site content', () => {
 });
 
 describe('honest copy', () => {
-  it('no promises of money or wallet connection, future worlds are not presented as live', () => {
+  it('no promises of money or wallet connection, future phases are not presented as live', () => {
     const text = JSON.stringify(en).toLowerCase();
     for (const word of ['guarantee', 'profit', 'allocation', 'connect wallet', 'ton connect'])
       expect(text, word).not.toContain(word);
     for (const { code, dict } of DICTS)
       expect(JSON.stringify(dict).toLowerCase(), code).not.toContain('bounty');
-    expect(WORLDS).toHaveLength(4);
     expect(ROADMAP.map((p) => p.state)).toEqual(['done', 'next', 'later', 'unknown']);
     expect(en.community.items).toHaveLength(5);
   });

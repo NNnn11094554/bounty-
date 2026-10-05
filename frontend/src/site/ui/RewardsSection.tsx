@@ -21,13 +21,13 @@ export function RewardsSection() {
   return (
     <Section
       id="airdrop"
-      layout="center"
-      className="rewards"
+      layout="left"
+      className="rewards sec-wide"
       head={
         <>
           <Label>{t.rewards.label}</Label>
           <Words text={t.rewards.title} />
-          <p className="lead center" data-rv="up" style={k(2)}>
+          <p className="lead" data-rv="up" style={k(2)}>
             {t.rewards.lead}
           </p>
         </>

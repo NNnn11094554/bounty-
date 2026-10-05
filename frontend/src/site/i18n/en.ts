@@ -230,15 +230,6 @@ export const en = {
       { title: 'Ecosystem', items: ['Community features', 'Competitive mechanics', 'New game systems'] },
       { title: 'Next World', items: ['???'] },
     ],
-    worlds: 'Worlds in development',
-    soon: 'Coming soon',
-    undiscovered: 'Undiscovered',
-    worldList: [
-      { name: 'Shadow District', text: 'A city ruled by silent hunters and hidden secrets.' },
-      { name: 'Galaxy Frontier', text: 'A distant world where cosmic energy shapes everything around it.' },
-      { name: 'Ocean Realm', text: 'An ancient kingdom hidden beneath endless waters.' },
-      { name: 'Unknown', text: 'Something is waiting beyond the known world.' },
-    ],
   },
   community: {
     label: 'Community',

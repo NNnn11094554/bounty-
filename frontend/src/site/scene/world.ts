@@ -112,22 +112,22 @@ const SHOTS: Shot[] = [
     shift: [-0.17, 0],
     shiftPortrait: [0, -0.06],
   },
-  // прогресс и награды: монета PAW в кольцах между заголовком и колонками
+  // прогресс и награды: монета PAW в кольцах справа, широкая колонка с наградами — слева
   {
     target: AIRDROP.clone(),
-    dir: v3(0, 0.05, 1),
-    fit: [16, 21],
+    dir: v3(-0.08, 0.05, 1),
+    fit: [9, 13.5],
     fitPortrait: [9, 15],
-    shift: [0, -0.02],
+    shift: [0.35, 0],
     shiftPortrait: [0, -0.06],
   },
   // roadmap: маяки фаз уходят вдаль, камера сбоку и сверху
   {
     target: v3(0, 1.3, ROADMAP.z - 8),
     dir: v3(0.62, 0.42, 1),
-    fit: [8, 7],
+    fit: [8, 7.4],
     fitPortrait: [6.4, 12],
-    shift: [0, 0.12],
+    shift: [0, -0.02],
     shiftPortrait: [0, -0.06],
   },
   // сообщество и FAQ: коты вместе слева, текст — справа
@@ -143,9 +143,9 @@ const SHOTS: Shot[] = [
   {
     target: v3(0, 1.85, FINAL.z),
     dir: v3(0, 0.06, 1),
-    fit: [3.4, 6.6],
+    fit: [3.4, 7.6],
     fitPortrait: [3, 7.2],
-    shift: [0, 0.08],
+    shift: [0, 0.18],
     shiftPortrait: [0, -0.05],
   },
 ];
@@ -210,8 +210,11 @@ const STREAK_ZONES: DustZone[] = [
   { center: v3(0, 4, -326), size: v3(18, 14, 40), colors: [], share: 0.15 },
 ];
 
-/** Котов сообщества: стоят вместе полукругом. */
-const CREW = ['ocean_guardian', 'cyber_samurai', 'inferno', 'lunar_witch', 'stealth_assassin'] as const;
+/**
+ * Коты сообщества: стоят вместе полукругом. Только те, кого нет в центре других экранов (Инферно — главная,
+ * Странник — мир, Токсик — игра, Stealth Assassin — коллекция, Galaxy Emperor — финал).
+ */
+const CREW = ['sakura_blossom', 'ocean_guardian', 'crystal_prince', 'cyber_samurai', 'lunar_witch'] as const;
 /** Маяки фаз roadmap: цвет и яркость (последняя — неизвестность). */
 const BEACONS: Array<[string, number]> = [
   ['#ffc93c', 1],
