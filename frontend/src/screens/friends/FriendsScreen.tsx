@@ -1,6 +1,6 @@
 import { formatInt, formatShort, type FriendEntry } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DURATION, STAGGER_MAX, isReducedMotion } from '../../animations';
 import { Avatar } from '../../components/Avatar';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -14,6 +14,7 @@ import { useFriends } from '../../store/friends';
 import { useGame } from '../../store/game';
 import { toast } from '../../store/toasts';
 import { haptic, openLink } from '../../telegram/webapp';
+import { useOnTabShow } from '../../hooks/tabLayer';
 
 function GiftRow({ premium, amount }: { premium?: boolean; amount: number }) {
   const t = useT();
@@ -156,9 +157,8 @@ export function FriendsScreen() {
   const [bonusesOpen, setBonusesOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    void load(true);
-  }, [load]);
+  // при каждом открытии вкладки — свежий список (пока грузится, виден прежний)
+  useOnTabShow(() => void load(true));
 
   const refresh = async () => {
     setRefreshing(true);

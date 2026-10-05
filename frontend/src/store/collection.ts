@@ -1,5 +1,5 @@
 import { cosmeticById, type CollectionActionResponse, type ShopProductId } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 import { ApiError } from '../api/client';
 import { endpoints } from '../api/endpoints';
 import { catMood } from '../game/catMood';

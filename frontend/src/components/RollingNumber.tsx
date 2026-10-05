@@ -2,6 +2,7 @@ import { formatInt } from '@meowgul/shared';
 import { useEffect, useRef } from 'react';
 import { DURATION, EASING, isReducedMotion } from '../animations';
 import { onFrame } from '../game/frameLoop';
+import { useLayerVisible } from '../hooks/tabLayer';
 import './RollingNumber.css';
 
 interface Props {
@@ -22,6 +23,7 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
   const ref = useRef<HTMLSpanElement>(null);
   const getter = useRef(getValue);
   getter.current = getValue;
+  const layerVisible = useLayerVisible();
 
   useEffect(() => {
     const root = ref.current;
@@ -91,12 +93,20 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
     };
     window.addEventListener('resize', fit);
 
-    const render = () => {
+    /**
+     * Скрытая вкладка (components/TabLayer) число не обновляет; при показе оно встаёт на место сразу, без
+     * прокрутки и вспышки (долгая пауза между кадрами — вкладка была скрыта).
+     */
+    let lastFrame = -Infinity;
+    const render = (frame = performance.now()) => {
+      const resumed = frame - lastFrame > 500;
+      lastFrame = frame;
       const value = Math.max(0, Math.floor(getter.current()));
       if (value === lastValue) return;
       const text = formatInt(value);
       if (
         glowOnJump &&
+        !resumed &&
         lastValue >= 0 &&
         value - lastValue >= Math.max(1000, lastValue * 0.02) &&
         !isReducedMotion()
@@ -123,7 +133,7 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
             const col = columns[i]!;
             // разряд меняется чаще, чем длится прокрутка (пассивный доход капает несколько раз в секунду), —
             // он переключается сразу: иначе цифра всё время висит между двумя значениями и не читается
-            const fast = now - (changedAt[i] ?? -Infinity) < DURATION.balanceRoll;
+            const fast = resumed || now - (changedAt[i] ?? -Infinity) < DURATION.balanceRoll;
             const transition = fast ? 'none' : rollTransition();
             if (col.style.transition !== transition) col.style.transition = transition;
             col.style.transform = `translateY(-${Number(ch) * 10}%)`;
@@ -135,12 +145,12 @@ export function RollingNumber({ getValue, className = '', glowOnJump = true, tes
       root.setAttribute('aria-label', text);
     };
     render();
-    const off = onFrame(render);
+    const off = onFrame(render, { active: layerVisible });
     return () => {
       off();
       window.removeEventListener('resize', fit);
     };
-  }, [glowOnJump]);
+  }, [glowOnJump, layerVisible]);
 
   return <span ref={ref} className={`roll ${className}`} data-testid={testId} role="text" />;
 }

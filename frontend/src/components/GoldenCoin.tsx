@@ -144,9 +144,11 @@ export function GoldenCoin() {
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(
-      ([e]) => e && setSize({ width: e.contentRect.width, height: e.contentRect.height }),
-    );
+    const ro = new ResizeObserver(([e]) => {
+      // 0×0 — вкладка скрыта (components/TabLayer): прежний размер остаётся
+      if (e && e.contentRect.width > 0 && e.contentRect.height > 0)
+        setSize({ width: e.contentRect.width, height: e.contentRect.height });
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);

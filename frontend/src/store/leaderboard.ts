@@ -1,5 +1,5 @@
 import type { LeaderboardResponse } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 import { endpoints } from '../api/endpoints';
 
 /** Сервер обновляет рейтинг раз в минуту — чаще запрашивать незачем. */

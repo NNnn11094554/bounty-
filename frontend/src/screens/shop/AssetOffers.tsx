@@ -1,6 +1,6 @@
 import { formatShort, type CardView } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CardIcon } from '../../components/cards/CardIcon';
 import { CoinIcon, StarIcon } from '../../components/icons';
 import { useLocale, useT } from '../../i18n';
@@ -9,6 +9,7 @@ import { haptic } from '../../telegram/webapp';
 import { CardSheet } from '../mine/CardSheet';
 import { lockText } from '../mine/cardText';
 import { RARITY_COLOR } from '../mine/rarity';
+import { useOnTabShow } from '../../hooks/tabLayer';
 
 /** Строка платного актива: монета, название, доход 1-го уровня и цена в Stars (или условие открытия). */
 function AssetRow({ card, onOpen }: { card: CardView; onOpen: (card: CardView) => void }) {
@@ -62,9 +63,7 @@ export function AssetOffers() {
   const status = useCards((s) => s.status);
   const load = useCards((s) => s.load);
   const [openId, setOpenId] = useState<string | null>(null);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useOnTabShow(() => void load());
   const offers = useMemo(
     () =>
       cards

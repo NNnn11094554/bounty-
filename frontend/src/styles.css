@@ -173,7 +173,24 @@ img {
 [data-motion='reduced'] .press:active {
   transform: none;
 }
-/* новая вкладка проявляется: только прозрачность, 150 мс — старая к этому моменту уже исчезла */
+/*
+  скрытая вкладка (components/TabLayer): не видна и не принимает касаний. Построенная (data-frozen) ещё и не
+  считается, не рисуется и не анимируется браузером, но хранит готовую раскладку — показ без пересчёта стилей
+*/
+.tab-layer[aria-hidden='true'] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.tab-layer[data-frozen] {
+  content-visibility: hidden;
+}
+/* старые WebView без content-visibility: хотя бы анимации скрытой вкладки стоят */
+@supports not (content-visibility: hidden) {
+  .tab-layer[data-frozen] * {
+    animation-play-state: paused !important;
+  }
+}
+/* новый список проявляется: только прозрачность, 150 мс */
 .screen-in {
   animation: screen-in 150ms var(--ease-out) both;
 }

@@ -1,6 +1,6 @@
 import { formatDuration, formatInt, type ShopProduct } from '@meowgul/shared';
 import { motion } from 'framer-motion';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { FullEnergyIcon } from '../../components/boostIcons';
 import { Segmented } from '../../components/Segmented';
 import { CosmeticGrid } from '../collection/CollectionScreen';
@@ -17,6 +17,7 @@ import { useGame } from '../../store/game';
 import { useShop } from '../../store/shop';
 import { toast } from '../../store/toasts';
 import { haptic } from '../../telegram/webapp';
+import { useOnTabShow } from '../../hooks/tabLayer';
 
 /** Стопка монет: чем больше пакет, тем выше стопка. */
 function CoinStack({ count }: { count: number }) {
@@ -122,9 +123,8 @@ export function ShopScreen({ onOpenCollection }: { onOpenCollection?: () => void
   const player = useGame((s) => s.player);
   const now = useNow(1000);
   const [tab, setTab] = useState<ShopTab>('skins');
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // при каждом открытии вкладки — свежие товары (пока грузятся, видны прежние)
+  useOnTabShow(() => void load());
   if (!player) return null;
 
   const serverNow = now + (player.serverTime - Date.now());

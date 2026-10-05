@@ -55,7 +55,11 @@ test.describe('Scenario: economy', () => {
     await page.getByTestId('boost-energy-limit').click();
     await page.getByTestId('boost-confirm').click();
     await expect(page.getByTestId('boost-energy-limit')).toContainText('3 lvl');
+    // окно покупки закрывается после ответа сервера (уровень на карточке виден сразу) — «Назад» уже закрывает
+    // экран бустов; главная под ним спит и показывает новый лимит, как только снова видна
+    await expect(page.getByTestId('boost-sheet').getByRole('dialog')).toBeHidden();
     await game.back();
+    await expect(page.getByTestId('boosts')).toBeHidden();
     await expect.poll(async () => (await game.energy())[1]).toBe(max + 500);
     await game.reload();
     expect((await game.energy())[1]).toBe(max + 500);

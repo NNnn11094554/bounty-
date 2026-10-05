@@ -13,6 +13,7 @@ import { PlayerStats } from '../../components/PlayerStats';
 import { LiveText } from '../../components/LiveText';
 import { RollingNumber } from '../../components/RollingNumber';
 import { onFrame } from '../../game/frameLoop';
+import { useLayerVisible } from '../../hooks/tabLayer';
 import { leagueAt, leagueProgress, LEAGUE_COUNT } from '../../game/leagues';
 import { noteHomeStage, skinArt, type Rect } from '../../game/skins';
 import { tapEngine } from '../../game/tapEngine';
@@ -43,7 +44,12 @@ function useBoxSize<T extends HTMLElement>() {
     const el = ref.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      if (entry) setSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      // 0×0 — вкладка скрыта (components/TabLayer): прежний размер остаётся, при возвращении нет кадра
+      // с крошечным котом
+      if (width === 0 || height === 0) return;
+      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -117,32 +123,39 @@ export function OfficeScreen({
   const leagueLevel = player?.leagueLevel ?? 0;
   const league = leagues.length ? leagueAt(leagues, leagueLevel) : null;
 
-  // прогресс лиги по «живому» всего заработанному — без перерисовки React
+  // прогресс лиги по «живому» всего заработанному — без перерисовки React; на скрытой вкладке стоит
+  const layerVisible = useLayerVisible();
   useEffect(() => {
     if (!leagues.length) return;
     let last = -1;
-    return onFrame(() => {
-      const { ratio } = leagueProgress(leagues, leagueLevel, tapEngine.totalEarnedNow());
-      const pct = Math.round(ratio * 1000) / 10;
-      if (pct === last) return;
-      last = pct;
-      if (progressRef.current) progressRef.current.style.transform = `scaleX(${ratio})`;
-      if (pawRef.current) pawRef.current.style.left = `${pct}%`;
-    });
-  }, [leagues, leagueLevel]);
+    return onFrame(
+      () => {
+        const { ratio } = leagueProgress(leagues, leagueLevel, tapEngine.totalEarnedNow());
+        const pct = Math.round(ratio * 1000) / 10;
+        if (pct === last) return;
+        last = pct;
+        if (progressRef.current) progressRef.current.style.transform = `scaleX(${ratio})`;
+        if (pawRef.current) pawRef.current.style.left = `${pct}%`;
+      },
+      { active: layerVisible },
+    );
+  }, [leagues, leagueLevel, layerVisible]);
 
   // полоска энергии — каждый кадр по «живой» энергии, без перерисовки React
   const energyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let last = '';
-    return onFrame(() => {
-      const max = tapEngine.state?.maxEnergy ?? 0;
-      const value = (max ? Math.min(1, tapEngine.energyNow() / max) : 0).toFixed(3);
-      if (value === last || !energyRef.current) return;
-      last = value;
-      energyRef.current.style.transform = `scaleX(${value})`;
-    });
-  }, []);
+    return onFrame(
+      () => {
+        const max = tapEngine.state?.maxEnergy ?? 0;
+        const value = (max ? Math.min(1, tapEngine.energyNow() / max) : 0).toFixed(3);
+        if (value === last || !energyRef.current) return;
+        last = value;
+        energyRef.current.style.transform = `scaleX(${value})`;
+      },
+      { active: layerVisible },
+    );
+  }, [layerVisible]);
 
   const handler = useMemo<TapHandler>(
     () => ({
@@ -166,7 +179,8 @@ export function OfficeScreen({
     if (!arc || !box || !skin) return;
     const measure = () => {
       const hero = box.querySelector<HTMLElement>('[data-testid="hero"]');
-      if (!hero) return;
+      // вкладка скрыта (display: none) — мерить нечего, рамка остаётся прежней
+      if (!hero || hero.offsetWidth === 0 || hero.offsetHeight === 0) return;
       const art = skinArt(skin);
       const L = heroLayout(hero.offsetWidth, hero.offsetHeight, art.aspect, art.body).cat;
       // для предзагрузки другого скина: какого размера картинки возьмёт главный экран

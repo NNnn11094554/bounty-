@@ -1,5 +1,5 @@
 import type { FriendEntry, FriendsResponse } from '@meowgul/shared';
-import { create } from 'zustand';
+import { create } from './create';
 import { endpoints } from '../api/endpoints';
 
 const FRESH_MS = 60_000;

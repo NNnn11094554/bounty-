@@ -31,13 +31,16 @@ test.describe('Office', () => {
     await page.goto(`/?uid=${uid}&name=Без сети`);
     await expect(page.getByTestId('office')).toBeVisible();
     await markLeagueSeen(page, uid, 9);
-    await page.route('**/api/tap', (route) => route.abort());
+    // «нет сети» — флагом, без unroute: снятие перехвата в момент первых запросов новой загрузки может
+    // оставить запрос висеть (гонка Playwright), и игра не стартует
+    let offline = true;
+    await page.route('**/api/tap', (route) => (offline ? route.abort() : route.continue()));
     const hit = (await page.getByTestId('cat-hit').boundingBox())!;
     for (let i = 0; i < 12; i++)
       await page.mouse.click(hit.x + hit.width / 2, hit.y + hit.height / 2, { delay: 30 });
     await page.waitForTimeout(3000); // пачки не дошли: сети нет
-    await page.reload(); // игру закрыли и открыли снова
-    await page.unroute('**/api/tap');
+    await page.reload(); // игру закрыли и открыли снова (пачка при закрытии тоже не уходит)
+    offline = false;
     await expect(page.getByTestId('office')).toBeVisible();
     await expect
       .poll(

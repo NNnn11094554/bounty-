@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { create } from 'zustand';
+import { create } from './create';
 
 /** Сколько сейчас открыто модалок и полноэкранных сцен. */
 export const useOverlays = create<{ blocking: number }>(() => ({ blocking: 0 }));
