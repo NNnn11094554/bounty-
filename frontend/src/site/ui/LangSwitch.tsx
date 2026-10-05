@@ -3,9 +3,9 @@ import { LOCALES, switchLocale, useLang, useT } from '../i18n';
 
 /**
  * Переключатель языка в шапке: компактная кнопка (глобус и код языка) и список из всех языков на их же
- * языке. Закрывается по выбору, Escape и щелчку мимо; стрелки ↑ ↓ ходят по списку.
+ * языке. Закрывается по выбору, Escape и щелчку мимо; стрелки ↑ ↓ ходят по списку. up — список вверх (подвал).
  */
-export function LangSwitch() {
+export function LangSwitch({ up = false }: { up?: boolean }) {
   const t = useT();
   const locale = useLang((s) => s.locale);
   const [open, setOpen] = useState(false);
@@ -43,7 +43,7 @@ export function LangSwitch() {
   };
 
   return (
-    <div className="lang" ref={rootRef}>
+    <div className={up ? 'lang lang-up' : 'lang'} ref={rootRef}>
       <button
         type="button"
         className="lang-btn"

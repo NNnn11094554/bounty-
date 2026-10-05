@@ -17,8 +17,8 @@ export const LOCALES = [
   { code: 'ko', name: '한국어', html: 'ko', load: async () => (await import('./ko')).ko },
   { code: 'es', name: 'Español', html: 'es', load: async () => (await import('./es')).es },
   { code: 'pt', name: 'Português', html: 'pt', load: async () => (await import('./pt')).pt },
-  { code: 'fr', name: 'Français', html: 'fr', load: async () => (await import('./fr')).fr },
   { code: 'de', name: 'Deutsch', html: 'de', load: async () => (await import('./de')).de },
+  { code: 'tr', name: 'Türkçe', html: 'tr', load: async () => (await import('./tr')).tr },
 ] as const satisfies ReadonlyArray<{ code: string; name: string; html: string; load: () => Promise<Dict> }>;
 
 export type LocaleCode = (typeof LOCALES)[number]['code'];

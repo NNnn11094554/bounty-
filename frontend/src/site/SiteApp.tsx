@@ -4,14 +4,17 @@ import { applyDocumentLocale, useLang, useT } from './i18n';
 import { useSite } from './store';
 import { startTimeline, view } from './timeline';
 import { CollectionSection } from './ui/CatSections';
-import { Loader, Nav } from './ui/Chrome';
-import { CommunitySection, FinalSection, Footer, RoadmapSection } from './ui/EndSections';
-import { HeroSection, PlaySection, WorldSection } from './ui/OpeningSections';
+import { Nav } from './ui/Chrome';
+import { CommunitySection, Footer, PartnersSection, RoadmapSection } from './ui/EndSections';
+import { GameplaySection, HeroSection, ProjectSection } from './ui/OpeningSections';
+import { AirdropSection, ProgressSection } from './ui/ProgressSections';
 import { useReveal } from './ui/reveal';
-import { RewardsSection } from './ui/RewardsSection';
 
-/** Вступление интерфейса после проявления сцены (секунды от старта вступления). */
-const UI_INTRO_AT = 2.2;
+/**
+ * Интерфейс главной проявляется сразу, как готовы шрифты (не ждёт 3D): мс после этого. Сцена проявляется
+ * сама, когда загружены главный кот и его мир.
+ */
+const UI_INTRO_DELAY = 250;
 
 export function SiteApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -49,39 +52,35 @@ export function SiteApp() {
     };
   }, []);
 
-  // интерфейс проявляется, когда кот уже собрался из искр; прокрутка — после вступления
+  // интерфейс — как только готовы шрифты (заголовок не перестраивается на глазах); 3D догоняет
   useEffect(() => {
-    if (!ready) return;
-    const delay = view.reduced || noWebgl ? 0 : UI_INTRO_AT * 1000;
-    const root = document.documentElement;
-    root.style.overflow = 'hidden';
-    const timer = window.setTimeout(() => {
-      setIntroOn(true);
-      root.style.overflow = '';
-    }, delay);
-    return () => {
-      window.clearTimeout(timer);
-      root.style.overflow = '';
+    let timer = 0;
+    const show = () => {
+      timer = window.setTimeout(() => setIntroOn(true), view.reduced ? 0 : UI_INTRO_DELAY);
     };
-  }, [ready, noWebgl]);
+    // шрифты обычно готовы за доли секунды; если сеть медленная — не дольше 1.2 с
+    void Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 1200))]).then(show);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
-    <div data-intro={introOn ? 'on' : 'off'}>
+    <div data-intro={introOn ? 'on' : 'off'} data-scene={ready || noWebgl ? 'ready' : 'loading'}>
       {noWebgl ? <StaticStage /> : <canvas ref={canvasRef} className="stage" aria-hidden />}
+      <div className="stage-warm" aria-hidden />
       <div className="stage-veil" />
       <Nav />
       <main ref={pageRef} className="page">
         <HeroSection />
-        <WorldSection />
-        <PlaySection />
+        <ProjectSection />
+        <GameplaySection />
         <CollectionSection />
-        <RewardsSection />
+        <ProgressSection />
+        <AirdropSection />
+        <PartnersSection />
         <RoadmapSection />
         <CommunitySection />
-        <FinalSection />
       </main>
       <Footer />
-      <Loader />
     </div>
   );
 }

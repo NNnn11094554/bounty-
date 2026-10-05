@@ -12,25 +12,26 @@ import {
  */
 export const SECTIONS = [
   'home',
-  'world',
-  'play',
+  'project',
+  'gameplay',
   'collection',
+  'progress',
   'airdrop',
+  'partners',
   'roadmap',
   'community',
-  'final',
 ] as const;
 export type SectionId = (typeof SECTIONS)[number];
 export const sectionIndex = (id: SectionId): number => SECTIONS.indexOf(id);
 
 /** Пункты навигации — в порядке страницы (подписи — в словаре: nav.<id>). */
 export const NAV = [
-  'home',
-  'world',
-  'play',
+  'project',
+  'gameplay',
   'collection',
   'airdrop',
   'roadmap',
+  'community',
 ] as const satisfies readonly SectionId[];
 
 /**
@@ -41,6 +42,21 @@ export const LINKS = {
   telegram: `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'meowgul_game_bot'}`,
   x: import.meta.env.VITE_X_URL || null,
   community: import.meta.env.VITE_COMMUNITY_URL || null,
+  /** куда ведёт «Стать партнёром»: контакт команды (VITE_PARTNER_URL), пока его нет — Telegram проекта */
+  partner:
+    import.meta.env.VITE_PARTNER_URL ||
+    `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'meowgul_game_bot'}`,
+};
+
+/**
+ * Метрики для партнёров — ТОЛЬКО реальные данные. Пока значения нет (null), на сайте вместо числа написано
+ * «По запросу». Заполнить: строка как есть, например users: '120K', retention: '38% D7'.
+ */
+export const PARTNER_METRICS: Record<'users' | 'community' | 'retention' | 'countries', string | null> = {
+  users: null,
+  community: null,
+  retention: null,
+  countries: null,
 };
 
 /**
@@ -51,19 +67,17 @@ export const LINKS = {
 /** Ступени редкости по порядку (цвет — как в игре, подписи — в словаре). */
 export const TIERS: readonly Rarity[] = ['COMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
 
-/** Слагаемые пути игрока (иконки; подписи — в словаре, без обещаний наград и сумм). */
+/** Слагаемые пути игрока в airdrop (иконки; подписи — в словаре, без обещаний наград и сумм). */
 export const JOURNEY_PILLARS = ['Activity', 'Progression', 'Achievements', 'Community'] as const;
 
-/** Шаги «как играть» (иконки; тексты — в словаре). */
-export const HOW_STEPS = ['Tap', 'Upgrade', 'Collect', 'Compete'] as const;
+/** Предложения партнёрам (иконки; тексты — в словаре). */
+export const PARTNER_OFFERS = ['Audience', 'Ecosystem', 'Growth', 'Events', 'Rewards', 'Visibility'] as const;
 
-/** Фазы roadmap: номер и состояние (названия и пункты — в словаре). */
-export const ROADMAP = [
-  { phase: '01', state: 'done' },
-  { phase: '02', state: 'next' },
-  { phase: '03', state: 'later' },
-  { phase: '04', state: 'unknown' },
-] as const;
+/** Игровой цикл: играй → собирай → развивай → открывай → возвращайся (иконки; тексты — в словаре). */
+export const LOOP = ['Play', 'Collect', 'Grow', 'Discover', 'Return'] as const;
+
+/** Этапы roadmap и их состояние — честно: «Live» только у того, что уже работает в игре. */
+export const ROADMAP = ['done', 'done', 'now', 'next', 'later'] as const;
 
 /** Числа игры, которые показывает сайт (в игре они приходят с сервера — здесь те же значения). */
 export const GAME_FACTS = {

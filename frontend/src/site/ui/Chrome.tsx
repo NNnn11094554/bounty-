@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MINI_APP_URL } from '../../lib/links';
 import { LINKS, NAV, sectionIndex, type SectionId } from '../content';
-import { useSite } from '../store';
 import { flyTo, LAST_STATION, onTick } from '../timeline';
 import { useActiveStation } from './hooks';
 import { useLang, useT } from '../i18n';
@@ -27,32 +26,6 @@ export function PawMark({ size = 22 }: { size?: number }) {
         <ellipse cx="18.6" cy="10.2" rx="2.15" ry="2.7" transform="rotate(18 18.6 10.2)" />
       </g>
     </svg>
-  );
-}
-
-export function Loader() {
-  const progress = useSite((s) => s.progress);
-  const ready = useSite((s) => s.ready);
-  const c = 2 * Math.PI * 40;
-  return (
-    <div className="loader" data-done={ready} role="status" aria-live="polite">
-      <div>
-        <svg className="loader-ring" viewBox="0 0 88 88" aria-hidden>
-          <circle cx="44" cy="44" r="40" stroke="rgba(255,255,255,0.1)" />
-          <circle
-            cx="44"
-            cy="44"
-            r="40"
-            stroke="#ffc93c"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - Math.max(0.04, progress))}
-            strokeLinecap="round"
-            style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(0.23,1,0.32,1)' }}
-          />
-        </svg>
-        <p className="loader-label">MEOWGUL · {String(Math.round(progress * 100)).padStart(2, '0')}%</p>
-      </div>
-    </div>
   );
 }
 

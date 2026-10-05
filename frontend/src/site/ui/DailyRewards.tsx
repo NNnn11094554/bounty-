@@ -38,7 +38,7 @@ export function DailyRewards() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="tag">{fmt(t.rewards.daily, { day: TODAY, total: GAME_FACTS.daily.length })}</p>
+        <p className="tag">{fmt(t.progress.daily, { day: TODAY, total: GAME_FACTS.daily.length })}</p>
         <span className="chip text-[color:var(--gold)]" ref={balanceRef}>
           <CoinIcon size={14} />
           <RollingNumber getValue={demoBalance} glowOnJump={false} />
@@ -48,10 +48,10 @@ export function DailyRewards() {
         {GAME_FACTS.daily.map((amount, i) => {
           const day = i + 1;
           const state = day < TODAY || (day === TODAY && claimed) ? 'done' : day === TODAY ? 'today' : 'next';
-          const label = fmt(t.rewards.dayAria, { day, amount: formatInt(amount) });
+          const label = fmt(t.progress.dayAria, { day, amount: formatInt(amount) });
           const body = (
             <>
-              <p className="tag text-[9px]">{fmt(t.rewards.day, { day })}</p>
+              <p className="tag text-[9px]">{fmt(t.progress.day, { day })}</p>
               <CoinIcon size={18} className="mx-auto my-1" />
               <p className="tabular text-[12px] font-bold">{formatShort(amount)}</p>
             </>
@@ -63,7 +63,7 @@ export function DailyRewards() {
               type="button"
               className="day day-claim"
               data-state={state}
-              aria-label={fmt(t.rewards.claim, { label })}
+              aria-label={fmt(t.progress.claim, { label })}
               onClick={claim}
             >
               {body}

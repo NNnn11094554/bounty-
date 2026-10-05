@@ -3,22 +3,30 @@ import { useEffect, useRef } from 'react';
 import { TurboIcon } from '../../components/boostIcons';
 import { BoltIcon, CoinIcon } from '../../components/icons';
 import { RollingNumber } from '../../components/RollingNumber';
-import { GAME_FACTS, HOW_STEPS, sectionIndex } from '../content';
-import { fmt, useT } from '../i18n';
+import { GAME_FACTS, LOOP, sectionIndex } from '../content';
 import { demoBalance, demoEnergy, demoTap, isTurbo, startTurbo, turboSeconds, useDemo } from '../demo';
+import { fmt, useT } from '../i18n';
 import { sceneApi } from '../store';
 import { flyTo, nearness, onTick } from '../timeline';
 import { PlayButton } from './Chrome';
 import { useAtStation } from './hooks';
-import { STEP_ICONS } from './iconSets';
+import { LOOP_ICONS } from './iconSets';
 import { k } from './reveal';
 import { Label, Section, Words } from './Section';
 
-const PLAY = sectionIndex('play');
+const PLAY = sectionIndex('gameplay');
 
-/** 1. Главная: заголовок проявляется вместе со сценой, кот — справа (на телефоне — под заголовком). */
+/**
+ * 1. Главная: заголовок проявляется сразу (не ждёт 3D), кот — справа (на телефоне — между заголовком и
+ * кнопками). «Играть» — в Mini App, «О проекте» — к рассказу о проекте.
+ */
 export function HeroSection() {
   const t = useT();
+  const learn = (
+    <button type="button" className="btn btn-ghost" onClick={() => flyTo(sectionIndex('project'))}>
+      {t.cta.learn}
+    </button>
+  );
   return (
     <section id="home" data-station={0} className="sec hero">
       <div className="hero-text">
@@ -30,18 +38,14 @@ export function HeroSection() {
           {t.hero.lead}
         </p>
         <div className="actions intro-fade hero-actions-wide" style={k(2)}>
-          <PlayButton />
-          <button type="button" className="btn btn-ghost" onClick={() => flyTo(sectionIndex('world'))}>
-            {t.cta.explore}
-          </button>
+          <PlayButton className="btn-lg" />
+          {learn}
         </div>
       </div>
       <div className="hero-bottom">
         <div className="actions intro-fade" style={k(2)}>
-          <PlayButton className="flex-1" />
-          <button type="button" className="btn btn-ghost" onClick={() => flyTo(sectionIndex('world'))}>
-            {t.cta.explore}
-          </button>
+          <PlayButton className="btn-lg flex-1" />
+          {learn}
         </div>
       </div>
       <div className="scroll-hint intro-fade" style={k(4)} aria-hidden>
@@ -53,89 +57,81 @@ export function HeroSection() {
 }
 
 /**
- * 2. Мир и история: как из одного тапа вырос мир — коротко о проекте, ключевые цифры игры и путь проекта.
- * В сцене — Странник на краю своего мира (не тот кот, что на главной).
+ * 2. Проект: что это, зачем, что получает игрок, куда движется — четыре коротких блока и цифры игры.
+ * В сцене — Странник на краю своего мира.
  */
-export function WorldSection() {
+export function ProjectSection() {
   const t = useT();
   return (
     <Section
-      id="world"
+      id="project"
       layout="right"
       head={
         <>
-          <Label>{t.world.label}</Label>
-          <Words text={t.world.title} />
-          <p className="lead" data-rv="up" style={k(2)}>
-            {t.world.lead}
-          </p>
-          <p className="motto" data-rv="up" style={k(3)}>
-            {t.world.motto}
-          </p>
+          <Label>{t.project.label}</Label>
+          <Words text={t.project.title} />
         </>
       }
     >
-      <dl className="facts">
-        {t.world.facts.map((f, i) => (
-          <div key={i} className="fact" data-rv="rise" style={k(i)}>
-            <dt>
-              <span className="fact-value">{f.value}</span>
-              <span className="tag">{f.label}</span>
-            </dt>
-            <dd className="small">{f.text}</dd>
+      <div className="story">
+        {t.project.blocks.map((b, i) => (
+          <article key={i} className="story-block" data-rv="up" style={k(i + 1)}>
+            <span className="story-num">{String(i + 1).padStart(2, '0')}</span>
+            <h3 className="h3">{b.title}</h3>
+            <p className="small">{b.text}</p>
+          </article>
+        ))}
+      </div>
+      <dl className="stats" data-rv="up" style={k(5)}>
+        {t.project.facts.map((f, i) => (
+          <div key={i}>
+            <dt className="stat-value">{f.value}</dt>
+            <dd className="tag">{f.label}</dd>
           </div>
         ))}
       </dl>
-      <ol className="milestones" data-rv="up" style={k(4)} aria-label={t.world.journey}>
-        {t.world.steps.map((step, i) => (
-          <li key={i}>
-            <span className="milestone-num">{String(i + 1).padStart(2, '0')}</span>
-            <div className="min-w-0">
-              <p className="h4">{step.title}</p>
-              <p className="small">{step.text}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
     </Section>
   );
 }
 
 /**
- * 3. Как играть: четыре механики с цифрами игры, бусты и живое демо. В сцене — инженер Токсик среди
- * карточек-активов: его можно тапать (искры у пальца и +1 к балансу; сам кот не реагирует).
+ * 3. Как это работает: игровой цикл из пяти шагов (с цифрами игры) и живое демо. В сцене — инженер Токсик
+ * среди карточек-активов: его можно тапать (искры у пальца и +1 к балансу; сам кот не реагирует).
  */
-export function PlaySection() {
+export function GameplaySection() {
   const t = useT();
   return (
     <>
       <TapLayer />
       <Section
-        id="play"
+        id="gameplay"
         layout="left"
         pass
         head={
           <>
-            <Label>{t.play.label}</Label>
-            <Words text={t.play.title} />
+            <Label>{t.gameplay.label}</Label>
+            <Words text={t.gameplay.title} />
             <p className="lead" data-rv="up" style={k(2)}>
-              {t.play.lead}
+              {t.gameplay.lead}
             </p>
           </>
         }
       >
-        <div className="steps">
-          {t.play.steps.map((step, i) => (
-            <article key={i} className="card step pe" data-rv="rise" style={k(i)}>
-              <div className="step-top">
-                <span className="step-icon">{STEP_ICONS[HOW_STEPS[i]!]}</span>
-                <h3 className="h3">{step.title}</h3>
+        <ol className="loop">
+          {t.gameplay.loop.map((step, i) => (
+            <li key={i} className="loop-step pe" data-rv="rise" style={k(i)}>
+              <span className="loop-icon">{LOOP_ICONS[LOOP[i]!]}</span>
+              <div className="min-w-0">
+                <h3 className="h3">
+                  <span className="loop-num">{String(i + 1).padStart(2, '0')}</span>
+                  {step.title}
+                </h3>
+                <p className="small">{step.text}</p>
+                <p className="detail">{step.detail}</p>
               </div>
-              <p className="small">{step.text}</p>
-              <p className="step-detail">{step.detail}</p>
-            </article>
+            </li>
           ))}
-        </div>
+        </ol>
         <DemoStrip />
       </Section>
       <TapHint />
@@ -161,20 +157,21 @@ function DemoStrip() {
         if (fillRef.current)
           fillRef.current.style.transform = `scaleX(${(turbo ? 1 : e / GAME_FACTS.energy.max).toFixed(4)})`;
         const text = turbo
-          ? t.play.turboOn
+          ? t.gameplay.turboOn
           : `${formatInt(Math.floor(e))} / ${formatInt(GAME_FACTS.energy.max)}`;
         if (textRef.current && textRef.current.textContent !== text) textRef.current.textContent = text;
         const sec = Math.ceil(turboSeconds());
         const label =
           sec > 0
             ? `0:${String(sec).padStart(2, '0')}`
-            : fmt(t.play.turbo, { x: GAME_FACTS.turbo.multiplier });
+            : fmt(t.gameplay.turbo, { x: GAME_FACTS.turbo.multiplier });
         if (turboRef.current && turboRef.current.textContent !== label) turboRef.current.textContent = label;
       }),
     [t],
   );
   return (
-    <div className="demo glass pe" data-rv="up" style={k(4)} aria-label={t.play.demo}>
+    <div className="demo glass pe" data-rv="up" style={k(5)} aria-label={t.gameplay.demo}>
+      <p className="tag demo-title">{t.gameplay.demo}</p>
       <div className="demo-row">
         <div className="demo-balance">
           <CoinIcon size={24} />
@@ -186,7 +183,7 @@ function DemoStrip() {
           data-active={turboOn}
           disabled={turboLeft <= 0 && !turboOn}
           onClick={() => startTurbo()}
-          aria-label={fmt(t.play.turboAria, { left: turboLeft, total: GAME_FACTS.turbo.perDay })}
+          aria-label={fmt(t.gameplay.turboAria, { left: turboLeft, total: GAME_FACTS.turbo.perDay })}
         >
           <TurboIcon size={22} />
           <span ref={turboRef} />
@@ -196,7 +193,7 @@ function DemoStrip() {
         <div className="mb-1.5 flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[color:var(--gold)]">
             <BoltIcon size={15} />
-            <span className="tag">{t.play.energy}</span>
+            <span className="tag">{t.gameplay.energy}</span>
           </span>
           <span className="small tabular" ref={textRef} />
         </div>
@@ -205,7 +202,7 @@ function DemoStrip() {
         </div>
       </div>
       <ul className="boosts">
-        {t.play.boosts.map((b) => (
+        {t.gameplay.boosts.map((b) => (
           <li key={b.title}>
             <b>{b.title}</b> {b.text}
           </li>
@@ -237,7 +234,7 @@ function TapLayer() {
     const el = document.createElement('div');
     el.className = 'float-reward';
     el.dataset.turbo = String(turbo);
-    el.textContent = value === null ? t.play.noEnergy : `+${value}`;
+    el.textContent = value === null ? t.gameplay.noEnergy : `+${value}`;
     if (value === null) el.style.fontSize = '16px';
     document.body.appendChild(el);
     floats.current++;
@@ -303,7 +300,7 @@ function TapHint() {
   if (taps > 0) return null;
   return (
     <div ref={ref} className="tap-hint" style={{ opacity: 0 }}>
-      {t.play.tapHint}
+      {t.gameplay.tapHint}
     </div>
   );
 }

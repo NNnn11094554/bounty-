@@ -6,16 +6,26 @@ import { describe, expect, it } from 'vitest';
 import { webpSize } from '../test/images';
 import assets from './catAssets.json';
 import { CAT_SIZES, CATS, HERO_CAT, STRONGEST_CAT, catArt, catAsset, catIcon, catSize } from './cats';
-import { AIRDROP_REQS, GAME_FACTS, LEAGUES, NAV, ROADMAP, SECTIONS } from './content';
+import {
+  AIRDROP_REQS,
+  GAME_FACTS,
+  LEAGUES,
+  LOOP,
+  NAV,
+  PARTNER_METRICS,
+  PARTNER_OFFERS,
+  ROADMAP,
+  SECTIONS,
+} from './content';
 import { LOCALES, detectLocale, fmt, type Dict } from './i18n';
 import { de } from './i18n/de';
 import { en } from './i18n/en';
 import { es } from './i18n/es';
-import { fr } from './i18n/fr';
 import { ja } from './i18n/ja';
 import { ko } from './i18n/ko';
 import { pt } from './i18n/pt';
 import { ru } from './i18n/ru';
+import { tr } from './i18n/tr';
 import { uk } from './i18n/uk';
 import { zh } from './i18n/zh';
 
@@ -29,8 +39,8 @@ const DICTS: Array<{ code: string; dict: Dict }> = Object.entries({
   ko,
   es,
   pt,
-  fr,
   de,
+  tr,
 }).map(([code, dict]) => ({ code, dict }));
 import { demoEnergy, demoTap, leagueIndex, refillEnergy, startTurbo, useDemo } from './demo';
 import { holdSpans, nearness, stationAt, travel } from './timeline';
@@ -144,24 +154,30 @@ describe('site content', () => {
   it('stations and game numbers match the game', () => {
     expect(SECTIONS).toEqual([
       'home',
-      'world',
-      'play',
+      'project',
+      'gameplay',
       'collection',
+      'progress',
       'airdrop',
+      'partners',
       'roadmap',
       'community',
-      'final',
     ]);
     // меню — в порядке страницы
     expect(NAV.map((id) => en.nav[id])).toEqual([
-      'Home',
-      'World',
-      'How to play',
+      'Project',
+      'Gameplay',
       'Collection',
       'Airdrop',
       'Roadmap',
+      'Community',
     ]);
-    expect(NAV.map((id) => SECTIONS.indexOf(id))).toEqual([0, 1, 2, 3, 4, 5]);
+    const order = NAV.map((id) => SECTIONS.indexOf(id));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    // у каждого шага цикла, этапа roadmap и предложения партнёрам — своя иконка/состояние
+    expect(en.gameplay.loop).toHaveLength(LOOP.length);
+    expect(en.roadmap.stages).toHaveLength(ROADMAP.length);
+    expect(en.partners.offers).toHaveLength(PARTNER_OFFERS.length);
     expect(AIRDROP_REQS.map((r) => r.id)).toEqual([...AIRDROP_REQUIREMENTS]);
     expect(LEAGUES).toHaveLength(GAME_FACTS.leagues);
     for (let i = 1; i < LEAGUES.length; i++)
@@ -174,12 +190,22 @@ describe('site content', () => {
 describe('honest copy', () => {
   it('no promises of money or wallet connection, future phases are not presented as live', () => {
     const text = JSON.stringify(en).toLowerCase();
-    for (const word of ['guarantee', 'profit', 'allocation', 'connect wallet', 'ton connect'])
+    for (const word of [
+      'guaranteed income',
+      'guaranteed reward',
+      'profit',
+      'allocation',
+      'connect wallet',
+      'ton connect',
+    ])
       expect(text, word).not.toContain(word);
     for (const { code, dict } of DICTS)
       expect(JSON.stringify(dict).toLowerCase(), code).not.toContain('bounty');
-    expect(ROADMAP.map((p) => p.state)).toEqual(['done', 'next', 'later', 'unknown']);
-    expect(en.community.items).toHaveLength(5);
+    // «работает» — только то, что уже есть в игре; ровно один этап «в работе»
+    expect(ROADMAP).toEqual(['done', 'done', 'now', 'next', 'later']);
+    expect(en.community.items).toHaveLength(7);
+    // метрики партнёрам — только реальные: пока их нет, на сайте «по запросу», а не выдуманные числа
+    expect(Object.values(PARTNER_METRICS).every((v) => v === null)).toBe(true);
   });
 });
 
@@ -196,39 +222,29 @@ const leaves = (o: unknown, path = ''): Array<[string, string]> =>
 const SAME_AS_ENGLISH = new Set([
   '10',
   '50',
-  '59',
-  '???',
+  '60',
+  '3 h',
   '5,000',
+  'Telegram',
+  'X',
   'Airdrop',
+  'Roadmap',
   'Turbo',
   'Turbo ×{x}',
+  'Telegram Mini App',
   'Inferno',
   'Sakura',
   'Toxic',
   'Menu',
-  'Compete',
-  'Collection',
-  'Sections',
-  '1 tap',
   'Gameplay',
-  'Type',
-  'Rare',
-  'Assassin',
-  'Progression',
-  'Phase {n}',
-  'Expansion',
-  'Roadmap',
   'Community',
-  'Telegram Mini App',
-  'Assets',
+  'Retention',
   'Live',
-  'Genesis',
-  'Events',
 ]);
 
 describe('languages', () => {
   it('ten languages, each a full translation of the English dictionary', () => {
-    expect(LOCALES.map((l) => l.code)).toEqual(['en', 'ru', 'uk', 'zh', 'ja', 'ko', 'es', 'pt', 'fr', 'de']);
+    expect(LOCALES.map((l) => l.code)).toEqual(['en', 'ru', 'uk', 'zh', 'ja', 'ko', 'es', 'pt', 'de', 'tr']);
     expect(DICTS.map((d) => d.code)).toEqual(LOCALES.map((l) => l.code));
     const shape = leaves(en).map(([path]) => path);
     const english = new Map(leaves(en));
@@ -255,6 +271,8 @@ describe('languages', () => {
     expect(detectLocale('ja', ['de-DE'])).toBe('ja');
     expect(detectLocale(null, ['de-DE', 'en'])).toBe('de');
     expect(detectLocale(null, ['pt-BR'])).toBe('pt');
+    expect(detectLocale(null, ['tr-TR'])).toBe('tr');
+    expect(detectLocale(null, ['fr-FR'])).toBe('en');
     expect(detectLocale(null, ['zh-TW'])).toBe('zh');
     expect(detectLocale(null, ['be-BY'])).toBe('ru');
     expect(detectLocale('xx', ['it-IT'])).toBe('en');

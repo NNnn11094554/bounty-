@@ -57,21 +57,22 @@ const PROGRESSION = new Vector3(0, 0, -104);
 const COLLECTION = new Vector3(0, 0, -152);
 const RING_R = 4.7;
 const AIRDROP = new Vector3(0, 3.1, -200);
-const ROADMAP = new Vector3(0, 0, -250);
-const COMMUNITY = new Vector3(0, 0, -300);
-const FINAL = new Vector3(0, 0, -350);
+const FINAL = new Vector3(0, 0, -250);
+const ROADMAP = new Vector3(0, 0, -300);
+const COMMUNITY = new Vector3(0, 0, -350);
 
 /**
- * Площадка каждой станции (секции страницы): у каждой секции своя — ни один кот не повторяется в соседних.
- * Группы сцены: 0 главная (Инферно), 1 коллекция (кольцо), 2 мир (Странник), 3 игра (Токсик), 4 airdrop
- * (монета), 5 roadmap (маяки), 6 сообщество (коты вместе), 7 финал (Galaxy Emperor).
+ * Площадка каждой станции (секции страницы): у каждой секции своя — ни один кот не стоит в центре двух экранов.
+ * Группы сцены: 0 главная (Инферно), 1 коллекция (кольцо), 2 проект (Странник), 3 игра (Токсик), 4 монета PAW
+ * (прогресс и airdrop — с двух сторон), 5 roadmap (маяки), 6 сообщество (коты вместе), 7 партнёрство
+ * (Galaxy Emperor в портале).
  */
-const LOC = [0, 2, 3, 1, 4, 5, 6, 7] as const;
+const LOC = [0, 2, 3, 1, 4, 4, 7, 5, 6] as const;
 const LOCATIONS = 8;
-/** станции, где тапают Токсика (демо игры) и где выбирают кота */
+/** станции, где тапают Токсика (демо игры), где выбирают кота и где заполняется кольцо airdrop */
 const PLAY = 2;
 const CATS_AT = 3;
-const AIRDROP_AT = 4;
+const AIRDROP_AT = 5;
 
 const v3 = (x: number, y: number, z: number) => new Vector3(x, y, z);
 
@@ -112,13 +113,31 @@ const SHOTS: Shot[] = [
     shift: [-0.17, 0],
     shiftPortrait: [0, -0.06],
   },
-  // прогресс и награды: монета PAW в кольцах справа, широкая колонка с наградами — слева
+  // прогресс: монета PAW крупно слева, текст — справа
+  {
+    target: AIRDROP.clone(),
+    dir: v3(0.34, 0.12, 1),
+    fit: [7, 8.4],
+    fitPortrait: [8, 13],
+    shift: [-0.25, 0],
+    shiftPortrait: [0, -0.06],
+  },
+  // airdrop: камера облетает монету — кольцо прогресса справа, широкая колонка — слева
   {
     target: AIRDROP.clone(),
     dir: v3(-0.08, 0.05, 1),
     fit: [9, 13.5],
     fitPortrait: [9, 15],
     shift: [0.35, 0],
+    shiftPortrait: [0, -0.06],
+  },
+  // партнёрство: Galaxy Emperor в портале справа, текст — слева
+  {
+    target: v3(0, 1.85, FINAL.z),
+    dir: v3(0.1, 0.06, 1),
+    fit: [3.6, 5.4],
+    fitPortrait: [3, 7.2],
+    shift: [0.24, 0],
     shiftPortrait: [0, -0.06],
   },
   // roadmap: маяки фаз уходят вдаль, камера сбоку и сверху
@@ -139,15 +158,6 @@ const SHOTS: Shot[] = [
     shift: [-0.24, 0],
     shiftPortrait: [0, -0.06],
   },
-  // финал: самый сильный кот в портале, текст — под ним
-  {
-    target: v3(0, 1.85, FINAL.z),
-    dir: v3(0, 0.06, 1),
-    fit: [3.4, 7.6],
-    fitPortrait: [3, 7.2],
-    shift: [0, 0.18],
-    shiftPortrait: [0, -0.05],
-  },
 ];
 
 /** Дуги перелётов: камера поднимается, уходит в сторону — пространство раскрывается по пути. */
@@ -156,13 +166,24 @@ const LEGS: Leg[] = [
   { arc: v3(3.5, 1.5, 0) },
   { arc: v3(-3.8, 3, 0) },
   { arc: v3(0, 5.5, 0) },
-  { arc: v3(-3.2, 2, 0) },
+  { arc: v3(1.5, 1.2, 0) },
+  { arc: v3(-3.2, 3, 0) },
   { arc: v3(3, 3, 0) },
   { arc: v3(0, 4, 0) },
 ];
 
 /** Тон пространства у станций ('' — тон мира выбранного кота). */
-const STATION_FOG = ['#0d0603', '#130b06', '#030a06', '', '#07051a', '#04070f', '#08060d', '#070519'];
+const STATION_FOG = [
+  '#0d0603',
+  '#130b06',
+  '#030a06',
+  '',
+  '#0b0718',
+  '#07051a',
+  '#070519',
+  '#04070f',
+  '#08060d',
+];
 
 const DUST_ZONES: DustZone[] = [
   {
@@ -190,10 +211,10 @@ const DUST_ZONES: DustZone[] = [
     share: 0.1,
   },
   { center: v3(0, 3, -226), size: v3(20, 14, 26), colors: ['#c9e6ff', '#ffffff'], share: 0.03 },
-  { center: v3(0, 3, -255), size: v3(24, 12, 30), colors: ['#ffc93c', '#7fe3ff', '#ffffff'], share: 0.07 },
-  { center: v3(0, 3, -300), size: v3(28, 14, 26), colors: ['#ffffff', '#ffd9a0', '#c9b8ff'], share: 0.09 },
+  { center: v3(0, 3, -300), size: v3(24, 12, 30), colors: ['#ffc93c', '#7fe3ff', '#ffffff'], share: 0.07 },
+  { center: v3(0, 3, -350), size: v3(28, 14, 26), colors: ['#ffffff', '#ffd9a0', '#c9b8ff'], share: 0.09 },
   {
-    center: v3(0, 3.5, -350),
+    center: v3(0, 3.5, -250),
     size: v3(24, 14, 22),
     colors: ['#9b7bff', '#ffd98f', '#ffffff'],
     share: 0.09,
@@ -212,7 +233,7 @@ const STREAK_ZONES: DustZone[] = [
 
 /**
  * Коты сообщества: стоят вместе полукругом. Только те, кого нет в центре других экранов (Инферно — главная,
- * Странник — мир, Токсик — игра, Stealth Assassin — коллекция, Galaxy Emperor — финал).
+ * Странник — проект, Токсик — игра, Stealth Assassin — коллекция, Galaxy Emperor — партнёрство).
  */
 const CREW = ['sakura_blossom', 'ocean_guardian', 'crystal_prince', 'cyber_samurai', 'lunar_witch'] as const;
 /** Маяки фаз roadmap: цвет и яркость (последняя — неизвестность). */
@@ -706,36 +727,48 @@ export class SiteWorld {
   }
 
   /**
-   * Всё, что видно при прокрутке, грузится до вступления: все коты, их текстуры уже в видеопамяти,
-   * карточки активов, шейдеры всех станций. Во время пролёта ничего не догружается — кадры ровные.
-   * Мир кота коллекции (кроме первого) грузится при его выборе.
+   * Первый экран: только главный кот и его мир — вступление начинается, как только они готовы. Шейдеры всех
+   * станций компилируются заранее (программы общие, текстуры для этого не нужны) — при прокрутке не дёргается.
    */
   async load(): Promise<void> {
-    const fonts = document.fonts?.ready ?? Promise.resolve();
-    const jobs: Array<Promise<unknown>> = [
-      this.loadCat(this.hero),
-      this.setBackdrop(this.heroBackdrop, HERO_CAT),
-      fonts.then(() => this.buildTokenCards()),
-      this.setBackdrop(this.nomadBackdrop, this.nomad.cat),
-      this.setBackdrop(this.finalBackdrop, STRONGEST_CAT),
-      ...this.figures.map((f) => this.loadCat(f)),
-    ];
     let done = 0;
-    for (const job of jobs) void job.then(() => this.options.onProgress(++done / jobs.length));
-    await Promise.all(jobs);
-    // текстуры коллекции общие с прокачкой и заданиями
-    const texture = (id: string) =>
-      this.figures[CATS.findIndex((c) => c.id === id)]!.material.uniforms.map.value!;
-    for (const f of [this.engineer, this.nomad, this.finalCat, ...this.crew])
-      f.setTexture(texture(f.cat.id), catArt(f.cat.id));
+    const step = <T>(job: Promise<T>) => job.then((v) => (this.options.onProgress(++done / 2), v));
+    await Promise.all([step(this.loadCat(this.hero)), step(this.setBackdrop(this.heroBackdrop, HERO_CAT))]);
     this.placeBackdrop(this.heroBackdrop, catArt(HERO_CAT.id), HOME, 10, v3(0, 1.6, 7));
-    this.placeBackdrop(this.nomadBackdrop, catArt(this.nomad.cat.id), WORLD, 11, v3(0, 2, WORLD.z + 8));
-    this.placeBackdrop(this.finalBackdrop, catArt(STRONGEST_CAT.id), FINAL, 10, v3(0, 1.8, FINAL.z + 7));
     this.hero.reveal = 0;
-    await this.showSelected();
-    // карточки активов появились после конструктора — их прозрачностью тоже управляет близость станции
-    this.collectFadeables();
     await this.precompile();
+  }
+
+  /**
+   * Остальное — в фоне, пока виден первый экран, в порядке прокрутки: проект, игра, коллекция, партнёрство.
+   * По одной станции за раз — телефон не декодирует десяток картинок одновременно. Кот, чья текстура ещё
+   * не пришла, просто не рисуется (появится, как только загрузится).
+   */
+  async loadRest(): Promise<void> {
+    const fonts = document.fonts?.ready ?? Promise.resolve();
+    const texture = (id: string) => this.bank.art(id, 'character', this.charPx(), this.ratio);
+    const dress = async (figure: CatFigure) =>
+      figure.setTexture(await texture(figure.cat.id), catArt(figure.cat.id));
+    await Promise.all([dress(this.nomad), this.setBackdrop(this.nomadBackdrop, this.nomad.cat)]);
+    this.placeBackdrop(this.nomadBackdrop, catArt(this.nomad.cat.id), WORLD, 11, v3(0, 2, WORLD.z + 8));
+    await Promise.all([dress(this.engineer), fonts.then(() => this.buildTokenCards())]);
+    // карточки активов — новые материалы: шейдер и прозрачность (близость станции) — сразу
+    this.collectFadeables();
+    this.compileStation(LOC[PLAY]);
+    for (const figure of this.figures) await dress(figure);
+    await this.showSelected();
+    await Promise.all([dress(this.finalCat), this.setBackdrop(this.finalBackdrop, STRONGEST_CAT)]);
+    this.placeBackdrop(this.finalBackdrop, catArt(STRONGEST_CAT.id), FINAL, 10, v3(0, 1.8, FINAL.z + 7));
+    for (const figure of this.crew) await dress(figure);
+  }
+
+  /** Шейдеры одной площадки — синхронно, в одном кадре (между кадрами площадка не мелькает). */
+  private compileStation(index: number): void {
+    const group = this.stations[index]!;
+    const shown = group.visible;
+    group.visible = true;
+    this.renderer.compile(group, this.camera, this.scene);
+    group.visible = shown;
   }
 
   /** Шейдеры всех станций — заранее (станции временно видимы), иначе первый показ станции дёргается. */

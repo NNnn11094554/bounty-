@@ -2,77 +2,92 @@ import type { Dict } from './en';
 
 export const es: Dict = {
   meta: {
-    title: 'Meowgul — Entra en el mundo',
+    title: 'Meowgul — un universo de gatos dentro de Telegram',
     description:
-      'Meowgul es un juego vivo en Telegram: toca, mejora, colecciona gatos únicos y adéntrate en un universo que no deja de crecer.',
+      'Meowgul es un juego dentro de Telegram: toca, colecciona personajes, haz crecer tu cuenta y sube por diez ligas. Crece junto a su comunidad.',
   },
   nav: {
-    home: 'Inicio',
-    world: 'Mundo',
-    play: 'Cómo jugar',
+    project: 'Proyecto',
+    gameplay: 'Jugabilidad',
     collection: 'Colección',
     airdrop: 'Airdrop',
     roadmap: 'Hoja de ruta',
+    community: 'Comunidad',
     sections: 'Secciones',
     menu: 'Menú',
     homeAria: 'Meowgul — inicio',
     language: 'Idioma',
   },
-  cta: { play: 'Jugar ahora', explore: 'Explorar el mundo' },
-  social: { telegram: 'Únete en Telegram', x: 'Síguenos en X', community: 'Comunidad', soon: 'Pronto' },
+  cta: {
+    play: 'Jugar',
+    learn: 'Conoce el proyecto',
+    checkProgress: 'Ver mi progreso',
+    partner: 'Hazte socio',
+  },
+  social: { telegram: 'Telegram', x: 'X', community: 'Comunidad', soon: 'Pronto', main: 'Canal principal' },
   hero: {
     label: 'Mini App de Telegram',
     title: 'Entra en el mundo de Meowgul',
     lead: 'Un juego vivo en Telegram donde cada toque, cada mejora y cada descubrimiento te llevan más adentro de un universo que no deja de crecer.',
     scroll: 'Desliza',
   },
-  world: {
-    label: 'Nuestra historia',
+  project: {
+    label: 'El proyecto',
     title: 'Un mundo construido gato a gato',
-    lead: 'Lo que empezó como un simple toque se convirtió en algo mucho más grande: un universo de gatos únicos, mundos misteriosos, personajes raros y progreso sin fin, creado directamente dentro de Telegram. Cada personaje tiene su propia identidad. Cada mundo, su propia historia.',
-    motto: 'Colecciona. Mejora. Descubre.',
-    facts: [
+    blocks: [
       {
-        value: '1 toque',
-        label: 'para empezar',
-        text: 'Una Mini App que se abre dentro de Telegram, sin descargas.',
+        title: 'Qué es',
+        text: 'Un juego dentro de Telegram. Se abre con un toque, sin instalar nada: toca, progresa y colecciona gatos con historia propia.',
       },
-      { value: '10', label: 'personajes', text: 'Cada uno con su propio mundo, rareza e historia.' },
-      { value: '50', label: 'niveles', text: 'Y diez ligas, de Bronze a Lord.' },
-      { value: '59', label: 'activos', text: 'Mejoras del juego que siguen generando aunque no estés.' },
+      {
+        title: 'Por qué existe',
+        text: 'La mayoría de los juegos de toques son una pantalla y un número. Meowgul añade lo que te hace volver: personajes, una colección y un progreso que perdura.',
+      },
+      {
+        title: 'Qué obtiene el jugador',
+        text: 'Sesiones cortas con progreso real: ingresos que crecen mientras no estás, recompensas diarias, ligas y personajes para coleccionar.',
+      },
+      {
+        title: 'Hacia dónde va',
+        text: 'Más personajes, eventos de la comunidad y nuevos sistemas de juego, paso a paso, a medida que el mundo crece.',
+      },
     ],
-    journey: 'El camino hasta ahora',
-    steps: [
-      { title: 'El primer gato', text: 'Empieza el viaje.' },
-      { title: 'La colección', text: 'Descubre personajes únicos y skins raras.' },
-      { title: 'La evolución', text: 'Mejora, progresa y desbloquea nuevas posibilidades.' },
-      { title: 'El mundo crece', text: 'Llegan nuevos personajes, mecánicas y experiencias.' },
+    facts: [
+      { value: '1 toque', label: 'para empezar' },
+      { value: '10', label: 'personajes' },
+      { value: '50', label: 'niveles' },
+      { value: '60', label: 'logros' },
     ],
   },
-  play: {
+  gameplay: {
     label: 'Jugabilidad',
     title: 'Cómo funciona',
-    lead: 'Sesiones cortas, progreso duradero. Toca para ganar, invierte tus PAW en activos que siguen generando, colecciona personajes y escala por las ligas.',
-    steps: [
+    lead: 'Un ciclo de cinco pasos que cada día te lleva un poco más lejos.',
+    loop: [
       {
-        title: 'Toca',
-        text: 'Gana recompensas jugando activamente.',
-        detail: 'Cada toque gasta 1 de energía. Tienes 5.000 y se recargan a +3 por segundo.',
-      },
-      {
-        title: 'Mejora',
-        text: 'Avanza en tu progreso y desbloquea nuevas posibilidades.',
-        detail: '59 activos en cuatro grupos generan PAW cada hora, incluso sin conexión, hasta 3 horas.',
+        title: 'Juega',
+        text: 'Toca al gato para ganar PAW.',
+        detail: 'Cada toque gasta 1 de energía · 5.000 de energía, +3 por segundo',
       },
       {
         title: 'Colecciona',
-        text: 'Descubre gatos únicos, skins y personajes raros.',
-        detail: 'Las skins cambian el aspecto de tu gato, nunca la economía: estilo, no pay-to-win.',
+        text: 'Personajes, skins y efectos de toque.',
+        detail: 'La rareza cambia el aspecto, nunca la economía',
       },
       {
-        title: 'Compite',
-        text: 'Sube por las ligas y demuestra tu lugar en el mundo.',
-        detail: 'Diez ligas según todo lo que has ganado, de Bronze a Lord.',
+        title: 'Progresa',
+        text: 'Mejora activos, sube de nivel y de liga.',
+        detail: '59 activos generan cada hora, también sin conexión, hasta 3 h',
+      },
+      {
+        title: 'Descubre',
+        text: 'Combo diario, cifrado Morse y tareas.',
+        detail: '60 logros por desbloquear en el camino',
+      },
+      {
+        title: 'Vuelve',
+        text: 'Te esperan una racha de recompensas y tus ingresos.',
+        detail: 'Racha de 10 días · tareas nuevas cada día',
       },
     ],
     boosts: [
@@ -83,14 +98,14 @@ export const es: Dict = {
     turboOn: 'Turbo · sin energía',
     turbo: 'Turbo ×{x}',
     turboAria: 'Turbo: te quedan {left} de {total} hoy',
-    demo: 'Demo del juego',
+    demo: 'Pruébalo: toca al gato',
     tapHint: 'Toca al gato',
     noEnergy: 'Sin energía',
   },
   collection: {
-    label: 'Conoce a los gatos',
+    label: 'La colección',
     title: 'Cada gato tiene una historia',
-    lead: 'Desde asesinos silenciosos hasta emperadores cósmicos, cada personaje representa una parte distinta del mundo. Cada gato forma parte de una colección que no para de crecer: descubre nuevos personajes, desbloquea skins raras y arma un equipo que cuente tu viaje.',
+    lead: 'De asesinos silenciosos a emperadores cósmicos: cada personaje tiene su mundo, su rareza y su historia. Desliza, toca o usa las flechas.',
     rarity: 'Rareza',
     type: 'Tipo',
     power: 'Poder',
@@ -188,10 +203,10 @@ export const es: Dict = {
       type: 'Cristal',
     },
   },
-  rewards: {
-    label: 'Progreso y recompensas',
-    title: 'Tu viaje importa',
-    lead: 'Tu actividad, tu progreso y tu participación forman parte de tu viaje por el ecosistema. Sigue jugando. Completa actividades. Haz crecer tu colección. Mantente activo.',
+  progress: {
+    label: 'Progreso',
+    title: 'Un motivo para volver',
+    lead: 'Siempre hay algo esperándote: la recompensa de tu racha, tareas nuevas, ingresos de tus activos y la siguiente liga.',
     daily: 'Recompensa diaria · día {day} de {total}',
     day: 'Día {day}',
     dayAria: 'Día {day}: {amount} PAW',
@@ -202,14 +217,27 @@ export const es: Dict = {
       { title: 'Cifrado diario', text: 'Teclea la palabra del día en código Morse', reward: 'desde 10.000' },
       { title: 'Invita a amigos', text: 'Bonificación para los dos · 25.000 con Premium', reward: '5.000' },
     ],
-    pillars: [
-      { title: 'Actividad', text: 'Juega con regularidad y mantén tu racha.' },
-      { title: 'Progreso', text: 'Niveles, ligas y mejoras.' },
-      { title: 'Logros', text: 'Tareas e hitos que completas.' },
-      { title: 'Comunidad', text: 'Los amigos que traes contigo.' },
+    leagues: 'Ligas',
+    leaguesText: 'Según todo lo que has ganado',
+    stats: [
+      { value: '10', label: 'ligas' },
+      { value: '50', label: 'niveles' },
+      { value: '60', label: 'logros' },
+      { value: '3 h', label: 'de ingresos sin conexión' },
     ],
-    progress: 'Airdrop · progreso del viaje',
-    example: 'Jugador de ejemplo',
+  },
+  airdrop: {
+    label: 'Airdrop',
+    title: 'Tu camino importa',
+    lead: 'Los puntos del airdrop son todo el PAW que has ganado. El progreso se registra en el juego según seis requisitos claros.',
+    pillars: [
+      { title: 'Participación', text: 'Juega con regularidad y mantén tu racha.' },
+      { title: 'Progresión', text: 'Niveles, ligas y activos mejorados.' },
+      { title: 'Requisitos', text: 'Seis objetivos, cada uno con su barra.' },
+      { title: 'Comunidad', text: 'Los amigos que traes también cuentan.' },
+    ],
+    progress: 'Progreso de ejemplo',
+    example: 'Jugador de demostración',
     reqs: {
       league: 'Llega a la liga Platinum',
       level: 'Alcanza el nivel 10',
@@ -218,55 +246,110 @@ export const es: Dict = {
       cards: 'Desbloquea 6 activos',
       tasks: 'Completa 5 tareas',
     },
-    fine: 'Detalles del airdrop: próximamente, se anunciarán a medida que el sistema evolucione. Nada de lo que aparece aquí es una promesa de recompensas.',
+    fine: 'Los detalles de la distribución se anunciarán más adelante. Nada de lo que aparece aquí es una promesa de ingresos o recompensas; no necesitas cartera para jugar.',
+  },
+  partners: {
+    label: 'Colaboraciones',
+    title: 'Construye con nosotros',
+    lead: 'Meowgul es un juego nativo de Telegram, con personajes, hábitos diarios y una comunidad en crecimiento: un lugar natural para que marcas y proyectos conozcan a los jugadores.',
+    offers: [
+      {
+        title: 'Audiencia nativa de Telegram',
+        text: 'Los jugadores abren el juego dentro de Telegram, sin instalaciones ni fricción.',
+      },
+      {
+        title: 'Un ecosistema de juego',
+        text: 'Personajes, colección, ligas y tareas diarias: muchos puntos de contacto naturales.',
+      },
+      {
+        title: 'Crecimiento impulsado por la comunidad',
+        text: 'Los jugadores traen amigos: las invitaciones y los objetivos compartidos forman parte del juego.',
+      },
+      {
+        title: 'Eventos y desafíos',
+        text: 'Eventos especiales dentro del juego y desafíos de marca creados contigo.',
+      },
+      {
+        title: 'Recompensas y colaboraciones',
+        text: 'Recompensas, tareas o personajes conjuntos que los jugadores realmente quieren.',
+      },
+      { title: 'Visibilidad', text: 'Presencia en un lugar al que los jugadores vuelven cada día.' },
+    ],
+    metrics: {
+      users: 'Usuarios activos',
+      community: 'Comunidad',
+      retention: 'Retención',
+      countries: 'Países',
+    },
+    onRequest: 'Bajo petición',
+    contact: 'Las solicitudes llegan directamente al equipo.',
   },
   roadmap: {
     label: 'Hoja de ruta',
-    title: 'Un mundo sin nivel final',
-    lead: 'Más allá del juego principal se extiende un universo en crecimiento de personajes, lugares, eventos y descubrimientos. Los nuevos mundos traerán nuevos personajes, mecánicas y formas de jugar. El juego principal ya está disponible; las siguientes fases están en desarrollo.',
-    phase: 'Fase {n}',
-    states: { done: 'Disponible', next: 'Siguiente', later: 'Más adelante', unknown: 'Desconocido' },
-    phases: [
+    title: 'Hacia dónde vamos',
+    lead: 'Lo que ya funciona está marcado. Todo lo demás es un plan y puede cambiar a medida que el mundo crece.',
+    states: { done: 'Activo', now: 'En curso', next: 'Siguiente', later: 'Más adelante' },
+    stages: [
+      { title: 'Base', items: ['Mini App de Telegram', 'Juego principal', 'Economía del juego'] },
       {
-        title: 'Génesis',
-        items: ['Juego principal', 'Mini App de Telegram', 'Primeros personajes', 'Colección'],
+        title: 'Jugabilidad',
+        items: [
+          'Energía y potenciadores',
+          '59 activos mejorables',
+          'Tareas diarias y cifrado',
+          'Niveles y ligas',
+        ],
+      },
+      { title: 'Colección', items: ['Personajes y skins', 'Efectos de toque', 'Nuevos personajes'] },
+      {
+        title: 'Comunidad',
+        items: ['Eventos de la comunidad', 'Mecánicas competitivas', 'Colaboraciones con socios'],
       },
       {
         title: 'Expansión',
-        items: ['Nuevos personajes', 'Nuevas skins', 'Más mejoras', 'Eventos', 'Nuevos mundos'],
+        items: ['Nuevos sistemas de juego', 'Nuevas historias', 'Un universo en crecimiento'],
       },
-      {
-        title: 'Ecosistema',
-        items: ['Funciones de comunidad', 'Mecánicas competitivas', 'Nuevos sistemas de juego'],
-      },
-      { title: 'El siguiente mundo', items: ['???'] },
     ],
   },
   community: {
     label: 'Comunidad',
     title: 'El mundo es mejor en compañía',
-    lead: 'Sigue el viaje, descubre nuevos personajes y forma parte de la comunidad mientras el universo sigue creciendo.',
+    lead: 'Telegram es nuestra casa: las noticias, las actualizaciones y los nuevos personajes llegan allí primero.',
     faq: 'Preguntas frecuentes',
     items: [
       {
-        q: '¿Qué es el juego?',
-        a: 'Un juego de Telegram centrado en coleccionar, progresar y un universo de personajes en constante evolución.',
-      },
-      { q: '¿Cómo empiezo a jugar?', a: 'Abre la Mini App en Telegram y comienza tu viaje.' },
-      { q: '¿Qué puedo coleccionar?', a: 'Personajes, skins, recompensas y otros objetos del juego.' },
-      {
-        q: '¿Habrá nuevos personajes?',
-        a: 'Sí. La colección y el universo están pensados para ampliarse con el tiempo.',
+        q: '¿Qué es Meowgul?',
+        a: 'Un juego dentro de Telegram sobre gatos, coleccionismo y progreso a largo plazo, que crece junto a su comunidad.',
       },
       {
-        q: '¿Cómo funciona el airdrop?',
-        a: 'La participación y el progreso forman parte de la experiencia actual del ecosistema. Se podrán anunciar más detalles a medida que el sistema evolucione.',
+        q: '¿Cómo empiezo a jugar?',
+        a: 'Pulsa «Jugar»: la Mini App se abre directamente en Telegram. Sin descargas ni registro.',
       },
+      {
+        q: '¿Dónde está el juego?',
+        a: 'Dentro de Telegram, como Mini App de nuestro bot. Funciona en el móvil y en el ordenador.',
+      },
+      {
+        q: '¿Cómo consigo recompensas?',
+        a: 'Toca, mejora activos para obtener ingresos por hora, mantén tu racha diaria, resuelve el combo y el cifrado, completa tareas e invita a amigos.',
+      },
+      {
+        q: '¿Qué es el airdrop?',
+        a: 'Los puntos del airdrop son el PAW que ganas; el juego muestra seis requisitos y tu progreso. Los detalles de la distribución se anunciarán: nada está garantizado.',
+      },
+      {
+        q: '¿Cómo desbloqueo nuevos personajes?',
+        a: 'Los personajes y las skins están en la Colección dentro del juego; los nuevos llegan con las actualizaciones. Los efectos de toque se desbloquean con tu nivel.',
+      },
+      { q: '¿Cómo puedo ser socio?', a: 'Pulsa «Hazte socio»: tu solicitud llega directamente al equipo.' },
     ],
   },
-  final: { title: 'El mundo apenas comienza', lead: 'Tu viaje empieza con un solo toque.' },
   footer: {
     about: 'Un juego de Telegram sobre gatos, coleccionismo y un universo en crecimiento.',
+    slogan: 'La historia acaba de empezar.',
+    navigate: 'Navegación',
+    connect: 'Comunidad',
+    partnership: 'Colaboraciones',
     fine: 'Los PAW y los activos del juego son objetos del juego: no se pueden retirar, vender ni transferir.',
     nav: 'Pie de página',
   },

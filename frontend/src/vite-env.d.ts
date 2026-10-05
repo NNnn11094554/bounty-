@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   /** ссылки сайта: X (Twitter) и сообщество — без них кнопки показывают «Soon» */
   readonly VITE_X_URL?: string;
   readonly VITE_COMMUNITY_URL?: string;
+  /** куда ведёт «Стать партнёром» на сайте (Telegram-контакт или mailto:) */
+  readonly VITE_PARTNER_URL?: string;
 }
 
 interface ImportMeta {

@@ -49,6 +49,11 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
   }
   useSite.getState().setReady();
   beginIntro();
+  // остальные станции — в фоне, первый экран уже живёт
+  void world
+    .loadRest()
+    .then(() => (document.documentElement.dataset.world = 'full'))
+    .catch((e) => console.error(e));
 
   return () => {
     stop();
