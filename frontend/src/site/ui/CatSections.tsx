@@ -13,10 +13,10 @@ import { Title } from './Title';
 const count = String(CATS.length).padStart(2, '0');
 
 /**
- * 4. Персонажи: кольцо котов в сцене, выбранный — впереди. Выбор — стрелками, лентой портретов,
+ * 4. Персонажи и коллекция: кольцо котов в сцене, выбранный — впереди; под карточкой — ступени редкости. Выбор — стрелками, лентой портретов,
  * свайпом по сцене или клавишами ← →. Карточка персонажа собирается заново при каждой смене.
  */
-export function MeetCatsSection() {
+export function CollectionSection() {
   const selected = useSite((s) => s.selected);
   const select = useSite((s) => s.select);
   const cat = CATS[selected]!;
@@ -38,7 +38,7 @@ export function MeetCatsSection() {
     <>
       <SwipeLayer onSwipe={go} />
       <Section
-        id="cats"
+        id="collection"
         layout="right"
         pass
         head={
@@ -47,7 +47,8 @@ export function MeetCatsSection() {
             <Words text="Every cat has a story" />
             <p className="lead" data-rv="up" style={k(2)}>
               From silent assassins to cosmic emperors, each character represents a different part of the
-              world.
+              world. Every cat is part of a growing collection — discover new characters, unlock rare skins
+              and build a lineup that represents your journey.
             </p>
           </>
         }
@@ -123,6 +124,29 @@ export function MeetCatsSection() {
             </button>
           </div>
         </div>
+        <div className="tiers-block" data-rv="up" style={k(4)}>
+          <p className="tag">Rarity tiers</p>
+          <ul className="tiers">
+            {TIERS.map((t) => (
+              <li
+                key={t.rarity}
+                className="tier"
+                data-rarity={t.rarity}
+                style={{ ['--r' as string]: RARITY_COLOR[t.rarity] }}
+                title={t.text}
+              >
+                <span className="tier-gem" aria-hidden />
+                <span className="tier-name">{RARITY_LABEL[t.rarity]}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="small">
+            Rarity is about look, not power in the economy. Tap effects unlock as you level up.{' '}
+            <a className="inline-link" href={MINI_APP_URL} target="_blank" rel="noopener noreferrer">
+              Explore collection →
+            </a>
+          </p>
+        </div>
       </Section>
     </>
   );
@@ -130,7 +154,7 @@ export function MeetCatsSection() {
 
 /** Свайп по сцене у персонажей (по горизонтали), вертикальный жест — прокрутка страницы. */
 function SwipeLayer({ onSwipe }: { onSwipe: (step: number) => void }) {
-  const active = useAtStation(sectionIndex('cats'));
+  const active = useAtStation(sectionIndex('collection'));
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   const swipe = useRef(onSwipe);
   swipe.current = onSwipe;
@@ -165,52 +189,5 @@ function SwipeLayer({ onSwipe }: { onSwipe: (step: number) => void }) {
         start.current = null;
       }}
     />
-  );
-}
-
-/** 5. Коллекция: всё кольцо котов и пять ступеней редкости — у каждой свой характер. */
-export function CollectionSection() {
-  return (
-    <Section
-      id="collection"
-      layout="center"
-      head={
-        <>
-          <Label>The collection</Label>
-          <Words text="Build your collection" />
-          <p className="lead center" data-rv="up" style={k(2)}>
-            Every cat is part of a growing collection. Discover new characters, unlock rare skins and build a
-            lineup that represents your journey through the world.
-          </p>
-        </>
-      }
-    >
-      <ul className="tiers">
-        {TIERS.map((t, i) => (
-          <li
-            key={t.rarity}
-            className="tier card"
-            data-rarity={t.rarity}
-            data-rv="rise"
-            style={{ ...k(i), ['--r' as string]: RARITY_COLOR[t.rarity] }}
-          >
-            <span className="tier-gem" aria-hidden />
-            <p className="tier-name">{RARITY_LABEL[t.rarity]}</p>
-            <p className="small">{t.text}</p>
-          </li>
-        ))}
-      </ul>
-      <a
-        className="link-cta"
-        href={MINI_APP_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        data-rv="up"
-        style={k(5)}
-      >
-        Explore collection
-        <ArrowIcon />
-      </a>
-    </Section>
   );
 }

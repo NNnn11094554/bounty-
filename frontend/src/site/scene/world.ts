@@ -52,30 +52,31 @@ const RING_OMEGA = 3.4;
 
 /** Где стоят площадки сцены (одна площадка может снимать несколько секций). */
 const HOME = new Vector3(0, 0, 0);
-const COLLECTION = new Vector3(0, 0, -52);
+const WORLD = new Vector3(0, 0, -52);
+const PROGRESSION = new Vector3(0, 0, -104);
+const COLLECTION = new Vector3(0, 0, -152);
 const RING_R = 4.7;
-const WORLD = new Vector3(0, 0, -104);
-const PROGRESSION = new Vector3(0, 0, -152);
 const AIRDROP = new Vector3(0, 3.1, -200);
 const ROADMAP = new Vector3(0, 0, -250);
 const COMMUNITY = new Vector3(0, 0, -300);
 const FINAL = new Vector3(0, 0, -350);
 
 /**
- * Площадка каждой станции (секции страницы): 0 главная (герой, история, как играть), 1 коллекция
- * (персонажи, редкости), 2 мир, 3 прогресс, 4 airdrop, 5 roadmap, 6 сообщество (и FAQ), 7 финал.
+ * Площадка каждой станции (секции страницы): у каждой секции своя — ни один кот не повторяется в соседних.
+ * Группы сцены: 0 главная (Инферно), 1 коллекция (кольцо), 2 мир (Странник), 3 игра (Токсик), 4 airdrop
+ * (монета), 5 roadmap (маяки), 6 сообщество (коты вместе), 7 финал (Galaxy Emperor).
  */
-const LOC = [0, 0, 0, 1, 1, 2, 3, 4, 5, 6, 6, 7] as const;
+const LOC = [0, 2, 3, 1, 4, 5, 6, 7] as const;
 const LOCATIONS = 8;
-/** станции, где идёт игра (тап по коту) и где выбирают кота */
+/** станции, где тапают Токсика (демо игры) и где выбирают кота */
 const PLAY = 2;
 const CATS_AT = 3;
-const OVERVIEW = 4;
+const AIRDROP_AT = 4;
 
 const v3 = (x: number, y: number, z: number) => new Vector3(x, y, z);
 
 const SHOTS: Shot[] = [
-  // главная: кот справа, слева — заголовок; на телефоне кот между заголовком и кнопками
+  // главная: Инферно справа, слева — заголовок; на телефоне кот между заголовком и кнопками
   {
     target: v3(0, 1.6, 0),
     dir: v3(0, 0.05, 1),
@@ -84,68 +85,41 @@ const SHOTS: Shot[] = [
     shift: [0.23, 0],
     shiftPortrait: [0, -0.1],
   },
-  // история: камера обходит кота — он слева, текст справа
-  {
-    target: v3(0, 1.75, 0),
-    dir: v3(-0.32, 0.1, 1),
-    fit: [3.4, 4.8],
-    fitPortrait: [3.2, 7.2],
-    shift: [-0.22, 0],
-    shiftPortrait: [0, -0.05],
-  },
-  // как играть: кот в центре, между заголовком и шагами — его можно тапать
-  {
-    target: v3(0, 1.45, 0),
-    dir: v3(0, 0.17, 1),
-    fit: [3, 7],
-    fitPortrait: [2.9, 7.6],
-    shift: [0, 0.03],
-    shiftPortrait: [0, -0.05],
-  },
-  // персонажи: выбранный кот впереди кольца, карточка — справа
-  {
-    target: v3(0, 1.62, COLLECTION.z + RING_R),
-    dir: v3(0, 0.1, 1),
-    fit: [4, 4.7],
-    fitPortrait: [3.6, 7.4],
-    shift: [-0.17, 0],
-    shiftPortrait: [0, -0.05],
-  },
-  // коллекция: всё кольцо сверху-спереди, редкости — под ним
-  {
-    target: v3(0, 1.2, COLLECTION.z + 0.6),
-    dir: v3(0, 0.62, 1),
-    fit: [20, 13.5],
-    fitPortrait: [12, 19],
-    shift: [0, -0.02],
-    shiftPortrait: [0, -0.05],
-  },
-  // мир: Странник на краю своего мира, текст и миры — слева
+  // мир и история: Странник на краю своего мира слева, текст — справа
   {
     target: v3(0, 2.1, WORLD.z),
-    dir: v3(0.14, 0.05, 1),
+    dir: v3(-0.14, 0.05, 1),
     fit: [5, 5.4],
     fitPortrait: [4.2, 8.4],
-    shift: [0.2, 0],
-    shiftPortrait: [0, -0.05],
+    shift: [-0.2, 0],
+    shiftPortrait: [0, -0.06],
   },
-  // прогресс: инженер Токсик среди летящих монет-активов, путь — слева
+  // как играть: Токсик среди летящих карточек-активов справа (его можно тапать), текст — слева
   {
     target: v3(0, 2.1, PROGRESSION.z),
     dir: v3(0.16, 0.06, 1),
     fit: [7.6, 6.2],
     fitPortrait: [5.2, 9.4],
     shift: [0.19, 0],
-    shiftPortrait: [0, -0.05],
+    shiftPortrait: [0, -0.06],
   },
-  // airdrop: монета PAW в кольцах, панель — справа
+  // персонажи и коллекция: выбранный кот впереди кольца слева, карточка — справа
+  {
+    target: v3(0, 1.62, COLLECTION.z + RING_R),
+    dir: v3(0, 0.1, 1),
+    fit: [4, 4.7],
+    fitPortrait: [3.6, 7.4],
+    shift: [-0.17, 0],
+    shiftPortrait: [0, -0.06],
+  },
+  // прогресс и награды: монета PAW в кольцах между заголовком и колонками
   {
     target: AIRDROP.clone(),
     dir: v3(0, 0.05, 1),
-    fit: [11, 9.6],
-    fitPortrait: [7, 14],
-    shift: [-0.26, 0],
-    shiftPortrait: [0, -0.05],
+    fit: [16, 21],
+    fitPortrait: [9, 15],
+    shift: [0, -0.02],
+    shiftPortrait: [0, -0.06],
   },
   // roadmap: маяки фаз уходят вдаль, камера сбоку и сверху
   {
@@ -153,26 +127,17 @@ const SHOTS: Shot[] = [
     dir: v3(0.62, 0.42, 1),
     fit: [8, 7],
     fitPortrait: [6.4, 12],
-    shift: [0, 0.03],
-    shiftPortrait: [0, -0.05],
+    shift: [0, 0.12],
+    shiftPortrait: [0, -0.06],
   },
-  // сообщество: коты стоят вместе, кнопки — под ними
+  // сообщество и FAQ: коты вместе слева, текст — справа
   {
-    target: v3(0, 1.7, COMMUNITY.z),
-    dir: v3(0, 0.08, 1),
-    fit: [10.5, 6.6],
-    fitPortrait: [8, 13],
-    shift: [0, -0.1],
-    shiftPortrait: [0, -0.05],
-  },
-  // FAQ: те же коты издалека и сверху, вопросы — справа
-  {
-    target: v3(0, 1.4, COMMUNITY.z),
-    dir: v3(-0.45, 0.6, 1),
-    fit: [15, 9],
-    fitPortrait: [11, 18],
+    target: v3(0, 1.5, COMMUNITY.z),
+    dir: v3(-0.4, 0.4, 1),
+    fit: [13, 7.5],
+    fitPortrait: [9, 14],
     shift: [-0.24, 0],
-    shiftPortrait: [0, -0.05],
+    shiftPortrait: [0, -0.06],
   },
   // финал: самый сильный кот в портале, текст — под ним
   {
@@ -187,34 +152,17 @@ const SHOTS: Shot[] = [
 
 /** Дуги перелётов: камера поднимается, уходит в сторону — пространство раскрывается по пути. */
 const LEGS: Leg[] = [
-  { arc: v3(-1.2, 0.2, 0) },
-  { arc: v3(0.8, 0.4, 0) },
-  { arc: v3(3, 4.5, 0) },
-  { arc: v3(0, 1.2, 0) },
-  { arc: v3(-3.5, 1.5, 0) },
-  { arc: v3(3.8, -0.6, 0) },
+  { arc: v3(-3, 2.5, 0) },
+  { arc: v3(3.5, 1.5, 0) },
+  { arc: v3(-3.8, 3, 0) },
   { arc: v3(0, 5.5, 0) },
   { arc: v3(-3.2, 2, 0) },
   { arc: v3(3, 3, 0) },
-  { arc: v3(0, 1, 0) },
   { arc: v3(0, 4, 0) },
 ];
 
 /** Тон пространства у станций ('' — тон мира выбранного кота). */
-const STATION_FOG = [
-  '#0d0603',
-  '#0c0604',
-  '#07060c',
-  '',
-  '#07060d',
-  '#130b06',
-  '#030a06',
-  '#07051a',
-  '#04070f',
-  '#08060d',
-  '#050409',
-  '#070519',
-];
+const STATION_FOG = ['#0d0603', '#130b06', '#030a06', '', '#07051a', '#04070f', '#08060d', '#070519'];
 
 const DUST_ZONES: DustZone[] = [
   {
@@ -224,16 +172,16 @@ const DUST_ZONES: DustZone[] = [
     share: 0.13,
   },
   { center: v3(2, 4, -26), size: v3(20, 14, 34), colors: ['#cfd6ff', '#ffffff', '#9fb0ff'], share: 0.08 },
-  { center: v3(0, 3, -52), size: v3(30, 14, 28), colors: ['#ffffff', '#d9d2ff'], share: 0.12 },
+  { center: v3(0, 3.5, -52), size: v3(24, 14, 22), colors: ['#ffc93c', '#ffe08a', '#f2a65a'], share: 0.08 },
   { center: v3(-1, 3, -78), size: v3(20, 12, 28), colors: ['#c8f7ff', '#ffffff'], share: 0.05 },
-  { center: v3(0, 3.5, -104), size: v3(24, 14, 22), colors: ['#ffc93c', '#ffe08a', '#f2a65a'], share: 0.08 },
-  { center: v3(1, 3, -128), size: v3(20, 12, 26), colors: ['#ffe9b8', '#ffffff'], share: 0.04 },
   {
-    center: v3(0, 3, -152),
+    center: v3(0, 3, -104),
     size: v3(26, 14, 24),
     colors: ['#7dff3a', '#d4ff5a', '#7ce9df', '#ffffff'],
     share: 0.09,
   },
+  { center: v3(1, 3, -128), size: v3(20, 12, 26), colors: ['#ffe9b8', '#ffffff'], share: 0.04 },
+  { center: v3(0, 3, -152), size: v3(30, 14, 28), colors: ['#ffffff', '#d9d2ff'], share: 0.12 },
   { center: v3(0, 5, -176), size: v3(20, 16, 26), colors: ['#c9b8ff', '#ffffff'], share: 0.03 },
   {
     center: v3(0, 4, -199),
@@ -440,7 +388,6 @@ export class SiteWorld {
     });
     this.embers.renderOrder = 14;
     home.add(this.embers);
-    this.energyRing = this.flatGlow(home, this.ring, '#ffc93c', 4.2, v3(0, 0.02, 0), 0);
     home.add(this.hero.group);
 
     // ── коллекция ──
@@ -502,6 +449,15 @@ export class SiteWorld {
     });
     sparks.renderOrder = 14;
     progression.add(sparks);
+    // кольцо энергии под Токсиком: вспыхивает от тапа
+    this.energyRing = this.flatGlow(
+      progression,
+      this.ring,
+      '#ffc93c',
+      4.2,
+      v3(PROGRESSION.x, 0.025, PROGRESSION.z),
+      0,
+    );
 
     const relief = this.bank.canvas(pawReliefCanvas());
     const face = goldMaterial(relief, false);
@@ -840,12 +796,12 @@ export class SiteWorld {
    */
   tap(clientX: number, clientY: number, turbo: boolean): boolean {
     const at = new Vector3();
-    if (!this.hitFigure(this.hero, clientX, clientY, at)) return false;
+    if (!this.hitFigure(this.engineer, clientX, clientY, at)) return false;
     at.z += 0.25;
     this.bursts.emit(
       at,
       turbo ? 18 : 10,
-      turbo ? ['#ffe08a', '#ff7a1a', '#ffffff'] : ['#ffc93c', '#ff9a4d'],
+      turbo ? ['#ffe08a', '#d4ff5a', '#ffffff'] : ['#d4ff5a', '#ffc93c'],
       turbo ? 1.15 : 0.9,
     );
     (this.energyRing.material as ShaderMaterial).uniforms.uOpacity!.value = 1;
@@ -861,7 +817,7 @@ export class SiteWorld {
 
   /** Рамка кота игры на экране, CSS px. */
   catRect(): { x: number; y: number; width: number; height: number } | null {
-    const box = this.hero.screenBox(this.camera);
+    const box = this.engineer.screenBox(this.camera);
     if (!box) return null;
     const rect = this.renderer.domElement.getBoundingClientRect();
     const x0 = rect.left + ((box.x0 + 1) / 2) * rect.width;
@@ -1004,37 +960,32 @@ export class SiteWorld {
 
   private updateHome(v: View, still: boolean): void {
     const { pos, time, dt } = v;
-    const home = nearness(pos, 0) + nearness(pos, 1) * 0.7;
-    const game = nearness(pos, PLAY);
+    const home = nearness(pos, 0);
     const appear = (a: number, b: number) => easeOutCubic(introPhase(a, b));
     const light = appear(0.3, 1.6);
     const world = appear(0.8, 1.4);
     this.hero.reveal = introPhase(1.2, 1.9);
     this.hero.update(time, dt, still);
-    this.hero.material.uniforms.uRimStrength.value = 0.75 + game * 0.25;
+    this.hero.material.uniforms.uRimStrength.value = 0.75;
     const bd = this.heroBackdrop.material.uniforms;
     bd.uOpacity!.value = world;
-    bd.uFogMix!.value = game * 0.5;
-    bd.uDim!.value = 0.66 - game * 0.16;
+    bd.uFogMix!.value = 0;
+    bd.uDim!.value = 0.66;
     const ringScale = 0.7 + 0.3 * appear(0.3, 1.8);
     for (const [i, m] of this.portal.entries()) {
       m.scale.setScalar(ringScale * (1 + Math.sin(time * 0.6 + i) * 0.008));
       m.rotation.z = time * (i ? -0.05 : 0.03);
       m.rotation.x = 0.08 + Math.sin(time * 0.3) * 0.03;
-      (m.material as ShaderMaterial).uniforms.uOpacity!.value = light * (1 - game * 0.6);
+      (m.material as ShaderMaterial).uniforms.uOpacity!.value = light;
     }
     for (const [i, ray] of this.rays.entries()) {
       ray.rotation.z = -0.32 + i * 0.16 + Math.sin(time * 0.25 + i * 1.7) * 0.04;
       (ray.material as ShaderMaterial).uniforms.uOpacity!.value =
-        light * (0.1 + 0.05 * Math.sin(time * 0.5 + i)) * (home + game * 0.4);
+        light * (0.1 + 0.05 * Math.sin(time * 0.5 + i)) * home;
     }
-    (this.halo.material as ShaderMaterial).uniforms.uOpacity!.value = light * (0.4 + game * 0.15);
+    (this.halo.material as ShaderMaterial).uniforms.uOpacity!.value = light * 0.4;
     (this.embers.material as ShaderMaterial).uniforms.uOpacity!.value = appear(1.4, 1.2);
     (this.homeFloor.material as ShaderMaterial).uniforms.uOpacity!.value = world;
-    const ring = (this.energyRing.material as ShaderMaterial).uniforms.uOpacity!;
-    const pulse = 0.45 + Math.sin(time * 2.2) * 0.1;
-    ring.value = Math.max(game * pulse, ring.value - dt * 2);
-    this.energyRing.scale.setScalar(1 + (ring.value - game * pulse) * 0.25);
   }
 
   private updateCollection(v: View, still: boolean): void {
@@ -1058,8 +1009,6 @@ export class SiteWorld {
     const settled = smoothstep(0.35, 1.1, time - this.selectedAt);
     // на широком экране справа — текст: коты с той стороны уходят в тень, чтобы не спорить с ним
     const wide = landscapeness(this.width / this.height) * this.atCats;
-    // обзор коллекции: все коты на виду, без тени у дальних
-    const overview = nearness(v.pos, OVERVIEW);
     for (const [i, figure] of this.figures.entries()) {
       const a = i * STEP + this.ringAngle;
       const front = (Math.cos(a) + 1) / 2;
@@ -1071,9 +1020,8 @@ export class SiteWorld {
       figure.group.scale.setScalar(0.7 + 0.3 * front ** 1.3);
       const behindText = wide * smoothstep(0.1, 0.6, Math.sin(a)) * (1 - chosen);
       const lit = 0.26 + 0.74 * front ** 1.6;
-      figure.dim = (lit + (0.82 - lit) * overview * (1 - front * 0.3)) * (1 - behindText * 0.7);
-      figure.opacity =
-        (0.35 + 0.65 * Math.max(smoothstep(0, 0.45, front), overview)) * (1 - behindText * 0.9);
+      figure.dim = lit * (1 - behindText * 0.7);
+      figure.opacity = (0.35 + 0.65 * smoothstep(0, 0.45, front)) * (1 - behindText * 0.9);
       figure.reveal = 1;
       figure.update(time + i * 1.7, dt, still);
       figure.material.uniforms.uRimStrength.value = 0.5 + chosen * 0.6;
@@ -1112,6 +1060,11 @@ export class SiteWorld {
     const { time, dt } = v;
     this.engineer.reveal = 1;
     this.engineer.update(time, dt, still);
+    const game = nearness(v.pos, PLAY);
+    const ring = (this.energyRing.material as ShaderMaterial).uniforms.uOpacity!;
+    const pulse = 0.4 + Math.sin(time * 2.2) * 0.08;
+    ring.value = Math.max(game * pulse, ring.value - dt * 2);
+    this.energyRing.scale.setScalar(1 + (ring.value - game * pulse) * 0.25);
     // монеты летят по дуге вокруг Токсика, но не там, где текст: на широком экране — справа и сверху,
     // на телефоне (текст снизу) — сверху
     const wide = landscapeness(this.width / this.height);
@@ -1141,13 +1094,13 @@ export class SiteWorld {
     for (const [i, ring] of this.gyro.entries()) {
       ring.rotation.set(t * (0.12 + i * 0.05) + i, t * (0.09 - i * 0.04) + i * 0.7, 0);
     }
-    const here = nearness(pos, 7);
+    const here = nearness(pos, AIRDROP_AT);
     const progress = this.progressRing.material as ShaderMaterial;
     const filled = AIRDROP_REQS.reduce((s, r) => s + r.demo, 0) / AIRDROP_REQS.length;
     const current = progress.uniforms.uProgress!;
     current.value += (filled * here - current.value) * (1 - Math.exp(-v.dt * 1.8));
     // кольцо без тумана: издалека (с соседней станции) его не видно
-    progress.uniforms.uOpacity!.value = clamp01(1.6 - Math.abs(pos - 7) * 1.6);
+    progress.uniforms.uOpacity!.value = clamp01(1.6 - Math.abs(pos - AIRDROP_AT) * 1.6);
   }
 
   private updateRoadmap(v: View, still: boolean): void {

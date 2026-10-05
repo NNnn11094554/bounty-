@@ -12,29 +12,25 @@ import {
  */
 export const SECTIONS = [
   'home',
-  'story',
-  'how',
-  'cats',
-  'collection',
   'world',
-  'progression',
+  'play',
+  'collection',
   'airdrop',
   'roadmap',
   'community',
-  'faq',
   'final',
 ] as const;
 export type SectionId = (typeof SECTIONS)[number];
 export const sectionIndex = (id: SectionId): number => SECTIONS.indexOf(id);
 
-/** Пункты навигации (порядок — как в меню, не как на странице). */
+/** Пункты навигации — в порядке страницы. */
 export const NAV: ReadonlyArray<{ id: SectionId; label: string }> = [
   { id: 'home', label: 'Home' },
   { id: 'world', label: 'World' },
+  { id: 'play', label: 'How to play' },
   { id: 'collection', label: 'Collection' },
-  { id: 'how', label: 'How to play' },
-  { id: 'roadmap', label: 'Roadmap' },
   { id: 'airdrop', label: 'Airdrop' },
+  { id: 'roadmap', label: 'Roadmap' },
 ];
 
 /**
@@ -54,11 +50,48 @@ export const STORY_STEPS = [
   { title: 'The World Expands', text: 'New characters, mechanics and experiences arrive.' },
 ] as const;
 
+/** Коротко о проекте — только то, что есть в игре сейчас. */
+export const KEY_FACTS = [
+  { value: '1 tap', label: 'To start', text: 'A Mini App that opens right inside Telegram, no download.' },
+  { value: '10', label: 'Characters', text: 'Each with its own world, rarity and story.' },
+  { value: `${MAX_LEVEL}`, label: 'Levels', text: 'And ten leagues, from Bronze to Lord.' },
+  { value: '59', label: 'Assets', text: 'In-game upgrades that keep earning while you are away.' },
+] as const;
+
 export const HOW_STEPS = [
-  { title: 'Tap', text: 'Earn rewards through active gameplay.' },
-  { title: 'Upgrade', text: 'Improve your progression and unlock new possibilities.' },
-  { title: 'Collect', text: 'Discover unique cats, skins and rare characters.' },
-  { title: 'Compete', text: 'Climb through leagues and prove your place in the world.' },
+  {
+    title: 'Tap',
+    text: 'Earn rewards through active gameplay.',
+    detail: 'Each tap spends 1 energy. 5,000 energy, refilling at +3 per second.',
+  },
+  {
+    title: 'Upgrade',
+    text: 'Improve your progression and unlock new possibilities.',
+    detail: '59 assets in four groups earn PAW every hour — offline too, for up to 3 hours.',
+  },
+  {
+    title: 'Collect',
+    text: 'Discover unique cats, skins and rare characters.',
+    detail: 'Skins change how your cat looks, never the economy: style, not pay-to-win.',
+  },
+  {
+    title: 'Compete',
+    text: 'Climb through leagues and prove your place in the world.',
+    detail: 'Ten leagues ranked by everything you have earned, from Bronze to Lord.',
+  },
+] as const;
+
+/** Бусты — как в игре. */
+export const BOOSTS = [
+  { title: 'Turbo', text: '×5 per tap for 60 s, no energy spent · 3 a day' },
+  { title: 'Full energy', text: 'Refill to the top instantly · 6 a day' },
+] as const;
+
+/** Ежедневные задания: награда растёт вместе с доходом игрока (как в игре). */
+export const DAILY_TASKS = [
+  { title: 'Daily combo', text: 'Find the three assets of the day', reward: 'from 50,000' },
+  { title: 'Daily cipher', text: 'Tap out the word of the day in Morse code', reward: 'from 10,000' },
+  { title: 'Invite friends', text: 'A bonus for both of you · 25,000 with Premium', reward: '5,000' },
 ] as const;
 
 /** Ступени редкости: у каждой свой характер (цвет — как в игре). */
@@ -84,15 +117,6 @@ export const WORLDS = [
   },
   { name: 'Ocean Realm', text: 'An ancient kingdom hidden beneath endless waters.', cat: 'ocean_guardian' },
   { name: 'Unknown', text: 'Something is waiting beyond the known world.', cat: null },
-] as const;
-
-export const PROGRESSION = [
-  { title: 'Level', text: `${MAX_LEVEL} levels — each one raises your income and energy.` },
-  { title: 'Energy', text: 'Every tap spends it, it refills by itself.' },
-  { title: 'Upgrades', text: 'In-game assets that keep earning while you are away.' },
-  { title: 'Leagues', text: 'Ten leagues, from Bronze to Lord.' },
-  { title: 'Collection', text: 'Characters and tap effects you unlock as you grow.' },
-  { title: 'Achievements', text: 'Daily rewards, streaks and tasks.' },
 ] as const;
 
 /** Что учитывается в пути игрока (без обещаний наград и сумм). */

@@ -95,26 +95,24 @@ describe('site content', () => {
   it('stations and game numbers match the game', () => {
     expect(SECTIONS).toEqual([
       'home',
-      'story',
-      'how',
-      'cats',
-      'collection',
       'world',
-      'progression',
+      'play',
+      'collection',
       'airdrop',
       'roadmap',
       'community',
-      'faq',
       'final',
     ]);
+    // меню — в порядке страницы
     expect(NAV.map((n) => n.label)).toEqual([
       'Home',
       'World',
-      'Collection',
       'How to play',
-      'Roadmap',
+      'Collection',
       'Airdrop',
+      'Roadmap',
     ]);
+    expect(NAV.map((n) => SECTIONS.indexOf(n.id))).toEqual([0, 1, 2, 3, 4, 5]);
     for (const n of NAV) expect(SECTIONS).toContain(n.id);
     expect(AIRDROP_REQS.map((r) => r.id)).toEqual([...AIRDROP_REQUIREMENTS]);
     expect(LEAGUES).toHaveLength(GAME_FACTS.leagues);

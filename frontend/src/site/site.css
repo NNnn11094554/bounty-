@@ -252,9 +252,9 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: calc(var(--safe-top) + 104px) calc(var(--gutter) + var(--safe-right))
-    calc(var(--safe-bottom) + 72px) calc(var(--gutter) + var(--safe-left));
+  gap: 18px;
+  padding: calc(var(--safe-top) + 92px) calc(var(--gutter) + var(--safe-right))
+    calc(var(--safe-bottom) + 40px) calc(var(--gutter) + var(--safe-left));
 }
 .sec-head,
 .sec-body {
@@ -289,9 +289,16 @@ body {
 }
 
 @media (max-aspect-ratio: 19/20) {
+  /* на телефоне секция по содержимому: экран целиком занимает только главная */
+  .sec:not(.hero) {
+    min-height: 0;
+  }
   .sec-window {
     flex: none;
-    height: 46svh;
+    height: 36svh;
+  }
+  .sec-col {
+    padding-top: calc(var(--safe-top) + 84px);
   }
   /* на телефоне содержимое проезжает поверх объекта сцены — под ним тоже тень */
   .sec-body::before {
@@ -301,17 +308,6 @@ body {
     z-index: -1;
     pointer-events: none;
     background: radial-gradient(closest-side, rgba(3, 2, 8, 0.72), rgba(3, 2, 8, 0.4) 70%, transparent);
-  }
-  .path {
-    padding: 16px;
-    border-radius: 18px;
-    border: 1px solid var(--line);
-    background: var(--panel);
-  }
-  .path::before {
-    left: 37px;
-    top: 38px;
-    bottom: 38px;
   }
   .wide-only {
     display: none !important;
@@ -354,7 +350,7 @@ body {
   }
   .sec-center .sec-window {
     flex: 1 1 auto;
-    min-height: 26vh;
+    min-height: 16vh;
   }
   .sec-center .sec-body {
     width: min(100%, 1160px);
@@ -883,53 +879,62 @@ body {
   }
 }
 
-/* ───────────── 2. история ───────────── */
+/* ───────────── 2. мир и история ───────────── */
 
-.timeline {
-  position: relative;
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.fact {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.fact dt {
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-top: 8px;
-  padding-left: 2px;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
 }
-/* линия рисуется сверху вниз */
-.timeline::before {
-  content: '';
-  position: absolute;
-  left: 19px;
-  top: 10px;
-  bottom: 10px;
-  width: 1px;
-  background: linear-gradient(180deg, var(--gold), rgba(255, 255, 255, 0.08));
-  transform-origin: top;
-  transition: transform 1600ms var(--ease-out) 300ms;
+.fact-value {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+  color: #ffd9a8;
 }
-.timeline:not([data-in])::before {
-  transform: scaleY(0);
+.fact .small {
+  font-size: 13px;
 }
-.timeline li {
+.milestones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.milestones li {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 10px;
 }
-.timeline-num {
-  position: relative;
+.milestones .small {
+  font-size: 12.5px;
+}
+.milestone-num {
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   font-family: var(--display);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--gold);
-  background: var(--bg);
   border: 1px solid rgba(255, 201, 60, 0.45);
-}
-.timeline .h4 {
-  margin-top: 3px;
 }
 
 /* ───────────── 3. как играть ───────────── */
@@ -953,11 +958,15 @@ body {
 }
 .demo {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.demo-row {
+  display: flex;
   align-items: center;
-  gap: 20px;
-  width: min(100%, 520px);
-  padding: 12px 18px;
-  border-radius: 999px;
+  justify-content: space-between;
+  gap: 12px;
 }
 .demo-balance {
   display: inline-flex;
@@ -968,19 +977,47 @@ body {
   font-size: 22px;
   letter-spacing: -0.01em;
 }
-.demo-energy {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-}
 .demo-energy .small {
   white-space: nowrap;
   font-size: 12px;
 }
-@media (max-width: 440px) {
-  .demo-energy .tag {
-    display: none;
-  }
+.turbo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 201, 60, 0.35);
+  background: rgba(255, 201, 60, 0.08);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    transform 160ms var(--ease-out),
+    border-color 200ms ease;
+}
+.turbo:active {
+  transform: scale(0.96);
+}
+.turbo[data-active='true'] {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 18px rgba(255, 201, 60, 0.2);
+}
+.turbo[disabled] {
+  opacity: 0.4;
+}
+.boosts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.boosts b {
+  color: var(--ink-2);
+  font-weight: 700;
 }
 .steps {
   display: grid;
@@ -988,19 +1025,38 @@ body {
   gap: 10px;
   width: 100%;
 }
-@media (min-aspect-ratio: 19/20) {
-  .steps {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-  }
-}
 .step {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+}
+.step-top {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  margin-bottom: 2px;
+}
+.step-top .step-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+}
+.step .small {
+  font-size: 13px;
+  color: var(--ink);
+}
+.step-detail {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+@media (max-width: 380px) {
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .step-icon,
-.path-icon,
 .pillar-icon {
   width: 42px;
   height: 42px;
@@ -1010,14 +1066,6 @@ body {
   color: var(--gold);
   background: rgba(255, 201, 60, 0.1);
   border: 1px solid rgba(255, 201, 60, 0.22);
-}
-.step-num {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  font-family: var(--display);
-  font-size: 11px;
-  color: var(--ink-3);
 }
 .float-reward {
   position: fixed;
@@ -1273,61 +1321,48 @@ body {
   transform: scale(0.94);
 }
 
-/* ───────────── 5. коллекция: ступени редкости ───────────── */
+/* ───────────── 4b. ступени редкости ───────────── */
 
-.tiers {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-@media (min-aspect-ratio: 19/20) {
-  .tiers {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 12px;
-  }
-}
-.tier {
+.tiers-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  overflow: hidden;
-  border-color: color-mix(in srgb, var(--r) 22%, var(--line));
+  gap: 10px;
 }
-/* полоска цвета редкости сверху */
-.tier::before {
-  content: '';
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--r), transparent);
-  opacity: 0.8;
+.tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tier {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--r) 30%, var(--line));
+  background: rgba(9, 8, 16, 0.6);
 }
 .tier-gem {
-  width: 14px;
-  height: 14px;
+  width: 9px;
+  height: 9px;
   transform: rotate(45deg);
-  border-radius: 3px;
+  border-radius: 2px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--r) 55%, white), var(--r));
-  box-shadow: 0 0 14px -2px color-mix(in srgb, var(--r) 70%, transparent);
+  box-shadow: 0 0 10px -2px color-mix(in srgb, var(--r) 70%, transparent);
 }
 .tier-name {
   font-family: var(--display);
-  font-weight: 640;
-  font-size: 15px;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--r);
 }
 .tier[data-rarity='COMMON'] .tier-gem {
   box-shadow: none;
-}
-.tier[data-rarity='EPIC'] {
-  background:
-    radial-gradient(120% 80% at 50% 120%, color-mix(in srgb, var(--r) 14%, transparent), transparent 70%),
-    var(--panel);
 }
 /* легендарная — медленный блик, мифическая — переливающаяся кромка */
 .tier[data-rarity='LEGENDARY']::after {
@@ -1335,7 +1370,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(110deg, transparent 35%, rgba(255, 220, 140, 0.12) 50%, transparent 65%);
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 220, 140, 0.18) 50%, transparent 65%);
   transform: translateX(-100%);
   animation: sheen 6s ease-in-out infinite;
 }
@@ -1357,40 +1392,47 @@ body {
   background-clip: text;
   color: transparent;
 }
-@media (max-aspect-ratio: 19/20) {
-  .tier {
-    display: grid;
-    grid-template-columns: 14px auto 1fr;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-  }
-  .tier-name {
-    font-size: 13px;
-  }
-  .tier .small {
-    font-size: 13px;
-    text-align: right;
-  }
+.inline-link {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom: 1px solid var(--line-2);
+  white-space: nowrap;
 }
 
-/* ───────────── 6. мир ───────────── */
+/* ───────────── 6b. миры в разработке ───────────── */
 
+.worlds-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
 .worlds {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+}
+@media (min-aspect-ratio: 19/20) {
+  .worlds {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
 }
 .world {
-  padding: 0;
-  overflow: hidden;
+  position: relative;
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
 }
 .world-art {
   position: relative;
-  display: block;
-  aspect-ratio: 16 / 10;
+  flex: none;
+  width: 30%;
+  min-height: 96px;
   overflow: hidden;
   background: #0a0812;
 }
@@ -1400,24 +1442,18 @@ body {
   object-fit: cover;
   object-position: 50% 30%;
   filter: saturate(0.85) brightness(0.8);
-  transition: transform 1200ms var(--ease-out);
 }
 .world-art::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 40%, rgba(9, 8, 16, 0.9));
-}
-@media (hover: hover) {
-  .world:hover .world-art img {
-    transform: scale(1.04);
-  }
+  background: linear-gradient(90deg, transparent 40%, rgba(9, 8, 16, 0.9));
 }
 .world-void {
   display: grid;
   place-items: center;
   font-family: var(--display);
-  font-size: 44px;
+  font-size: 30px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.5);
   background:
@@ -1431,90 +1467,21 @@ body {
   }
 }
 .world-text {
-  position: relative;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  padding: 0 16px 16px;
-  margin-top: -14px;
-}
-.world .h3 {
-  font-size: 14px;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 14px;
 }
 .world .small {
-  font-size: 13px;
-}
-@media (max-aspect-ratio: 19/20) {
-  .worlds {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-  .world {
-    flex-direction: row;
-  }
-  .world-art {
-    width: 34%;
-    flex: none;
-    aspect-ratio: auto;
-    min-height: 120px;
-  }
-  .world-art::after {
-    background: linear-gradient(90deg, transparent 40%, rgba(9, 8, 16, 0.85));
-  }
-  .world-text {
-    margin: 0;
-    padding: 14px;
-    justify-content: center;
-  }
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
-/* ───────────── 7. прогресс ───────────── */
+/* ───────────── 5. награды ───────────── */
 
-.path {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-}
-.path li {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.path .small {
-  font-size: 13px;
-}
-/* на телефоне — путь одной линией */
-.path::before {
-  content: '';
-  position: absolute;
-  left: 21px;
-  top: 22px;
-  bottom: 22px;
-  width: 1px;
-  background: linear-gradient(180deg, rgba(255, 201, 60, 0.5), rgba(255, 255, 255, 0.06));
-  transform-origin: top;
-  transition: transform 1600ms var(--ease-out) 200ms;
-}
-.path:not([data-in])::before {
-  transform: scaleY(0);
-}
-.path-icon {
-  position: relative;
-  flex: none;
-  background: #120e08;
-}
-@media (min-aspect-ratio: 19/20) {
-  .path {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 18px;
-  }
-  .path::before {
-    display: none;
-  }
-}
 .days {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1604,6 +1571,41 @@ button.day {
 
 /* ───────────── 8. airdrop ───────────── */
 
+.rewards-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+}
+@media (min-aspect-ratio: 19/20) {
+  .rewards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+.rewards-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.tasks {
+  padding: 14px 16px 6px;
+}
+.task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.tasks .tag + .task {
+  margin-top: 8px;
+}
+.task .small {
+  font-size: 12.5px;
+}
 .pillars {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1611,9 +1613,15 @@ button.day {
 }
 .pillar {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+}
+.pillar .pillar-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
 }
 .pillar-icon {
   color: #c9b8ff;
@@ -1624,7 +1632,7 @@ button.day {
   font-size: 13px;
 }
 .progress-card {
-  padding: 18px;
+  padding: 16px 18px;
 }
 .reqs {
   display: grid;
@@ -1712,9 +1720,44 @@ button.day {
 
 .phases {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
+}
+@media (max-aspect-ratio: 19/20) {
+  .phases .phase {
+    padding: 14px;
+    gap: 8px;
+  }
+  .phases .phase .h3 {
+    font-size: 14px;
+  }
+  .phases .phase-items {
+    gap: 6px;
+  }
+  .phases .phase-items li {
+    font-size: 12.5px;
+    gap: 8px;
+  }
+  .phases .phase-mark {
+    width: 15px;
+    height: 15px;
+  }
+  /* миры на телефоне — плитки: картинка сверху, текст под ней */
+  .worlds .world {
+    flex-direction: column;
+  }
+  .worlds .world-art {
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 7;
+  }
+  .worlds .world-art::after {
+    background: linear-gradient(180deg, transparent 40%, rgba(9, 8, 16, 0.9));
+  }
+  .worlds .world-text {
+    padding: 10px 12px 12px;
+  }
 }
 @media (min-aspect-ratio: 19/20) {
   .phases {
@@ -1804,22 +1847,22 @@ button.day {
 
 .community-links {
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
-@media (max-aspect-ratio: 19/20) {
-  .community-links {
-    flex-direction: column;
-  }
-  .community-links .btn {
-    width: 100%;
-  }
+.community-links .btn {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 11px;
 }
 
 /* ───────────── 11. FAQ ───────────── */
 
 .faq {
-  padding: 4px 20px;
+  padding: 16px 20px 4px;
+}
+.faq-title {
+  padding-bottom: 6px;
 }
 .faq-item + .faq-item {
   border-top: 1px solid var(--line);
@@ -1965,7 +2008,7 @@ button.day {
 
 @media (max-aspect-ratio: 19/20) and (max-height: 700px) {
   .sec-window {
-    height: 40svh;
+    height: 30svh;
   }
   .days .day:nth-child(n + 6) {
     display: none;

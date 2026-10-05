@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
-import { FAQ, NAV, ROADMAP, sectionIndex } from '../content';
+import { catAsset } from '../cats';
+import { FAQ, NAV, ROADMAP, WORLDS, sectionIndex } from '../content';
 import { flyTo } from '../timeline';
 import { PawMark, PlayButton, Socials } from './Chrome';
 import { CheckIcon } from './icons';
@@ -13,7 +14,10 @@ const PHASE_STATE: Record<(typeof ROADMAP)[number]['state'], string> = {
   unknown: 'Unknown',
 };
 
-/** 9. Roadmap: четыре фазы — маяки в сцене уходят вдаль, последняя мерцает. */
+/**
+ * 6. Roadmap и будущее: четыре фазы и миры, которые готовятся (все — с пометкой Coming soon, не выдаются за
+ * готовые). В сцене — маяки фаз уходят вдаль, последний мерцает.
+ */
 export function RoadmapSection() {
   return (
     <Section
@@ -21,8 +25,13 @@ export function RoadmapSection() {
       layout="center"
       head={
         <>
-          <Label>What&apos;s next</Label>
-          <Words text="Roadmap" />
+          <Label>Roadmap</Label>
+          <Words text="A world with no final level" />
+          <p className="lead center" data-rv="up" style={k(2)}>
+            Beyond the main game lies a growing universe of characters, locations, events and discoveries. New
+            worlds will introduce new characters, mechanics and ways to play. The core game is live; the next
+            phases are in development.
+          </p>
         </>
       }
     >
@@ -47,21 +56,56 @@ export function RoadmapSection() {
           </li>
         ))}
       </ol>
+      <div className="worlds-block" data-rv="up" style={k(4)}>
+        <p className="tag">Worlds in development</p>
+        <ul className="worlds">
+          {WORLDS.map((w) => (
+            <li key={w.name} className="world" data-unknown={!w.cat}>
+              {w.cat ? (
+                <picture className="world-art" aria-hidden>
+                  <source type="image/avif" srcSet={catAsset(w.cat, 'background', 1200, 'avif')} />
+                  <img
+                    src={catAsset(w.cat, 'background', 1200, 'webp')}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    width={600}
+                    height={760}
+                  />
+                </picture>
+              ) : (
+                <span className="world-art world-void" aria-hidden>
+                  ?
+                </span>
+              )}
+              <div className="world-text">
+                <span className="soon">{w.cat ? 'Coming soon' : 'Undiscovered'}</span>
+                <h3 className="h4">{w.name}</h3>
+                <p className="small">{w.text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </Section>
   );
 }
 
-/** 10. Сообщество: коты стоят вместе, под ними — куда идти. */
+/**
+ * 7. Сообщество и вопросы: куда идти и короткие ответы. В сцене — пятеро котов вместе (не те, что рядом).
+ */
 export function CommunitySection() {
+  const [open, setOpen] = useState(0);
+  const base = useId();
   return (
     <Section
       id="community"
-      layout="center"
+      layout="right"
       head={
         <>
           <Label>Community</Label>
           <Words text="The world is better together" />
-          <p className="lead center" data-rv="up" style={k(2)}>
+          <p className="lead" data-rv="up" style={k(2)}>
             Follow the journey, discover new characters and become part of the community as the universe
             continues to grow.
           </p>
@@ -71,26 +115,8 @@ export function CommunitySection() {
       <div data-rv="up" style={k(3)}>
         <Socials wide className="community-links" />
       </div>
-    </Section>
-  );
-}
-
-/** 11. Вопросы: аккордеон, открыт один вопрос за раз. */
-export function FaqSection() {
-  const [open, setOpen] = useState(0);
-  const base = useId();
-  return (
-    <Section
-      id="faq"
-      layout="right"
-      head={
-        <>
-          <Label>Questions</Label>
-          <Words text="FAQ" />
-        </>
-      }
-    >
-      <div className="faq glass" data-rv="up" style={k(2)}>
+      <div className="faq glass" data-rv="up" style={k(4)}>
+        <p className="tag faq-title">FAQ</p>
         {FAQ.map((item, i) => {
           const expanded = open === i;
           return (
@@ -126,7 +152,7 @@ export function FaqSection() {
   );
 }
 
-/** 12. Финал: самый сильный кот в портале и одна кнопка. */
+/** 8. Финал: самый сильный кот в портале и одна кнопка. */
 export function FinalSection() {
   return (
     <Section id="final" layout="center" className="final">
@@ -142,7 +168,7 @@ export function FinalSection() {
   );
 }
 
-/** 13. Подвал: разделы, ссылки, оговорка об игровых предметах. */
+/** Подвал: разделы, ссылки, оговорка об игровых предметах. */
 export function Footer() {
   return (
     <footer className="footer">

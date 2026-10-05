@@ -1,9 +1,10 @@
 import { formatInt } from '@meowgul/shared';
 import { useEffect, useRef } from 'react';
+import { TurboIcon } from '../../components/boostIcons';
 import { BoltIcon, CoinIcon } from '../../components/icons';
 import { RollingNumber } from '../../components/RollingNumber';
-import { GAME_FACTS, HOW_STEPS, STORY_STEPS, sectionIndex } from '../content';
-import { demoBalance, demoEnergy, demoTap, isTurbo, useDemo } from '../demo';
+import { BOOSTS, GAME_FACTS, HOW_STEPS, KEY_FACTS, STORY_STEPS, sectionIndex } from '../content';
+import { demoBalance, demoEnergy, demoTap, isTurbo, startTurbo, turboSeconds, useDemo } from '../demo';
 import { sceneApi } from '../store';
 import { flyTo, nearness, onTick } from '../timeline';
 import { PlayButton } from './Chrome';
@@ -12,7 +13,7 @@ import { STEP_ICONS } from './iconSets';
 import { k } from './reveal';
 import { Label, Section, Words } from './Section';
 
-const PLAY = sectionIndex('how');
+const PLAY = sectionIndex('play');
 
 /** 1. Главная: заголовок проявляется вместе со сценой, кот — справа (на телефоне — под заголовком). */
 export function HeroSection() {
@@ -50,35 +51,46 @@ export function HeroSection() {
   );
 }
 
-/** 2. История: как из одного тапа вырос мир. Таймлайн рисуется линией сверху вниз. */
-export function StorySection() {
+/**
+ * 2. Мир и история: как из одного тапа вырос мир — коротко о проекте, ключевые цифры игры и путь проекта.
+ * В сцене — Странник на краю своего мира (не тот кот, что на главной).
+ */
+export function WorldSection() {
   return (
     <Section
-      id="story"
+      id="world"
       layout="right"
       head={
         <>
           <Label>Our story</Label>
           <Words text="A world built one cat at a time" />
+          <p className="lead" data-rv="up" style={k(2)}>
+            What started as a simple tap became something much bigger. A universe of unique cats, mysterious
+            worlds, rare characters and endless progression — built directly inside Telegram. Every character
+            has its own identity. Every world has its own story.
+          </p>
+          <p className="motto" data-rv="up" style={k(3)}>
+            Collect. Upgrade. Discover.
+          </p>
         </>
       }
     >
-      <p className="lead" data-rv="up" style={k(1)}>
-        What started as a simple tap became something much bigger. A universe of unique cats, mysterious
-        worlds, rare characters and endless progression — built directly inside Telegram.
-      </p>
-      <p className="motto" data-rv="up" style={k(2)}>
-        Collect. Upgrade. Discover.
-      </p>
-      <p className="lead" data-rv="up" style={k(3)}>
-        Every character has its own identity. Every world has its own story. And the journey is only
-        beginning.
-      </p>
-      <ol className="timeline" data-rv="line">
+      <dl className="facts">
+        {KEY_FACTS.map((f, i) => (
+          <div key={f.label} className="fact" data-rv="rise" style={k(i)}>
+            <dt>
+              <span className="fact-value">{f.value}</span>
+              <span className="tag">{f.label}</span>
+            </dt>
+            <dd className="small">{f.text}</dd>
+          </div>
+        ))}
+      </dl>
+      <ol className="milestones" data-rv="up" style={k(4)} aria-label="The journey so far">
         {STORY_STEPS.map((step, i) => (
-          <li key={step.title} data-rv="up" style={k(4 + i)}>
-            <span className="timeline-num">{String(i + 1).padStart(2, '0')}</span>
-            <div>
+          <li key={step.title}>
+            <span className="milestone-num">{String(i + 1).padStart(2, '0')}</span>
+            <div className="min-w-0">
               <p className="h4">{step.title}</p>
               <p className="small">{step.text}</p>
             </div>
@@ -89,43 +101,55 @@ export function StorySection() {
   );
 }
 
-/** 3. Как играть: четыре шага по очереди; кот над ними — его можно тапать (демо игры). */
-export function HowSection() {
+/**
+ * 3. Как играть: четыре механики с цифрами игры, бусты и живое демо. В сцене — инженер Токсик среди
+ * карточек-активов: его можно тапать (искры у пальца и +1 к балансу; сам кот не реагирует).
+ */
+export function PlaySection() {
   return (
     <>
       <TapLayer />
       <Section
-        id="how"
-        layout="center"
+        id="play"
+        layout="left"
         pass
         head={
           <>
             <Label>Gameplay</Label>
             <Words text="How it works" />
+            <p className="lead" data-rv="up" style={k(2)}>
+              Short sessions, lasting progress. Tap to earn, put your PAW into assets that keep earning,
+              collect characters and climb the leagues.
+            </p>
           </>
         }
       >
-        <DemoStrip />
         <div className="steps">
           {HOW_STEPS.map((step, i) => (
             <article key={step.title} className="card step pe" data-rv="rise" style={k(i)}>
-              <span className="step-icon">{STEP_ICONS[step.title]}</span>
-              <span className="step-num">{String(i + 1).padStart(2, '0')}</span>
-              <h3 className="h3">{step.title}</h3>
+              <div className="step-top">
+                <span className="step-icon">{STEP_ICONS[step.title]}</span>
+                <h3 className="h3">{step.title}</h3>
+              </div>
               <p className="small">{step.text}</p>
+              <p className="step-detail">{step.detail}</p>
             </article>
           ))}
         </div>
+        <DemoStrip />
       </Section>
       <TapHint />
     </>
   );
 }
 
-/** Демо игры над шагами: баланс и энергия, которые меняются от тапов по коту. */
+/** Демо игры: баланс, энергия и Turbo — меняются от тапов по Токсику. */
 function DemoStrip() {
+  const turboLeft = useDemo((s) => s.turboLeft);
+  const turboOn = useDemo((s) => s.turboActive);
   const fillRef = useRef<HTMLElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
+  const turboRef = useRef<HTMLSpanElement>(null);
   useEffect(
     () =>
       onTick((v) => {
@@ -135,16 +159,34 @@ function DemoStrip() {
         const turbo = isTurbo();
         if (fillRef.current)
           fillRef.current.style.transform = `scaleX(${(turbo ? 1 : e / GAME_FACTS.energy.max).toFixed(4)})`;
-        const text = `${formatInt(Math.floor(e))} / ${formatInt(GAME_FACTS.energy.max)}`;
+        const text = turbo
+          ? 'Turbo · no energy'
+          : `${formatInt(Math.floor(e))} / ${formatInt(GAME_FACTS.energy.max)}`;
         if (textRef.current && textRef.current.textContent !== text) textRef.current.textContent = text;
+        const sec = Math.ceil(turboSeconds());
+        const label = sec > 0 ? `0:${String(sec).padStart(2, '0')}` : `Turbo ×${GAME_FACTS.turbo.multiplier}`;
+        if (turboRef.current && turboRef.current.textContent !== label) turboRef.current.textContent = label;
       }),
     [],
   );
   return (
-    <div className="demo glass pe" data-rv="up" aria-label="Game demo">
-      <div className="demo-balance">
-        <CoinIcon size={26} />
-        <RollingNumber getValue={demoBalance} glowOnJump={false} />
+    <div className="demo glass pe" data-rv="up" style={k(4)} aria-label="Game demo">
+      <div className="demo-row">
+        <div className="demo-balance">
+          <CoinIcon size={24} />
+          <RollingNumber getValue={demoBalance} glowOnJump={false} />
+        </div>
+        <button
+          type="button"
+          className="turbo"
+          data-active={turboOn}
+          disabled={turboLeft <= 0 && !turboOn}
+          onClick={() => startTurbo()}
+          aria-label={`Turbo, ${turboLeft} of ${GAME_FACTS.turbo.perDay} left today`}
+        >
+          <TurboIcon size={22} />
+          <span ref={turboRef} />
+        </button>
       </div>
       <div className="demo-energy">
         <div className="mb-1.5 flex items-center justify-between gap-3">
@@ -158,6 +200,13 @@ function DemoStrip() {
           <i ref={fillRef} />
         </div>
       </div>
+      <ul className="boosts">
+        {BOOSTS.map((b) => (
+          <li key={b.title}>
+            <b>{b.title}</b> {b.text}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

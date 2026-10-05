@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CATS, HERO_CAT, catAsset } from './cats';
 import { useSite } from './store';
 import { startTimeline, view } from './timeline';
-import { CollectionSection, MeetCatsSection } from './ui/CatSections';
+import { CollectionSection } from './ui/CatSections';
 import { Loader, Nav } from './ui/Chrome';
-import { CommunitySection, FaqSection, FinalSection, Footer, RoadmapSection } from './ui/EndSections';
-import { HeroSection, HowSection, StorySection } from './ui/OpeningSections';
+import { CommunitySection, FinalSection, Footer, RoadmapSection } from './ui/EndSections';
+import { HeroSection, PlaySection, WorldSection } from './ui/OpeningSections';
 import { useReveal } from './ui/reveal';
-import { AirdropSection, ProgressionSection, WorldSection } from './ui/WorldSections';
+import { RewardsSection } from './ui/RewardsSection';
 
 /** Вступление интерфейса после проявления сцены (секунды от старта вступления). */
 const UI_INTRO_AT = 2.2;
@@ -66,16 +66,12 @@ export function SiteApp() {
       <Nav />
       <main ref={pageRef} className="page">
         <HeroSection />
-        <StorySection />
-        <HowSection />
-        <MeetCatsSection />
-        <CollectionSection />
         <WorldSection />
-        <ProgressionSection />
-        <AirdropSection />
+        <PlaySection />
+        <CollectionSection />
+        <RewardsSection />
         <RoadmapSection />
         <CommunitySection />
-        <FaqSection />
         <FinalSection />
       </main>
       <Footer />

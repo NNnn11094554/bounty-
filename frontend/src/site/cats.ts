@@ -50,6 +50,10 @@ export interface SiteCat {
   idle: IdleProfile;
 }
 
+/**
+ * Порядок — по кольцу коллекции: рядом с первым (выбранным при входе) стоят не те коты, что показаны в
+ * соседних секциях (Странник и Токсик — на дальней стороне кольца).
+ */
 export const CATS: readonly SiteCat[] = [
   {
     id: 'stealth_assassin',
@@ -132,48 +136,6 @@ export const CATS: readonly SiteCat[] = [
     idle: { breath: 1, breathPeriod: 3.9, blinkEvery: 4.5, tail: 1, ears: 0.6, head: 0.5, shoulders: 0 },
   },
   {
-    id: 'crystal_prince',
-    name: 'Crystal Prince',
-    subtitle: 'Heir to the Buried Crown',
-    rarity: 'MYTHIC',
-    world: 'Amethyst Ruins',
-    story: 'The last of the royal line. Crystals grow wherever he stands for longer than a minute.',
-    power: 97,
-    element: 'Crystal',
-    accent: '#8f7bff',
-    accent2: '#8fd8ff',
-    fog: '#07071a',
-    idle: { breath: 1, breathPeriod: 4.6, blinkEvery: 5, tail: 0.3, ears: 0.4, head: 0.8, shoulders: 0.4 },
-  },
-  {
-    id: 'lunar_witch',
-    name: 'Lunar Witch',
-    subtitle: 'Spells of the Full Moon',
-    rarity: 'LEGENDARY',
-    world: 'Moonlit City',
-    story: 'She casts violet fire over the rooftops of the old city. Her staff remembers a hundred spells.',
-    power: 88,
-    element: 'Mystic',
-    accent: '#b04dff',
-    accent2: '#e3b8ff',
-    fog: '#0b0620',
-    idle: { breath: 0.6, breathPeriod: 4.2, blinkEvery: 4, tail: 1, ears: 0, head: 0.6, shoulders: 0 },
-  },
-  {
-    id: 'sakura_blossom',
-    name: 'Sakura',
-    subtitle: 'Voice of the Blooming Shrine',
-    rarity: 'EPIC',
-    world: 'Blossom Shrine',
-    story: 'Keeper of the red torii. The wind brings her petals from every garden that remembers her.',
-    power: 74,
-    element: 'Spirit',
-    accent: '#ff7eb6',
-    accent2: '#ffd1e6',
-    fog: '#160a12',
-    idle: { breath: 0.6, breathPeriod: 4.4, blinkEvery: 3.6, tail: 0.9, ears: 1.3, head: 0.4, shoulders: 0 },
-  },
-  {
     id: 'toxic',
     name: 'Toxic',
     subtitle: 'Reactor Engineer',
@@ -200,6 +162,48 @@ export const CATS: readonly SiteCat[] = [
     accent2: '#ffd9a0',
     fog: '#130b06',
     idle: { breath: 0.7, breathPeriod: 4.1, blinkEvery: 3.2, tail: 0.5, ears: 0.5, head: 0.4, shoulders: 1 },
+  },
+  {
+    id: 'sakura_blossom',
+    name: 'Sakura',
+    subtitle: 'Voice of the Blooming Shrine',
+    rarity: 'EPIC',
+    world: 'Blossom Shrine',
+    story: 'Keeper of the red torii. The wind brings her petals from every garden that remembers her.',
+    power: 74,
+    element: 'Spirit',
+    accent: '#ff7eb6',
+    accent2: '#ffd1e6',
+    fog: '#160a12',
+    idle: { breath: 0.6, breathPeriod: 4.4, blinkEvery: 3.6, tail: 0.9, ears: 1.3, head: 0.4, shoulders: 0 },
+  },
+  {
+    id: 'lunar_witch',
+    name: 'Lunar Witch',
+    subtitle: 'Spells of the Full Moon',
+    rarity: 'LEGENDARY',
+    world: 'Moonlit City',
+    story: 'She casts violet fire over the rooftops of the old city. Her staff remembers a hundred spells.',
+    power: 88,
+    element: 'Mystic',
+    accent: '#b04dff',
+    accent2: '#e3b8ff',
+    fog: '#0b0620',
+    idle: { breath: 0.6, breathPeriod: 4.2, blinkEvery: 4, tail: 1, ears: 0, head: 0.6, shoulders: 0 },
+  },
+  {
+    id: 'crystal_prince',
+    name: 'Crystal Prince',
+    subtitle: 'Heir to the Buried Crown',
+    rarity: 'MYTHIC',
+    world: 'Amethyst Ruins',
+    story: 'The last of the royal line. Crystals grow wherever he stands for longer than a minute.',
+    power: 97,
+    element: 'Crystal',
+    accent: '#8f7bff',
+    accent2: '#8fd8ff',
+    fog: '#07071a',
+    idle: { breath: 1, breathPeriod: 4.6, blinkEvery: 5, tail: 0.3, ears: 0.4, head: 0.8, shoulders: 0.4 },
   },
 ];
 

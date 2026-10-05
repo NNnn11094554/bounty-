@@ -30,34 +30,6 @@ export const STEP_ICONS: Record<string, ReactNode> = {
   ),
 };
 
-/** Ступени пути игрока. */
-export const PATH_ICONS: Record<string, ReactNode> = {
-  Level: (
-    <Icon>
-      <path d="M4 18h4v-4h4v-4h4V6h4" />
-    </Icon>
-  ),
-  Energy: (
-    <Icon>
-      <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />
-    </Icon>
-  ),
-  Upgrades: STEP_ICONS.Upgrade,
-  Leagues: (
-    <Icon>
-      <path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z" />
-      <path d="m9 12 2 2 4-4" />
-    </Icon>
-  ),
-  Collection: STEP_ICONS.Collect,
-  Achievements: (
-    <Icon>
-      <circle cx="12" cy="9" r="5.5" />
-      <path d="m8.5 13.5-1.5 7 5-2.5 5 2.5-1.5-7" />
-    </Icon>
-  ),
-};
-
 /** Слагаемые пути в разделе airdrop. */
 export const PILLAR_ICONS: Record<string, ReactNode> = {
   Activity: (
@@ -65,8 +37,17 @@ export const PILLAR_ICONS: Record<string, ReactNode> = {
       <path d="M3 12h4l2.5-6 4.5 12 2.5-6H21" />
     </Icon>
   ),
-  Progression: PATH_ICONS.Level,
-  Achievements: PATH_ICONS.Achievements,
+  Progression: (
+    <Icon>
+      <path d="M4 18h4v-4h4v-4h4V6h4" />
+    </Icon>
+  ),
+  Achievements: (
+    <Icon>
+      <circle cx="12" cy="9" r="5.5" />
+      <path d="m8.5 13.5-1.5 7 5-2.5 5 2.5-1.5-7" />
+    </Icon>
+  ),
   Community: (
     <Icon>
       <circle cx="9" cy="8.5" r="3.2" />
