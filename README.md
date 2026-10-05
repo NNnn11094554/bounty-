@@ -268,7 +268,7 @@ E2E-тесты поднимают API на отдельной базе `meowgul_
 Node 20) и игра `meowgul-web` (Static Site).
 
 **1. Бот в @BotFather**
-- `/newbot` → имя и username бота (например, `meowgul_bot`). Сохраните токен — это `BOT_TOKEN`.
+- `/newbot` → имя и username бота (например, `meowgul_game_bot`). Сохраните токен — это `BOT_TOKEN`.
   Токен — секрет: только в переменных Render или в `backend/.env` (он в `.gitignore`), никогда в коде.
 - Узнайте свой Telegram ID (например, у @userinfobot) — для `ADMIN_TELEGRAM_IDS`.
 

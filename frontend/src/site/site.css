@@ -259,12 +259,16 @@ body {
   transition: transform 850ms var(--ease-out);
   transition-delay: calc(var(--k, 0) * 60ms);
 }
+/*
+ * Спрятанное слово уходит под маску с запасом: надстрочные знаки (Й, Ё, É, Ä…) выше строки на ~0.3em,
+ * и при сдвиге ровно на высоту строки их верх выглядывал бы из-под маски.
+ */
 [data-rv='mask']:not([data-in]) .w > span {
-  transform: translate3d(0, 108%, 0);
+  transform: translate3d(0, calc(100% + 0.6em), 0);
 }
 /* главная: слова заголовка — со вступлением */
 [data-intro='off'] .hero-title .w > span {
-  transform: translate3d(0, 108%, 0);
+  transform: translate3d(0, calc(100% + 0.6em), 0);
 }
 [data-intro='on'] .hero-title .w > span {
   transition-delay: calc(500ms + var(--k, 0) * 90ms);

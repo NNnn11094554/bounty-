@@ -38,7 +38,7 @@ export const NAV = [
  * VITE_COMMUNITY_URL) — пока их нет, кнопка показывает «Soon» и никуда не ведёт.
  */
 export const LINKS = {
-  telegram: `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'meowgul_bot'}`,
+  telegram: `https://t.me/${import.meta.env.VITE_BOT_USERNAME ?? 'meowgul_game_bot'}`,
   x: import.meta.env.VITE_X_URL || null,
   community: import.meta.env.VITE_COMMUNITY_URL || null,
 };
