@@ -22,32 +22,103 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return img.decode().then(() => img);
 }
 
+/**
+ * Картинка, готовая к загрузке в видеопамять: декодирование, предумножение альфы и переворот по вертикали —
+ * вне главного потока (ImageBitmap). Иначе всё это браузер делает в момент загрузки текстуры, в главном потоке:
+ * на телефоне — десятки мс на каждого кота, рывок посреди прокрутки.
+ */
+let bitmapsOk: Promise<boolean> | null = null;
+
+/** ImageBitmap с переворотом работает (проверка на картинке 1×2: сверху должна оказаться нижняя точка). */
+function bitmapsWork(): Promise<boolean> {
+  bitmapsOk ??= (async () => {
+    try {
+      if (typeof createImageBitmap !== 'function') return false;
+      const [src, ctx] = makeCanvas(1, 2);
+      ctx.fillStyle = '#ff0000';
+      ctx.fillRect(0, 0, 1, 1);
+      ctx.fillStyle = '#0000ff';
+      ctx.fillRect(0, 1, 1, 1);
+      const bitmap = await createImageBitmap(src, {
+        imageOrientation: 'flipY',
+        premultiplyAlpha: 'premultiply',
+      });
+      const [out, octx] = makeCanvas(1, 2);
+      octx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      const top = octx.getImageData(0, 0, 1, 1).data;
+      return out.height === 2 && top[2]! > 200 && top[0]! < 60;
+    } catch {
+      return false;
+    }
+  })();
+  return bitmapsOk;
+}
+
+async function loadBitmap(src: string, alpha: boolean): Promise<ImageBitmap> {
+  const res = await fetch(src);
+  if (!res.ok) throw new Error(`${res.status} ${src}`);
+  return createImageBitmap(await res.blob(), {
+    imageOrientation: 'flipY',
+    premultiplyAlpha: alpha ? 'premultiply' : 'none',
+    colorSpaceConversion: 'none',
+  });
+}
+
+/** Уменьшенная копия для маски силуэта (160 строк); без поддержки resize — null (маска из исходника). */
+async function smallCopy(img: ImageBitmap): Promise<ImageBitmap | null> {
+  const h = 160;
+  const w = Math.max(1, Math.round((img.width / img.height) * h));
+  try {
+    return await createImageBitmap(img, { resizeWidth: w, resizeHeight: h, resizeQuality: 'medium' });
+  } catch {
+    return null;
+  }
+}
+
+async function loadSource(src: string, alpha: boolean): Promise<HTMLImageElement | ImageBitmap> {
+  if (await bitmapsWork()) {
+    try {
+      return await loadBitmap(src, alpha);
+    } catch (e) {
+      // fetch недоступен (строгая политика CSP, особый WebView) — дальше только через <img>;
+      // формат не декодировался — <img> попробует сам, а дальше loadArt перейдёт на WebP
+      if (e instanceof TypeError) bitmapsOk = Promise.resolve(false);
+    }
+  }
+  return loadImage(src);
+}
+
 /** Картинка арта: AVIF, при ошибке — WebP (и дальше сразу WebP). */
-async function loadArt(id: string, file: CatFile, size: number): Promise<HTMLImageElement> {
+async function loadArt(id: string, file: CatFile, size: number): Promise<HTMLImageElement | ImageBitmap> {
+  const alpha = file === 'character';
   if (avifOk !== false) {
     try {
-      const img = await loadImage(catAsset(id, file, size, 'avif'));
+      const img = await loadSource(catAsset(id, file, size, 'avif'), alpha);
       avifOk = true;
       return img;
     } catch {
       avifOk = false;
     }
   }
-  return loadImage(catAsset(id, file, size, 'webp'));
+  return loadSource(catAsset(id, file, size, 'webp'), alpha);
 }
 
 export class TextureBank {
   private cache = new Map<string, Promise<Texture>>();
-  private maxAnisotropy: number;
 
-  constructor(private renderer: WebGLRenderer) {
-    this.maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
-  }
+  constructor(
+    private renderer: WebGLRenderer,
+    /** дождаться спокойного момента перед загрузкой в видеопамять (не посреди перелёта камеры) */
+    private settle: () => Promise<void> = () => Promise.resolve(),
+  ) {}
 
   private prepare(texture: Texture, alpha: boolean): Texture {
     texture.colorSpace = NoColorSpace;
     texture.premultiplyAlpha = alpha;
-    texture.anisotropy = Math.min(8, this.maxAnisotropy);
+    // анизотропия нужна только поверхностям под острым углом к взгляду; арт котов, миры и свечения всегда
+    // повёрнуты к камере — для них она не меняет картинку, но стоит выборок
+    texture.anisotropy = 1;
     texture.minFilter = LinearMipmapLinearFilter;
     texture.magFilter = LinearFilter;
     texture.generateMipmaps = true;
@@ -64,9 +135,24 @@ export class TextureBank {
     const key = `${id}/${file}/${size}`;
     let p = this.cache.get(key);
     if (!p) {
-      p = loadArt(id, file, size).then((img) => {
+      p = loadArt(id, file, size).then(async (img) => {
         const texture = this.prepare(new Texture(img), file === 'character');
+        if (img instanceof HTMLImageElement) {
+          await this.settle();
+          this.renderer.initTexture(texture);
+          return texture;
+        }
+        // ImageBitmap уже перевёрнут и с предумноженной альфой — WebGL эти флаги для него и не применяет
+        texture.flipY = false;
+        texture.premultiplyAlpha = false;
+        // для попадания тапом по силуэту — маленькая копия (160 строк), уменьшенная вне главного потока
+        if (file === 'character') texture.userData.maskImage = await smallCopy(img);
+        await this.settle();
         this.renderer.initTexture(texture);
+        // пиксели уже в видеопамяти: декодированная копия в памяти страницы больше не нужна (у <img> браузер
+        // выгружает её сам, ImageBitmap держит до close() — десятки МБ на всех котов)
+        texture.image = { width: img.width, height: img.height };
+        img.close();
         return texture;
       });
       this.cache.set(key, p);
@@ -177,4 +263,43 @@ export async function svgCanvas(svg: string, size: number): Promise<HTMLCanvasEl
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/**
+ * Бесшовный шум (4 октавы, как fbm в шейдерах) для мокрого стекла пола: считается один раз здесь, а не
+ * на каждом пикселе в каждом кадре. cells — ячеек шума на плитку по стороне; плитка повторяется без шва.
+ */
+export function noiseCanvas(size = 256, cells = 8): HTMLCanvasElement {
+  const [canvas, ctx] = makeCanvas(size, size);
+  const image = ctx.createImageData(size, size);
+  const hash = (x: number, y: number, period: number) => {
+    const xi = ((x % period) + period) % period;
+    const yi = ((y % period) + period) % period;
+    let h = Math.imul(xi, 374761393) + Math.imul(yi, 668265263) + Math.imul(period, 2246822519);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  };
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  const vnoise = (x: number, y: number, period: number) => {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const ux = smooth(x - ix);
+    const uy = smooth(y - iy);
+    const a = hash(ix, iy, period) + (hash(ix + 1, iy, period) - hash(ix, iy, period)) * ux;
+    const b = hash(ix, iy + 1, period) + (hash(ix + 1, iy + 1, period) - hash(ix, iy + 1, period)) * ux;
+    return a + (b - a) * uy;
+  };
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let v = 0;
+      let amp = 0.5;
+      for (let o = 0, period = cells; o < 4; o++, period *= 2, amp *= 0.5)
+        v += amp * vnoise((x / size) * period, (y / size) * period, period);
+      const i = (y * size + x) * 4;
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = Math.round(v * 255);
+      image.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+  return canvas;
 }

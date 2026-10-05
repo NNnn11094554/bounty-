@@ -13,6 +13,7 @@ import { useAtStation } from './hooks';
 import { LOOP_ICONS } from './iconSets';
 import { k } from './reveal';
 import { Label, Section, Words } from './Section';
+import { setStyle } from './style';
 
 const PLAY = sectionIndex('gameplay');
 
@@ -155,7 +156,11 @@ function DemoStrip() {
         const e = demoEnergy();
         const turbo = isTurbo();
         if (fillRef.current)
-          fillRef.current.style.transform = `scaleX(${(turbo ? 1 : e / GAME_FACTS.energy.max).toFixed(4)})`;
+          setStyle(
+            fillRef.current,
+            'transform',
+            `scaleX(${(turbo ? 1 : e / GAME_FACTS.energy.max).toFixed(4)})`,
+          );
         const text = turbo
           ? t.gameplay.turboOn
           : `${formatInt(Math.floor(e))} / ${formatInt(GAME_FACTS.energy.max)}`;
@@ -290,16 +295,23 @@ function TapHint() {
       const near = nearness(v.pos, PLAY);
       const rect = near > 0.05 ? sceneApi.get()?.catRect() : null;
       if (!rect) {
-        el.style.opacity = '0';
+        setStyle(el, 'opacity', '0');
+        setStyle(el, 'visibility', 'hidden');
         return;
       }
-      el.style.opacity = String(Math.max(0, near * 1.6 - 0.6));
-      el.style.transform = `translate3d(${rect.x + rect.width / 2}px, ${rect.y + rect.height * 0.45}px, 0) translateX(-50%)`;
+      // вдали подсказка скрыта (visibility) — её пульсация тогда и не анимируется
+      setStyle(el, 'visibility', 'visible');
+      setStyle(el, 'opacity', String(Math.max(0, near * 1.6 - 0.6).toFixed(3)));
+      setStyle(
+        el,
+        'transform',
+        `translate3d(${(rect.x + rect.width / 2).toFixed(1)}px, ${(rect.y + rect.height * 0.45).toFixed(1)}px, 0) translateX(-50%)`,
+      );
     });
   }, [taps]);
   if (taps > 0) return null;
   return (
-    <div ref={ref} className="tap-hint" style={{ opacity: 0 }}>
+    <div ref={ref} className="tap-hint" style={{ opacity: 0, visibility: 'hidden' }}>
       {t.gameplay.tapHint}
     </div>
   );

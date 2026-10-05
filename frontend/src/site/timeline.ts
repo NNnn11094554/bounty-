@@ -110,6 +110,28 @@ export function holdSpans(
   );
 }
 
+/**
+ * Спокойный момент для тяжёлой разовой работы (загрузка текстуры в видеопамять): камера стоит и страницу
+ * не прокручивают. Ожидающие отпускаются по одному за кадр; дольше maxWaitMs не ждём (при непрерывной
+ * прокрутке текстура всё равно нужна).
+ */
+const calmWaiters: Array<() => void> = [];
+let lastScrollAt = -Infinity;
+export function calm(maxWaitMs = 1200): Promise<void> {
+  return new Promise((resolve) => {
+    const release = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
+    const timer = window.setTimeout(() => {
+      const i = calmWaiters.indexOf(release);
+      if (i >= 0) calmWaiters.splice(i, 1);
+      resolve();
+    }, maxWaitMs);
+    calmWaiters.push(release);
+  });
+}
+
 /** Прокрутка к станции (меню): страница плавно едет к секции, камера летит следом. */
 export function flyTo(index: number): void {
   const span = holds[Math.min(LAST_STATION, Math.max(0, index))];
@@ -140,44 +162,54 @@ export function startTimeline(root: HTMLElement): () => void {
   view.pos = view.target;
   const observer = new ResizeObserver(measure);
   observer.observe(root);
-  window.addEventListener('scroll', readScroll, { passive: true });
+  const onScroll = () => {
+    lastScrollAt = performance.now();
+    readScroll();
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', measure);
   void document.fonts?.ready.then(measure);
 
   let last = 0;
-  const stop = onFrame((now) => {
-    const t = now / 1000;
-    const raw = last ? t - last : 1 / 60;
-    // шаг анимаций ограничен (после паузы вкладки ничего не прыгает), вступление — по настоящему времени:
-    // на медленном устройстве оно не растягивается
-    const dt = Math.min(0.05, raw);
-    last = t;
-    view.time += dt;
-    view.dt = dt;
-    if (view.intro >= 0) view.intro += Math.min(0.5, raw);
-    const prev = view.pos;
-    if (view.reduced) {
-      view.pos = view.target;
-    } else {
-      const steps = Math.ceil(dt / (1 / 120));
-      const h = dt / steps;
-      for (let i = 0; i < steps; i++) {
-        velocity += (OMEGA * OMEGA * (view.target - view.pos) - 2 * OMEGA * velocity) * h;
-        view.pos += velocity * h;
-      }
-      if (Math.abs(view.target - view.pos) < 1e-4 && Math.abs(velocity) < 1e-3) {
+  // камера и 3D-сцена — каждый кадр (hot): в покое общий цикл игры обновляется ~10 раз в секунду, для
+  // счётчиков этого хватает, а прокрутка и переходы на 10 кадрах в секунду дёргаются
+  const stop = onFrame(
+    (now) => {
+      const t = now / 1000;
+      const raw = last ? t - last : 1 / 60;
+      // шаг анимаций ограничен (после паузы вкладки ничего не прыгает), вступление — по настоящему времени:
+      // на медленном устройстве оно не растягивается
+      const dt = Math.min(0.05, raw);
+      last = t;
+      view.time += dt;
+      view.dt = dt;
+      if (view.intro >= 0) view.intro += Math.min(0.5, raw);
+      const prev = view.pos;
+      if (view.reduced) {
         view.pos = view.target;
-        velocity = 0;
+      } else {
+        const steps = Math.ceil(dt / (1 / 120));
+        const h = dt / steps;
+        for (let i = 0; i < steps; i++) {
+          velocity += (OMEGA * OMEGA * (view.target - view.pos) - 2 * OMEGA * velocity) * h;
+          view.pos += velocity * h;
+        }
+        if (Math.abs(view.target - view.pos) < 1e-4 && Math.abs(velocity) < 1e-3) {
+          view.pos = view.target;
+          velocity = 0;
+        }
       }
-    }
-    view.speed = (view.pos - prev) / dt;
-    ticks.forEach((cb) => cb(view));
-  });
+      view.speed = (view.pos - prev) / dt;
+      ticks.forEach((cb) => cb(view));
+      if (calmWaiters.length && view.pos === view.target && now - lastScrollAt > 250) calmWaiters.shift()!();
+    },
+    { hot: true },
+  );
 
   return () => {
     stop();
     observer.disconnect();
-    window.removeEventListener('scroll', readScroll);
+    window.removeEventListener('scroll', onScroll);
     window.removeEventListener('resize', measure);
   };
 }

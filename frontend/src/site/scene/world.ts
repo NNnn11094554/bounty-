@@ -7,6 +7,7 @@ import {
   Mesh,
   PerspectiveCamera,
   PlaneGeometry,
+  RepeatWrapping,
   Scene,
   TorusGeometry,
   Vector3,
@@ -16,7 +17,7 @@ import {
 } from 'three';
 import { CATS, HERO_CAT, STRONGEST_CAT, catArt, catById, type CatArt, type SiteCat } from '../cats';
 import { AIRDROP_REQS, FLOATING_ASSETS } from '../content';
-import { clamp01, introPhase, nearness, smoothstep, type View } from '../timeline';
+import { calm, clamp01, introPhase, nearness, smoothstep, type View } from '../timeline';
 import { CatFigure } from './catFigure';
 import { Bursts, createDust, createFlow, createStreaks, pointScale, type DustZone } from './particles';
 import { applyCamera, landscapeness, Rig, type Leg, type Shot } from './rig';
@@ -34,6 +35,7 @@ import {
   TextureBank,
   glowCanvas,
   makeCanvas,
+  noiseCanvas,
   pawReliefCanvas,
   rayCanvas,
   ringCanvas,
@@ -275,10 +277,17 @@ export class SiteWorld {
   private slowFor = 0;
   private fastFor = 0;
   private frameAvg = 1 / 60;
+  private lastFrameAt = 0;
+  /** выше этого качество не поднимается (на нём кадры уже были долгими) */
+  private ceiling = Infinity;
+  private downs = 0;
+  private touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
   private glow: Texture;
   private ray: Texture;
   private ring: Texture;
+  /** бесшовный шум мокрого пола */
+  private noise: Texture;
 
   /** площадки сцены (LOC) */
   private stations: Group[] = [];
@@ -356,11 +365,17 @@ export class SiteWorld {
     });
     this.renderer.outputColorSpace = LinearSRGBColorSpace;
     this.renderer.setPixelRatio(this.ratio);
-    this.bank = new TextureBank(this.renderer);
+    // тяжёлая загрузка текстур — в моменты, когда камера стоит (не посреди перелёта)
+    // (первый экран — без ожидания: камера ещё не двигалась, ждать нечего)
+    this.bank = new TextureBank(this.renderer, () => (this.readyAt >= 0 ? calm() : Promise.resolve()));
 
     this.glow = this.bank.canvas(glowCanvas());
     this.ray = this.bank.canvas(rayCanvas());
     this.ring = this.bank.canvas(ringCanvas());
+    this.noise = this.bank.canvas(noiseCanvas(), false);
+    this.noise.wrapS = this.noise.wrapT = RepeatWrapping;
+    // режим повтора применяется при загрузке — маленькая текстура загружается заново уже с ним
+    this.noise.needsUpdate = true;
 
     for (let i = 0; i < LOCATIONS; i++) {
       const g = new Group();
@@ -381,9 +396,9 @@ export class SiteWorld {
     this.heroBackdrop = this.makeBackdrop(home);
     this.homeFloor = this.makeFloor(home, HOME, 18, HERO_CAT.accent, 0.55);
     this.halo = this.glowPlane(home, '#ff6a1a', 7, v3(0, 2.3, -1.6), 0.4);
-    const portal = new Mesh(new TorusGeometry(2.25, 0.04, 24, 200), glassMaterial('#ff9a4d', '#ffe0a8'));
+    const portal = new Mesh(new TorusGeometry(2.25, 0.04, 12, 200), glassMaterial('#ff9a4d', '#ffe0a8'));
     portal.position.set(0, 1.9, -1.3);
-    const inner = new Mesh(new TorusGeometry(2.02, 0.012, 12, 200), glassMaterial('#ffb36b', '#fff1d6'));
+    const inner = new Mesh(new TorusGeometry(2.02, 0.012, 8, 200), glassMaterial('#ffb36b', '#fff1d6'));
     inner.position.copy(portal.position);
     (inner.material as ShaderMaterial).uniforms.uSpeed!.value = -0.9;
     this.portal = [portal, inner];
@@ -503,7 +518,7 @@ export class SiteWorld {
       [3.7, '#ffc93c', '#fff1d6'],
     ];
     for (const [r, a, b] of gyroSpec) {
-      const ring = new Mesh(new TorusGeometry(r, 0.028, 16, 220), glassMaterial(a, b));
+      const ring = new Mesh(new TorusGeometry(r, 0.028, 10, 220), glassMaterial(a, b));
       ring.position.copy(AIRDROP);
       ring.renderOrder = 3;
       this.gyro.push(ring);
@@ -591,9 +606,9 @@ export class SiteWorld {
     final.add(this.finalCat.group);
     this.makeFloor(final, FINAL, 18, STRONGEST_CAT.accent, 0.5);
     this.glowPlane(final, STRONGEST_CAT.accent, 8, v3(FINAL.x, 2.3, FINAL.z - 1.6), 0.36);
-    const outer = new Mesh(new TorusGeometry(2.3, 0.04, 24, 200), glassMaterial('#9b7bff', '#ffd98f'));
+    const outer = new Mesh(new TorusGeometry(2.3, 0.04, 12, 200), glassMaterial('#9b7bff', '#ffd98f'));
     outer.position.set(FINAL.x, 1.95, FINAL.z - 1.3);
-    const ring2 = new Mesh(new TorusGeometry(2.06, 0.012, 12, 200), glassMaterial('#c9b8ff', '#fff1d6'));
+    const ring2 = new Mesh(new TorusGeometry(2.06, 0.012, 8, 200), glassMaterial('#c9b8ff', '#fff1d6'));
     ring2.position.copy(outer.position);
     (ring2.material as ShaderMaterial).uniforms.uSpeed!.value = -0.9;
     this.finalPortal = [outer, ring2];
@@ -653,7 +668,7 @@ export class SiteWorld {
   }
 
   private makeFloor(parent: Group, at: Vector3, size: number, pool: string, strength: number): Mesh {
-    const material = floorMaterial();
+    const material = floorMaterial(this.noise);
     material.uniforms.uPool!.value.set(pool);
     material.uniforms.uPoolStrength!.value = strength;
     const floor = new Mesh(new PlaneGeometry(size, size), material);
@@ -752,6 +767,8 @@ export class SiteWorld {
     await Promise.all([dress(this.nomad), this.setBackdrop(this.nomadBackdrop, this.nomad.cat)]);
     this.placeBackdrop(this.nomadBackdrop, catArt(this.nomad.cat.id), WORLD, 11, v3(0, 2, WORLD.z + 8));
     await Promise.all([dress(this.engineer), fonts.then(() => this.buildTokenCards())]);
+    // Токсика тапают: маску силуэта — заранее, в фоне (у остальных котов её нет вовсе)
+    void this.engineer.prepareHit();
     // карточки активов — новые материалы: шейдер и прозрачность (близость станции) — сразу
     this.collectFadeables();
     this.compileStation(LOC[PLAY]);
@@ -865,35 +882,53 @@ export class SiteWorld {
 
   // ───────────────────────────── кадр ─────────────────────────────
 
+  /** Размер — как у самого холста (CSS: 100lvh), и только если он или плотность пикселей изменились. */
   resize(): void {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    const canvas = this.renderer.domElement;
+    const width = canvas.clientWidth || window.innerWidth;
+    const height = canvas.clientHeight || window.innerHeight;
+    if (width === this.width && height === this.height && this.renderer.getPixelRatio() === this.ratio)
+      return;
+    this.width = width;
+    this.height = height;
     this.renderer.setPixelRatio(this.ratio);
     this.renderer.setSize(this.width, this.height, false);
     this.camera.aspect = this.width / this.height;
     globals.uPixelRatio.value = this.ratio;
   }
 
-  /** Качество под устройство: если кадры долгие — меньше пикселей, если быстрые — обратно. */
+  /**
+   * Качество под устройство: если кадры долгие — меньше пикселей, если быстрые — обратно. Каждая смена — это
+   * пересоздание буфера холста (короткий рывок), поэтому без качелей: разовые зависания (загрузка текстуры)
+   * не считаются, вниз — через 1 с стабильно долгих кадров, вверх — только после 20 с стабильно быстрых и не
+   * выше уровня, на котором кадры уже дважды были долгими.
+   */
   private govern(dt: number): void {
+    // разовое зависание (загрузка текстуры, сборщик мусора, вкладка была скрыта) — не показатель устройства
+    if (dt > 0.1) return;
     this.frameAvg += (dt - this.frameAvg) * 0.05;
     if (this.frameAvg > 1 / 42) {
       this.slowFor += dt;
       this.fastFor = 0;
-    } else if (this.frameAvg < 1 / 56) {
+    } else if (this.frameAvg < 1 / 57) {
       this.fastFor += dt;
       this.slowFor = 0;
     } else {
       this.slowFor = this.fastFor = 0;
     }
-    // на экранах ×2 и выше не ниже 1.5: коты остаются чёткими, разгружаются частицы и эффекты
-    const floor = this.baseRatio >= 2 ? 1.5 : 1;
-    if (this.slowFor > 2 && this.ratio > floor) {
+    // экран ×2 и выше: не ниже 1.5 на ПК и 1.25 на телефоне (слабому телефону важнее плавность)
+    const floor = this.baseRatio >= 2 ? (this.touch ? 1.25 : 1.5) : 1;
+    if (this.slowFor > 1 && this.ratio > floor) {
+      // первый спуск мог случиться из-за разовой нагрузки (загрузка миров) — одна попытка вернуться есть;
+      // со второго раза уровень, на котором было медленно, закрыт
+      this.downs++;
+      this.ceiling = this.downs >= 2 ? this.ratio - 0.25 : this.ratio;
       this.ratio = Math.max(floor, this.ratio - 0.25);
       this.slowFor = 0;
+      this.frameAvg = 1 / 50;
       this.resize();
-    } else if (this.fastFor > 8 && this.ratio < this.baseRatio) {
-      this.ratio = Math.min(this.baseRatio, this.ratio + 0.25);
+    } else if (this.fastFor > 20 && this.ratio < Math.min(this.baseRatio, this.ceiling)) {
+      this.ratio = Math.min(this.baseRatio, this.ceiling, this.ratio + 0.25);
       this.fastFor = 0;
       this.resize();
     }
@@ -901,8 +936,14 @@ export class SiteWorld {
 
   frame(v: View, selected: number): void {
     const { pos, time, dt } = v;
-    if (v.intro >= 0 && this.readyAt < 0) this.readyAt = time;
-    if (this.readyAt >= 0 && time - this.readyAt > 1) this.govern(dt);
+    // пока сцена грузится, холст скрыт (opacity 0) — рисовать нечего, главный поток нужнее загрузке
+    if (v.intro < 0) return;
+    if (this.readyAt < 0) this.readyAt = time;
+    // для качества — настоящее время между кадрами (dt таймлайна ограничен 0.05 с и зависаний не видит)
+    const now = performance.now() / 1000;
+    const raw = this.lastFrameAt > 0 ? now - this.lastFrameAt : 1 / 60;
+    this.lastFrameAt = now;
+    if (time - this.readyAt > 1) this.govern(raw);
     globals.uTime.value = time;
     this.select(selected, time);
 
@@ -945,11 +986,13 @@ export class SiteWorld {
     // ── что рисовать ──
     const away = this.away.fill(Infinity);
     for (const [i, loc] of LOC.entries()) away[loc] = Math.min(away[loc]!, Math.abs(pos - i));
-    for (let i = 0; i < LOCATIONS; i++) this.stations[i]!.visible = away[i]! < 1.4;
+    // площадка рисуется, только пока камера у неё или летит к ней/от неё: соседняя площадка у стоящей камеры
+    // в ~50 единицах, целиком в тумане — невидима, но стоила бы полной отрисовки (коты, миры, частицы)
+    for (let i = 0; i < LOCATIONS; i++) this.stations[i]!.visible = away[i]! < 0.999;
     // свечения и частицы площадки проявляются и гаснут плавно, а не включаются вместе с ней
     for (const [i, list] of this.fadeables.entries()) {
       if (!list) continue;
-      const presence = 1 - smoothstep(0.45, 1.3, away[i]!);
+      const presence = 1 - smoothstep(0.4, 0.95, away[i]!);
       for (const f of list) f.u.value = f.base * presence;
     }
     this.atCats = nearness(pos, CATS_AT);
@@ -1059,6 +1102,8 @@ export class SiteWorld {
       figure.dim = lit * (1 - behindText * 0.7);
       figure.opacity = (0.35 + 0.65 * smoothstep(0, 0.45, front)) * (1 - behindText * 0.9);
       figure.reveal = 1;
+      // задняя половина кольца — мелкие тёмные коты: им хватает редкой сетки
+      figure.detail = i === this.selected || front > 0.5;
       figure.update(time + i * 1.7, dt, still);
       figure.material.uniforms.uRimStrength.value = 0.5 + chosen * 0.6;
       const pedestal = this.pedestals[i]!;

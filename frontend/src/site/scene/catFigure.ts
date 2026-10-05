@@ -2,7 +2,6 @@ import type { Color } from 'three';
 import { Group, Mesh, PlaneGeometry, Vector3, type Camera, type ShaderMaterial, type Texture } from 'three';
 import type { CatArt, SiteCat } from '../cats';
 import { catMaterial, depthMaskMaterial, glowMaterial, lifeUniforms, shadowMaterial } from './shaders';
-import { makeCanvas } from './textures';
 
 /** Пружина: x тянется к 0, v — скорость (реакция на тап с лёгким перелётом, без наложения анимаций). */
 class Spring {
@@ -106,9 +105,14 @@ export class CatFigure {
   private shoulders: Drift;
   /** перенос веса: еле заметный наклон корпуса от ступней */
   private weight = new Drift(0.005, [5, 12], 0.9, 0.3);
-  private mask: { data: Uint8ClampedArray; w: number; h: number } | null = null;
+  private mask: AlphaMask | null = null;
+  /** откуда строить маску (ImageBitmap загружен уже перевёрнутым — textures.ts: flipY = false) */
+  private maskSource: { img: ArtImage; flipped: boolean } | null = null;
   width = 1;
   ready = false;
+  private detailed = true;
+  private denseGeometry: PlaneGeometry | null = null;
+  private coarseGeometry: PlaneGeometry | null = null;
 
   constructor(
     readonly cat: SiteCat,
@@ -150,24 +154,80 @@ export class CatFigure {
     const w = this.height * art.aspect;
     this.width = w;
     const h = this.height;
-    // сетка частая: уши, голова и грудь гнутся плавно, без изломов
+    // сетка частая: уши, голова и грудь гнутся плавно, без изломов. Отражению (30% яркости, под полом) хватает
+    // вдвое более редкой — в 4 раза меньше треугольников. Маска глубины — только с той же сеткой, что тело:
+    // иначе глубина у них расходится на доли пикселя и тело «рябит» квадратами (z-fighting)
     const geometry = new PlaneGeometry(w, h, 30, 44);
+    const coarse = new PlaneGeometry(w, h, 15, 22);
     // точка опоры — ступни на вертикали тела
     geometry.translate(w * (0.5 - art.body), h / 2, 0);
+    coarse.translate(w * (0.5 - art.body), h / 2, 0);
     this.setLife(art, w, h);
-    this.body.geometry.dispose();
-    this.body.geometry = geometry;
-    this.depth.geometry = geometry;
-    this.reflection.geometry = geometry;
+    // прежние сетки (в первый раз — пустая заготовка 1×1 из конструктора)
+    const old = this.body.geometry;
+    if (old !== this.denseGeometry && old !== this.coarseGeometry) old.dispose();
+    this.denseGeometry?.dispose();
+    this.coarseGeometry?.dispose();
+    this.denseGeometry = geometry;
+    this.coarseGeometry = coarse;
+    this.body.geometry = this.depth.geometry = this.detailed ? geometry : coarse;
+    this.reflection.geometry = coarse;
     this.material.uniforms.map.value = texture;
     this.reflectionMaterial.uniforms.map.value = texture;
-    const img = texture.image as HTMLImageElement;
-    this.material.uniforms.uTexel.value.set(1 / img.naturalWidth, 1 / img.naturalHeight);
+    // у <img> — natural*, у загруженного ImageBitmap (textures.ts) остаются только width/height
+    const img = texture.image as ArtImage | { width: number; height: number };
+    const size = img instanceof HTMLImageElement ? imageSize(img) : { w: img.width, h: img.height };
+    this.material.uniforms.uTexel.value.set(1 / size.w, 1 / size.h);
     (this.depth.material as ShaderMaterial).uniforms.map!.value = texture;
     this.body.visible = this.reflection.visible = true;
-    this.mask = alphaMask(texture.image as HTMLImageElement);
+    // маска силуэта для попадания тапом — только по требованию (тапают одного кота, Токсика): чтение пикселей
+    // большой картинки — это сотни мс на телефоне, на каждом коте посреди прокрутки
+    this.mask = null;
+    const maskImage = (texture.userData.maskImage as ImageBitmap | null | undefined) ?? null;
+    this.maskSource = maskImage
+      ? { img: maskImage, flipped: !texture.flipY }
+      : img instanceof HTMLImageElement
+        ? { img, flipped: false }
+        : null;
     this.ready = true;
     this.depth.visible = this.material.uniforms.uReveal.value >= 0.999;
+  }
+
+  /**
+   * Подробность сетки: частая — для кота крупным планом; дальним и мелким котам (задний ряд кольца коллекции)
+   * хватает редкой — изгибы на них меньше пикселя, а треугольников вчетверо меньше. Тело и маска глубины — всегда
+   * с одной сеткой (иначе z-fighting).
+   */
+  set detail(dense: boolean) {
+    if (dense === this.detailed) return;
+    this.detailed = dense;
+    const geometry = dense ? this.denseGeometry : this.coarseGeometry;
+    if (geometry) this.body.geometry = this.depth.geometry = geometry;
+  }
+
+  /**
+   * Подготовить маску заранее (кот, которого тапают): уменьшенная копия картинки делается вне главного потока
+   * (createImageBitmap с resize), в главном — только чтение 160 строк.
+   */
+  async prepareHit(): Promise<void> {
+    const source = this.maskSource;
+    if (this.mask || !source) return;
+    const { w, h } = maskSize(source.img);
+    let small: ArtImage = source.img;
+    const size = imageSize(source.img);
+    try {
+      if (size.h > h && typeof createImageBitmap === 'function')
+        small = await createImageBitmap(source.img, {
+          resizeWidth: w,
+          resizeHeight: h,
+          resizeQuality: 'medium',
+        });
+    } catch {
+      // нет resize — маска из исходной картинки
+    }
+    if (this.maskSource !== source) return;
+    this.mask = alphaMask(small, source.flipped);
+    if (small !== source.img && small instanceof ImageBitmap) small.close();
   }
 
   /** проявление 0…1 (вступление и смена кота) */
@@ -268,6 +328,7 @@ export class CatFigure {
 
   /** Точка экрана (NDC −1…1) попадает в силуэт? world — куда пришёлся тап (на плоскости кота). */
   hit(ndcX: number, ndcY: number, camera: Camera, world: Vector3): boolean {
+    if (!this.mask && this.maskSource) this.mask = alphaMask(this.maskSource.img, this.maskSource.flipped);
     if (!this.mask) return false;
     this.group.updateWorldMatrix(true, false);
     const origin = new Vector3().setFromMatrixPosition(this.group.matrixWorld);
@@ -325,7 +386,8 @@ export class CatFigure {
   }
 
   dispose(): void {
-    this.body.geometry.dispose();
+    this.denseGeometry?.dispose();
+    this.coarseGeometry?.dispose();
     (this.depth.material as ShaderMaterial).dispose();
     this.material.dispose();
     this.reflectionMaterial.dispose();
@@ -334,12 +396,37 @@ export class CatFigure {
   }
 }
 
-/** Маска силуэта для попадания тапом: альфа картинки в низком разрешении. */
-function alphaMask(img: HTMLImageElement): { data: Uint8ClampedArray; w: number; h: number } | null {
+/** Размер картинки в пикселях файла (у <img> — natural*, у ImageBitmap и canvas — width/height). */
+type ArtImage = HTMLImageElement | ImageBitmap | HTMLCanvasElement;
+
+function imageSize(img: ArtImage): { w: number; h: number } {
+  if (img instanceof HTMLImageElement) return { w: img.naturalWidth, h: img.naturalHeight };
+  return { w: img.width, h: img.height };
+}
+
+type AlphaMask = { data: Uint8ClampedArray; w: number; h: number };
+
+/** Размер маски: 160 строк, ширина — по пропорциям картинки. */
+function maskSize(img: ArtImage): { w: number; h: number } {
+  const size = imageSize(img);
   const h = 160;
-  const w = Math.max(1, Math.round((img.naturalWidth / img.naturalHeight) * h));
+  return { w: Math.max(1, Math.round((size.w / size.h) * h)), h };
+}
+
+/** Маска силуэта для попадания тапом: альфа картинки в низком разрешении. */
+function alphaMask(img: ArtImage, flipped: boolean): AlphaMask | null {
+  const { w, h } = maskSize(img);
   try {
-    const [, ctx] = makeCanvas(w, h);
+    // программный холст (willReadFrequently): пиксели читаются сразу, без ожидания видеокарты
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    if (flipped) {
+      ctx.translate(0, h);
+      ctx.scale(1, -1);
+    }
     ctx.drawImage(img, 0, 0, w, h);
     return { data: ctx.getImageData(0, 0, w, h).data, w, h };
   } catch {
