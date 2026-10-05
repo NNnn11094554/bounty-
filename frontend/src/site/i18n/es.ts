@@ -219,12 +219,6 @@ export const es: Dict = {
     ],
     leagues: 'Ligas',
     leaguesText: 'Según todo lo que has ganado',
-    stats: [
-      { value: '10', label: 'ligas' },
-      { value: '50', label: 'niveles' },
-      { value: '60', label: 'logros' },
-      { value: '3 h', label: 'de ingresos sin conexión' },
-    ],
   },
   airdrop: {
     label: 'Airdrop',

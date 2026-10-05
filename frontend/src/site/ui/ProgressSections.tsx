@@ -68,14 +68,6 @@ export function ProgressSection() {
             </li>
           ))}
         </ol>
-        <dl className="stats stats-compact">
-          {t.progress.stats.map((s, i) => (
-            <div key={i}>
-              <dt className="stat-value">{s.value}</dt>
-              <dd className="tag">{s.label}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </Section>
   );

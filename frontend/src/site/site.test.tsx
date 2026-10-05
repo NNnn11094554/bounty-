@@ -223,7 +223,6 @@ const SAME_AS_ENGLISH = new Set([
   '10',
   '50',
   '60',
-  '3 h',
   '5,000',
   'Telegram',
   'X',

@@ -221,12 +221,6 @@ export const ru: Dict = {
     ],
     leagues: 'Лиги',
     leaguesText: 'По сумме всего заработанного',
-    stats: [
-      { value: '10', label: 'лиг' },
-      { value: '50', label: 'уровней' },
-      { value: '60', label: 'достижений' },
-      { value: '3 ч', label: 'офлайн-дохода' },
-    ],
   },
   airdrop: {
     label: 'Airdrop',

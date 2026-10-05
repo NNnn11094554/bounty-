@@ -214,12 +214,6 @@ export const ko: Dict = {
     ],
     leagues: '리그',
     leaguesText: '지금까지 모은 PAW 총합 기준',
-    stats: [
-      { value: '10', label: '리그' },
-      { value: '50', label: '레벨' },
-      { value: '60', label: '업적' },
-      { value: '3시간', label: '오프라인 수익' },
-    ],
   },
   airdrop: {
     label: '에어드롭',

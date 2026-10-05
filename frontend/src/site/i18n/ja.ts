@@ -225,12 +225,6 @@ export const ja: Dict = {
     ],
     leagues: 'リーグ',
     leaguesText: 'これまでに獲得した PAW の合計で決まります',
-    stats: [
-      { value: '10', label: 'リーグ' },
-      { value: '50', label: 'レベル' },
-      { value: '60', label: '実績' },
-      { value: '3 時間', label: 'オフライン収益' },
-    ],
   },
   airdrop: {
     label: 'エアドロップ',

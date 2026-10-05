@@ -211,12 +211,6 @@ export const zh: Dict = {
     ],
     leagues: '联赛',
     leaguesText: '按累计获得的全部 PAW 排名',
-    stats: [
-      { value: '10', label: '个联赛' },
-      { value: '50', label: '个等级' },
-      { value: '60', label: '项成就' },
-      { value: '3 小时', label: '离线收益' },
-    ],
   },
   airdrop: {
     label: '空投',

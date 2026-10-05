@@ -221,12 +221,6 @@ export const uk: Dict = {
     ],
     leagues: 'Ліги',
     leaguesText: 'За сумою всього заробленого',
-    stats: [
-      { value: '10', label: 'ліг' },
-      { value: '50', label: 'рівнів' },
-      { value: '60', label: 'досягнень' },
-      { value: '3 год', label: 'офлайн-доходу' },
-    ],
   },
   airdrop: {
     label: 'Airdrop',

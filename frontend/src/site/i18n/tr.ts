@@ -214,12 +214,6 @@ export const tr: Dict = {
     ],
     leagues: 'Ligler',
     leaguesText: 'Kazandığın her şeyin toplamına göre',
-    stats: [
-      { value: '10', label: 'lig' },
-      { value: '50', label: 'seviye' },
-      { value: '60', label: 'başarım' },
-      { value: '3 sa', label: 'çevrimdışı gelir' },
-    ],
   },
   airdrop: {
     label: 'Airdrop',

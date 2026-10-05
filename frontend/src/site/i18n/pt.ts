@@ -222,12 +222,6 @@ export const pt: Dict = {
     ],
     leagues: 'Ligas',
     leaguesText: 'Pelo total de tudo o que você ganhou',
-    stats: [
-      { value: '10', label: 'ligas' },
-      { value: '50', label: 'níveis' },
-      { value: '60', label: 'conquistas' },
-      { value: '3 h', label: 'de renda offline' },
-    ],
   },
   airdrop: {
     label: 'Airdrop',

@@ -218,12 +218,6 @@ export const en = {
     ],
     leagues: 'Leagues',
     leaguesText: 'Ranked by everything you have earned',
-    stats: [
-      { value: '10', label: 'leagues' },
-      { value: '50', label: 'levels' },
-      { value: '60', label: 'achievements' },
-      { value: '3 h', label: 'offline income' },
-    ],
   },
   airdrop: {
     label: 'Airdrop',
