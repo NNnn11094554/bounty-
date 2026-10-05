@@ -157,7 +157,6 @@ describe('site content', () => {
       'project',
       'gameplay',
       'collection',
-      'progress',
       'airdrop',
       'partners',
       'roadmap',

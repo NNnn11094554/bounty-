@@ -107,6 +107,7 @@ export function GameplaySection() {
       <Section
         id="gameplay"
         layout="left"
+        className="sec-wide"
         pass
         head={
           <>
@@ -118,22 +119,24 @@ export function GameplaySection() {
           </>
         }
       >
-        <ol className="loop">
-          {t.gameplay.loop.map((step, i) => (
-            <li key={i} className="loop-step pe" data-rv="rise" style={k(i)}>
-              <span className="loop-icon">{LOOP_ICONS[LOOP[i]!]}</span>
-              <div className="min-w-0">
-                <h3 className="h3">
-                  <span className="loop-num">{String(i + 1).padStart(2, '0')}</span>
-                  {step.title}
-                </h3>
-                <p className="small">{step.text}</p>
-                <p className="detail">{step.detail}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <DemoStrip />
+        <div className="split">
+          <ol className="loop">
+            {t.gameplay.loop.map((step, i) => (
+              <li key={i} className="loop-step pe" data-rv="rise" style={k(i)}>
+                <span className="loop-icon">{LOOP_ICONS[LOOP[i]!]}</span>
+                <div className="min-w-0">
+                  <h3 className="h3">
+                    <span className="loop-num">{String(i + 1).padStart(2, '0')}</span>
+                    {step.title}
+                  </h3>
+                  <p className="small">{step.text}</p>
+                  <p className="detail">{step.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <DemoStrip />
+        </div>
       </Section>
       <TapHint />
     </>

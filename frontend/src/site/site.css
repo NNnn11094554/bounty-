@@ -141,7 +141,7 @@ body {
 .h2 {
   font-family: var(--display);
   font-weight: 640;
-  font-size: min(clamp(30px, 4.6vw, 68px), calc(var(--col) / (var(--chars, 10) * 0.86)));
+  font-size: min(clamp(27px, 3vw, 44px), calc(var(--col) / (var(--chars, 10) * 0.86)));
   line-height: 0.98;
   letter-spacing: -0.025em;
   text-transform: uppercase;
@@ -350,19 +350,19 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: calc(var(--safe-top) + 92px) calc(var(--gutter) + var(--safe-right))
-    calc(var(--safe-bottom) + 40px) calc(var(--gutter) + var(--safe-left));
+  gap: 16px;
+  padding: calc(var(--safe-top) + 40px) calc(var(--gutter) + var(--safe-right))
+    calc(var(--safe-bottom) + 12px) calc(var(--gutter) + var(--safe-left));
 }
 .sec-head,
 .sec-body {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 .sec-body {
-  gap: 14px;
+  gap: 12px;
 }
 /* текст поверх сцены — мягкая тень под ним, без размытия фона */
 .sec-head::before {
@@ -393,12 +393,12 @@ body {
   }
   .sec-window {
     flex: none;
-    height: 30svh;
+    height: 12svh;
   }
   .sec-col {
-    gap: 14px;
-    padding-top: calc(var(--safe-top) + 76px);
-    padding-bottom: calc(var(--safe-bottom) + 28px);
+    gap: 12px;
+    padding-top: calc(var(--safe-top) + 38px);
+    padding-bottom: calc(var(--safe-bottom) + 8px);
   }
   /* на телефоне содержимое проезжает поверх объекта сцены — под ним тоже тень */
   .sec-body::before {
@@ -416,6 +416,20 @@ body {
 @media (min-aspect-ratio: 19/20) {
   :root {
     --col: min(42vw, 560px);
+  }
+  /* секция — по содержимому (без пустоты до высоты экрана): камера ведёт сцену по середине экрана */
+  .sec:not(.hero) {
+    min-height: 0;
+  }
+  /* первый экран чуть ниже окна: внизу уже начинается следующая секция (её текст проявится с камерой) */
+  .hero {
+    min-height: 86vh;
+  }
+  /* секции короче экрана: текст соседней секции проявляется, пока камера летит к её станции, — а не лежит
+     поверх объекта текущей (SiteApp: --near). Слой секции — свой, меняется только прозрачность */
+  .sec > .sec-col {
+    opacity: var(--near, 1);
+    will-change: opacity;
   }
   .sec-left .sec-col,
   .sec-right .sec-col {
@@ -437,8 +451,8 @@ body {
   .sec-center .sec-col {
     align-items: center;
     text-align: center;
-    padding-top: calc(var(--safe-top) + 112px);
-    padding-bottom: 56px;
+    padding-top: calc(var(--safe-top) + 60px);
+    padding-bottom: 24px;
   }
   .sec-center .sec-head {
     --col: min(72vw, 820px);
@@ -454,7 +468,7 @@ body {
   }
   .sec-center .sec-window {
     flex: 1 1 auto;
-    min-height: 16vh;
+    min-height: 6vh;
   }
   .sec-center .sec-body {
     width: min(100%, 1160px);
@@ -1113,8 +1127,8 @@ body {
 .demo {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 9px;
+  padding: 12px 16px;
 }
 .demo-row {
   display: flex;
@@ -1288,7 +1302,7 @@ body {
 .cat-name {
   font-family: var(--display);
   font-weight: 700;
-  font-size: min(clamp(28px, 3.6vw, 52px), calc((var(--col) - 42px) / (var(--chars, 10) * 0.9)));
+  font-size: min(clamp(28px, 3.1vw, 46px), calc((var(--col) - 42px) / (var(--chars, 10) * 0.9)));
   line-height: 1;
   letter-spacing: -0.02em;
   text-transform: uppercase;
@@ -1476,7 +1490,10 @@ body {
 .tiers-block {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+}
+.tiers-block .small {
+  font-size: var(--fs-meta);
 }
 .tiers {
   display: flex;
@@ -1487,9 +1504,9 @@ body {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 12px;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px;
   border-radius: 999px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--r) 30%, var(--line));
@@ -1542,10 +1559,10 @@ body {
 .days {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 .day {
-  padding: 10px 6px 9px;
+  padding: 7px 4px 6px;
   border-radius: 14px;
   text-align: center;
   border: 1px solid var(--line);
@@ -1649,13 +1666,13 @@ button.day {
 /* ───────────── 8. airdrop ───────────── */
 
 .tasks {
-  padding: 14px 16px 6px;
+  padding: 12px 16px 4px;
 }
 .task {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
+  padding: 7px 0;
   border-top: 1px solid var(--line);
 }
 .tasks .tag + .task {
@@ -1712,7 +1729,7 @@ button.day {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--line);
 }
 .req-label {
@@ -1721,7 +1738,7 @@ button.day {
   line-height: 1.3;
 }
 .fine {
-  margin-top: 12px;
+  margin-top: 8px;
   font-size: var(--fs-meta);
   line-height: 1.5;
   color: var(--ink-3);
@@ -1773,7 +1790,7 @@ button.day {
 /* ───────────── 11. FAQ ───────────── */
 
 .faq {
-  padding: 16px 20px 4px;
+  padding: 12px 18px 2px;
 }
 .faq-title {
   padding-bottom: 6px;
@@ -1787,7 +1804,7 @@ button.day {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 0;
+  padding: 13px 0;
   text-align: left;
   font-family: var(--display);
   font-weight: 560;
@@ -1846,7 +1863,7 @@ button.day {
 .footer {
   position: relative;
   z-index: 3;
-  padding: 56px calc(var(--gutter) + var(--safe-right)) calc(var(--safe-bottom) + 28px)
+  padding: 36px calc(var(--gutter) + var(--safe-right)) calc(var(--safe-bottom) + 20px)
     calc(var(--gutter) + var(--safe-left));
   /* слоган — ещё над сценой, ниже подвал уходит в фон страницы */
   background: linear-gradient(180deg, rgba(5, 4, 10, 0), rgba(5, 4, 10, 0.88) 180px, var(--bg) 320px);
@@ -1857,8 +1874,8 @@ button.day {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px 24px;
-  margin-top: 36px;
-  padding-top: 20px;
+  margin-top: 24px;
+  padding-top: 14px;
   border-top: 1px solid var(--line);
   font-size: var(--fs-meta);
   color: var(--ink-3);
@@ -1924,8 +1941,8 @@ button.day {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 16px 16px 16px 18px;
+  gap: 5px;
+  padding: 13px 14px 13px 16px;
   border-radius: var(--r-md);
   border: 1px solid var(--line);
   background: var(--panel);
@@ -1984,24 +2001,24 @@ button.day {
 .loop::before {
   content: '';
   position: absolute;
-  left: 20px;
-  top: 24px;
-  bottom: 24px;
+  left: 17px;
+  top: 20px;
+  bottom: 20px;
   width: 1px;
   background: linear-gradient(180deg, var(--line-gold), rgba(255, 255, 255, 0.06));
 }
 .loop-step {
   position: relative;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
-  padding: 9px 0;
+  padding: 5px 0;
 }
 .loop-icon {
   position: relative;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 13px;
   display: grid;
   place-items: center;
@@ -2055,13 +2072,13 @@ button.day {
 /* ───────────── 5. прогресс: задания и лестница лиг ───────────── */
 
 .tasks {
-  padding: 14px 16px 6px;
+  padding: 12px 16px 4px;
 }
 .task {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
+  padding: 7px 0;
   border-top: 1px solid var(--line);
 }
 .tasks .tag + .task {
@@ -2113,17 +2130,68 @@ button.day {
   opacity: 1;
 }
 
-/* ───────────── 6. airdrop ───────────── */
-
-.airdrop-grid {
+/* две колонки внутри широкой секции (геймплей: цикл и демо; сообщество: каналы и вопросы) */
+.split {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 @media (min-aspect-ratio: 19/20) {
-  .airdrop-grid {
+  .split {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
+    align-items: start;
+  }
+}
+
+/* ───────────── 5. airdrop и прогресс: две колонки одной секции ───────────── */
+
+.journey {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.journey-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.journey-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.journey-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.journey-title {
+  font-family: var(--display);
+  font-weight: 640;
+  font-size: clamp(20px, 1.9vw, 26px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+@media (min-aspect-ratio: 19/20) {
+  .journey {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  /* слагаемые пути в узкой колонке — списком: иконка, заголовок и текст в строку */
+  .journey .pillars {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .journey .pillar {
+    padding: 10px 12px;
+  }
+  .journey-head {
+    margin-top: 0;
   }
 }
 
@@ -2215,14 +2283,13 @@ button.day {
   color: var(--ink-3);
 }
 @media (max-width: 479px) {
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* на телефоне — тоже в один ряд: подписи в две строки, значения короткие */
+  .metrics > div {
+    padding: 10px 8px;
   }
-  .metrics > div:nth-child(3) {
-    border-left: 0;
-  }
-  .metrics > div:nth-child(n + 3) {
-    border-top: 1px solid var(--line);
+  .metrics .tag {
+    letter-spacing: 0.06em;
+    hyphens: auto;
   }
 }
 
@@ -2360,7 +2427,7 @@ button.day {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 18px;
+  padding: 11px 16px;
   border-radius: var(--r-md);
   border: 1px solid rgba(42, 171, 238, 0.4);
   background: radial-gradient(120% 140% at 0% 50%, rgba(42, 171, 238, 0.18), transparent 60%), var(--panel);
@@ -2410,9 +2477,17 @@ button.day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
-  padding: 8px 0 44px;
+  gap: 16px;
+  padding: 4px 0 28px;
   text-align: center;
+}
+@media (min-width: 768px) {
+  .footer-cta {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+    padding-bottom: 22px;
+  }
 }
 .footer-slogan {
   font-family: var(--display);
@@ -2430,8 +2505,8 @@ button.day {
 .footer-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
-  gap: 28px;
-  padding-top: 32px;
+  gap: 24px;
+  padding-top: 22px;
   border-top: 1px solid var(--line);
 }
 .footer-brand {
@@ -2463,26 +2538,47 @@ button.day {
 }
 @media (max-width: 767px) {
   .footer {
-    padding-top: 40px;
+    padding-top: 28px;
   }
   .footer-cta {
-    gap: 18px;
-    padding-bottom: 32px;
+    gap: 14px;
+    padding-bottom: 22px;
   }
   .footer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px 16px;
-    padding-top: 24px;
+    gap: 16px;
+    padding-top: 18px;
   }
   .footer-col {
-    gap: 8px;
+    gap: 7px;
   }
   .footer-fine {
-    margin-top: 24px;
-    padding-top: 16px;
+    margin-top: 18px;
+    padding-top: 12px;
   }
+  /* логотип и язык — в одну строку, описание под ними */
   .footer-brand {
     grid-column: 1 / -1;
+    max-width: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+  }
+  .footer-brand > p {
+    order: 3;
+    flex-basis: 100%;
+  }
+  /* разделы — строкой с переносом, а не столбиком */
+  nav.footer-col {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+  nav.footer-col .tag {
+    flex-basis: 100%;
   }
 }
 .lang-up .lang-menu {
@@ -2493,11 +2589,110 @@ button.day {
   transform-origin: bottom left;
 }
 
+/* ───────────── телефон: плотные композиции ───────────── */
+
+/* длинные списки карточек (блоки проекта, слагаемые Airdrop, предложения партнёрам, этапы roadmap) —
+   горизонтальной лентой с прокруткой пальцем: следующая карточка выглядывает справа, текст целиком */
+@media (max-width: 599px) {
+  .story,
+  .pillars,
+  .offers,
+  .milestones,
+  .journey-cards {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: min(78%, 300px);
+    align-items: stretch;
+    gap: 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: calc(var(--gutter) + var(--safe-left));
+    margin-inline: calc(-1 * (var(--gutter) + var(--safe-left)))
+      calc(-1 * (var(--gutter) + var(--safe-right)));
+    padding: 2px calc(var(--gutter) + var(--safe-right)) 6px calc(var(--gutter) + var(--safe-left));
+    scrollbar-width: none;
+  }
+  .story::-webkit-scrollbar,
+  .journey-cards::-webkit-scrollbar,
+  .pillars::-webkit-scrollbar,
+  .offers::-webkit-scrollbar,
+  .milestones::-webkit-scrollbar {
+    display: none;
+  }
+  .story > *,
+  .journey-cards > *,
+  .pillars > *,
+  .offers > *,
+  .milestones > * {
+    scroll-snap-align: start;
+  }
+  .milestone:last-child {
+    grid-column: auto;
+  }
+  /* карточки прогресса шире: в ежедневной награде — 5 дней в ряд */
+  .journey-cards {
+    grid-auto-columns: min(88%, 360px);
+  }
+  .pillar {
+    flex-direction: row;
+  }
+  /* иконка и заголовок в строку, текст под ними — карточка ниже */
+  .offer {
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: start;
+  }
+  .faq-item button {
+    padding: 11px 0;
+  }
+  .req {
+    padding: 6px 0;
+  }
+  .journey-head {
+    margin-top: 2px;
+  }
+  /* ступени редкости — одной строкой с прокруткой, а не в два ряда */
+  .tiers {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * (var(--gutter) + var(--safe-left)))
+      calc(-1 * (var(--gutter) + var(--safe-right)));
+    padding-inline: calc(var(--gutter) + var(--safe-left)) calc(var(--gutter) + var(--safe-right));
+  }
+  .tiers::-webkit-scrollbar {
+    display: none;
+  }
+  .tier {
+    flex: none;
+  }
+  /* «Скоро»: X и Community — в одну строку */
+  .channels > .is-soon,
+  .channels > a.btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* язык в подвале стоит справа — меню открывается влево, внутрь экрана */
+  .footer-brand .lang-up .lang-menu {
+    left: auto;
+    right: 0;
+    transform-origin: bottom right;
+  }
+}
+/* самый узкий экран: длинные подписи («Сообщество · Скоро») — каждая кнопка на свою строку */
+@media (max-width: 380px) {
+  .channels > .is-soon,
+  .channels > a.btn {
+    flex-basis: 100%;
+  }
+}
+
 /* ───────────── телефон: низкий экран ───────────── */
 
 @media (max-aspect-ratio: 19/20) and (max-height: 700px) {
   .sec-window {
-    height: 26svh;
+    height: 10svh;
   }
   .days .day:nth-child(n + 6) {
     display: none;

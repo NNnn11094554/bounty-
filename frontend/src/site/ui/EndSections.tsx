@@ -140,12 +140,13 @@ function Channels() {
 /** 9. Сообщество и вопросы: Telegram — главный канал, короткий FAQ-аккордеон. В сцене — коты вместе. */
 export function CommunitySection() {
   const t = useT();
-  const [open, setOpen] = useState(0);
+  const [open, setOpen] = useState(-1);
   const base = useId();
   return (
     <Section
       id="community"
       layout="right"
+      className="sec-wide"
       head={
         <>
           <Label>{t.community.label}</Label>
@@ -156,41 +157,43 @@ export function CommunitySection() {
         </>
       }
     >
-      <div data-rv="up" style={k(3)}>
-        <Channels />
-      </div>
-      <div className="faq glass" data-rv="up" style={k(4)}>
-        <p className="tag faq-title">{t.community.faq}</p>
-        {t.community.items.map((item, i) => {
-          const expanded = open === i;
-          return (
-            <div key={i} className="faq-item" data-open={expanded}>
-              <h3>
-                <button
-                  type="button"
-                  id={`${base}-q${i}`}
-                  aria-expanded={expanded}
-                  aria-controls={`${base}-a${i}`}
-                  onClick={() => setOpen(expanded ? -1 : i)}
+      <div className="split">
+        <div data-rv="up" style={k(3)}>
+          <Channels />
+        </div>
+        <div className="faq glass" data-rv="up" style={k(4)}>
+          <p className="tag faq-title">{t.community.faq}</p>
+          {t.community.items.map((item, i) => {
+            const expanded = open === i;
+            return (
+              <div key={i} className="faq-item" data-open={expanded}>
+                <h3>
+                  <button
+                    type="button"
+                    id={`${base}-q${i}`}
+                    aria-expanded={expanded}
+                    aria-controls={`${base}-a${i}`}
+                    onClick={() => setOpen(expanded ? -1 : i)}
+                  >
+                    <span>{item.q}</span>
+                    <i aria-hidden />
+                  </button>
+                </h3>
+                <div
+                  id={`${base}-a${i}`}
+                  role="region"
+                  aria-labelledby={`${base}-q${i}`}
+                  className="faq-answer"
+                  aria-hidden={!expanded}
                 >
-                  <span>{item.q}</span>
-                  <i aria-hidden />
-                </button>
-              </h3>
-              <div
-                id={`${base}-a${i}`}
-                role="region"
-                aria-labelledby={`${base}-q${i}`}
-                className="faq-answer"
-                aria-hidden={!expanded}
-              >
-                <div>
-                  <p className="small">{item.a}</p>
+                  <div>
+                    <p className="small">{item.a}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </Section>
   );

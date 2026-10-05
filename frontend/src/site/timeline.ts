@@ -152,6 +152,8 @@ export function startTimeline(root: HTMLElement): () => void {
       return { top: r.top + y, height: r.height };
     });
     holds = holdSpans(boxes, screen);
+    // первый экран может быть ниже окна (широкий экран: 86vh) — в самом верху страницы камера всё равно у главной
+    if (holds[0]) holds[0][1] = Math.max(holds[0][1], screen / 2);
     readScroll();
   };
   const readScroll = () => {

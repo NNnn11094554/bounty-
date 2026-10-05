@@ -15,7 +15,6 @@ export const SECTIONS = [
   'project',
   'gameplay',
   'collection',
-  'progress',
   'airdrop',
   'partners',
   'roadmap',

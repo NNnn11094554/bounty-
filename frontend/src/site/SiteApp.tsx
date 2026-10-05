@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CATS, HERO_CAT, catAsset } from './cats';
 import { applyDocumentLocale, useLang, useT } from './i18n';
 import { useSite } from './store';
-import { onTick, startTimeline, view } from './timeline';
+import { onTick, smoothstep, startTimeline, view } from './timeline';
 import { CollectionSection } from './ui/CatSections';
 import { Nav } from './ui/Chrome';
 import { CommunitySection, Footer, PartnersSection, RoadmapSection } from './ui/EndSections';
 import { GameplaySection, HeroSection, ProjectSection } from './ui/OpeningSections';
-import { AirdropSection, ProgressSection } from './ui/ProgressSections';
+import { AirdropSection } from './ui/ProgressSections';
 import { useReveal } from './ui/reveal';
 
 /**
@@ -36,16 +36,26 @@ export function SiteApp() {
   }, []);
   useReveal(useCallback(() => pageRef.current, []));
 
-  // секции у камеры (стоит или летит к ней) помечены data-active: CSS-анимации остальных стоят на паузе
+  // секции у камеры (стоит или летит к ней) помечены data-active: CSS-анимации остальных стоят на паузе.
+  // --near — близость камеры к станции секции (1 — у неё, 0 — у соседней): на широком экране текст секции
+  // проявляется, пока камера подлетает, и не ложится поверх объекта соседней станции (site.css)
   useEffect(() => {
     const sections = [...pageRef.current!.querySelectorAll<HTMLElement>('[data-station]')];
     const on = sections.map(() => false);
+    const near = sections.map(() => -1);
     return onTick((v) => {
       sections.forEach((el, i) => {
-        const near = Math.abs(v.pos - i) < 1;
-        if (near === on[i]) return;
-        on[i] = near;
-        el.toggleAttribute('data-active', near);
+        const d = Math.abs(v.pos - i);
+        const active = d < 1;
+        if (active !== on[i]) {
+          on[i] = active;
+          el.toggleAttribute('data-active', active);
+        }
+        const n = Math.round((1 - smoothstep(0.5, 0.9, d)) * 50) / 50;
+        if (n !== near[i]) {
+          near[i] = n;
+          el.style.setProperty('--near', String(n));
+        }
       });
     });
   }, []);
@@ -88,7 +98,6 @@ export function SiteApp() {
         <ProjectSection />
         <GameplaySection />
         <CollectionSection />
-        <ProgressSection />
         <AirdropSection />
         <PartnersSection />
         <RoadmapSection />
