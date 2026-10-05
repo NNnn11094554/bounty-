@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CATS, HERO_CAT, catAsset } from './cats';
+import { applyDocumentLocale, useLang, useT } from './i18n';
 import { useSite } from './store';
 import { startTimeline, view } from './timeline';
 import { CollectionSection } from './ui/CatSections';
@@ -17,6 +18,11 @@ export function SiteApp() {
   const pageRef = useRef<HTMLElement>(null);
   const ready = useSite((s) => s.ready);
   const noWebgl = useSite((s) => s.noWebgl);
+  const locale = useLang((s) => s.locale);
+  const dict = useLang((s) => s.dict);
+
+  // язык документа: lang (шрифты и переносы), заголовок вкладки и описание
+  useEffect(() => applyDocumentLocale(locale, dict), [locale, dict]);
   const [introOn, setIntroOn] = useState(false);
 
   // прокрутка → таймлайн; браузер не восстанавливает прокрутку: сайт всегда начинается с вступления
@@ -82,6 +88,7 @@ export function SiteApp() {
 
 /** Без WebGL: мир и кот картинками (без 3D-движения), интерфейс тот же. */
 function StaticStage() {
+  const t = useT();
   const cat = HERO_CAT;
   return (
     <div className="stage overflow-hidden" aria-hidden>
@@ -95,7 +102,7 @@ function StaticStage() {
         alt=""
         className="absolute bottom-[6%] left-1/2 h-[70%] w-auto -translate-x-1/2"
       />
-      <span className="sr-only">{CATS.map((c) => c.name).join(', ')}</span>
+      <span className="sr-only">{CATS.map((c) => t.cats[c.id as keyof typeof t.cats].name).join(', ')}</span>
     </div>
   );
 }

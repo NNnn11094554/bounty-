@@ -4,7 +4,9 @@ import { LINKS, NAV, sectionIndex, type SectionId } from '../content';
 import { useSite } from '../store';
 import { flyTo, LAST_STATION, onTick } from '../timeline';
 import { useActiveStation } from './hooks';
+import { useLang, useT } from '../i18n';
 import { CommunityIcon, TelegramIcon, XIcon } from './icons';
+import { LangSwitch } from './LangSwitch';
 import { k } from './reveal';
 
 /** Лапа — знак Meowgul. */
@@ -54,7 +56,8 @@ export function Loader() {
   );
 }
 
-export function PlayButton({ className = '', label = 'Play now' }: { className?: string; label?: string }) {
+export function PlayButton({ className = '' }: { className?: string }) {
+  const t = useT();
   return (
     <a
       className={`btn btn-primary ${className}`}
@@ -62,15 +65,15 @@ export function PlayButton({ className = '', label = 'Play now' }: { className?:
       target="_blank"
       rel="noopener noreferrer"
     >
-      {label}
+      {t.cta.play}
     </a>
   );
 }
 
 const SOCIALS = [
-  { id: 'telegram', label: 'Telegram', href: LINKS.telegram, icon: <TelegramIcon /> },
-  { id: 'x', label: 'X', href: LINKS.x, icon: <XIcon /> },
-  { id: 'community', label: 'Community', href: LINKS.community, icon: <CommunityIcon /> },
+  { id: 'telegram', href: LINKS.telegram, icon: <TelegramIcon /> },
+  { id: 'x', href: LINKS.x, icon: <XIcon /> },
+  { id: 'community', href: LINKS.community, icon: <CommunityIcon /> },
 ] as const;
 
 /**
@@ -78,6 +81,7 @@ const SOCIALS = [
  * но неактивна и подписана «Soon» — никуда не ведёт.
  */
 export function Socials({ wide = false, className = '' }: { wide?: boolean; className?: string }) {
+  const t = useT();
   return (
     <div className={`socials ${className}`}>
       {SOCIALS.map((s) =>
@@ -88,22 +92,22 @@ export function Socials({ wide = false, className = '' }: { wide?: boolean; clas
             href={s.href}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={s.label}
+            aria-label={t.social[s.id]}
           >
             {s.icon}
-            {wide && <span>{socialText(s.id)}</span>}
+            {wide && <span>{t.social[s.id]}</span>}
           </a>
         ) : (
           <span
             key={s.id}
             className={wide ? 'btn btn-ghost is-soon' : 'icon-btn is-soon'}
-            aria-label={`${s.label} — soon`}
+            aria-label={`${t.social[s.id]} — ${t.social.soon}`}
             aria-disabled="true"
-            title="Soon"
+            title={t.social.soon}
           >
             {s.icon}
-            {wide && <span>{socialText(s.id)}</span>}
-            {wide && <small>Soon</small>}
+            {wide && <span>{t.social[s.id]}</span>}
+            {wide && <small>{t.social.soon}</small>}
           </span>
         ),
       )}
@@ -111,16 +115,15 @@ export function Socials({ wide = false, className = '' }: { wide?: boolean; clas
   );
 }
 
-const socialText = (id: string) =>
-  id === 'telegram' ? 'Join Telegram' : id === 'x' ? 'Follow on X' : 'Community';
-
 /** Пункт навигации, у которого камера сейчас (или ни одного — между пунктами). */
 function useActiveNav(): number {
   const station = useActiveStation();
-  return NAV.findIndex((n) => sectionIndex(n.id) === station);
+  return NAV.findIndex((id) => sectionIndex(id) === station);
 }
 
 export function Nav() {
+  const t = useT();
+  const locale = useLang((s) => s.locale);
   const active = useActiveNav();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -140,7 +143,8 @@ export function Nav() {
       : '';
     pill.style.width = `${link.offsetWidth}px`;
     pill.style.transform = `translateX(${link.offsetLeft}px)`;
-  }, [active]);
+    // подписи на другом языке другой ширины — подложка меряется заново
+  }, [active, locale]);
 
   // навигация становится стеклянной, как только страница сдвинулась
   useEffect(() => {
@@ -170,36 +174,37 @@ export function Nav() {
   return (
     <>
       <header className="nav intro-fade" data-scrolled={scrolled || open} style={k(0)}>
-        <button type="button" className="logo" onClick={() => go('home')} aria-label="Meowgul — home">
+        <button type="button" className="logo" onClick={() => go('home')} aria-label={t.nav.homeAria}>
           <PawMark />
           MEOWGUL
         </button>
-        <nav aria-label="Sections" className="nav-center">
+        <nav aria-label={t.nav.sections} className="nav-center">
           <div className="nav-links" ref={linksRef}>
             <span className="nav-pill" ref={pillRef} />
-            {NAV.map((n, i) => (
+            {NAV.map((id, i) => (
               <a
-                key={n.id}
-                href={`#${n.id}`}
+                key={id}
+                href={`#${id}`}
                 className="nav-link"
                 aria-current={i === active ? 'true' : undefined}
                 onClick={(e) => {
                   e.preventDefault();
-                  go(n.id);
+                  go(id);
                 }}
               >
-                {n.label}
+                {t.nav[id]}
               </a>
             ))}
           </div>
         </nav>
         <div className="nav-right">
           <Socials className="nav-socials" />
+          <LangSwitch />
           <PlayButton className="btn-sm nav-play" />
           <button
             type="button"
             className="menu-button"
-            aria-label="Menu"
+            aria-label={t.nav.menu}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
@@ -212,21 +217,21 @@ export function Nav() {
         <ProgressLine />
       </header>
       <div className="menu" data-open={open} aria-hidden={!open}>
-        <nav aria-label="Menu" className="menu-list">
-          {NAV.map((n, i) => (
+        <nav aria-label={t.nav.menu} className="menu-list">
+          {NAV.map((id, i) => (
             <a
-              key={n.id}
-              href={`#${n.id}`}
+              key={id}
+              href={`#${id}`}
               className="menu-item"
               style={k(i)}
               onClick={(e) => {
                 e.preventDefault();
-                go(n.id);
+                go(id);
               }}
               tabIndex={open ? 0 : -1}
             >
               <small>{String(i + 1).padStart(2, '0')}</small>
-              {n.label}
+              {t.nav[id]}
             </a>
           ))}
         </nav>

@@ -1,0 +1,285 @@
+import type { Dict } from './en';
+
+export const es: Dict = {
+  meta: {
+    title: 'Meowgul — Entra en el mundo',
+    description:
+      'Meowgul es un juego vivo en Telegram: toca, mejora, colecciona gatos únicos y adéntrate en un universo que no deja de crecer.',
+  },
+  nav: {
+    home: 'Inicio',
+    world: 'Mundo',
+    play: 'Cómo jugar',
+    collection: 'Colección',
+    airdrop: 'Airdrop',
+    roadmap: 'Hoja de ruta',
+    sections: 'Secciones',
+    menu: 'Menú',
+    homeAria: 'Meowgul — inicio',
+    language: 'Idioma',
+  },
+  cta: { play: 'Jugar ahora', explore: 'Explorar el mundo' },
+  social: { telegram: 'Únete en Telegram', x: 'Síguenos en X', community: 'Comunidad', soon: 'Pronto' },
+  hero: {
+    label: 'Mini App de Telegram',
+    title: 'Entra en el mundo de Meowgul',
+    lead: 'Un juego vivo en Telegram donde cada toque, cada mejora y cada descubrimiento te llevan más adentro de un universo que no deja de crecer.',
+    scroll: 'Desliza',
+  },
+  world: {
+    label: 'Nuestra historia',
+    title: 'Un mundo construido gato a gato',
+    lead: 'Lo que empezó como un simple toque se convirtió en algo mucho más grande: un universo de gatos únicos, mundos misteriosos, personajes raros y progreso sin fin, creado directamente dentro de Telegram. Cada personaje tiene su propia identidad. Cada mundo, su propia historia.',
+    motto: 'Colecciona. Mejora. Descubre.',
+    facts: [
+      {
+        value: '1 toque',
+        label: 'para empezar',
+        text: 'Una Mini App que se abre dentro de Telegram, sin descargas.',
+      },
+      { value: '10', label: 'personajes', text: 'Cada uno con su propio mundo, rareza e historia.' },
+      { value: '50', label: 'niveles', text: 'Y diez ligas, de Bronze a Lord.' },
+      { value: '59', label: 'activos', text: 'Mejoras del juego que siguen generando aunque no estés.' },
+    ],
+    journey: 'El camino hasta ahora',
+    steps: [
+      { title: 'El primer gato', text: 'Empieza el viaje.' },
+      { title: 'La colección', text: 'Descubre personajes únicos y skins raras.' },
+      { title: 'La evolución', text: 'Mejora, progresa y desbloquea nuevas posibilidades.' },
+      { title: 'El mundo crece', text: 'Llegan nuevos personajes, mecánicas y experiencias.' },
+    ],
+  },
+  play: {
+    label: 'Jugabilidad',
+    title: 'Cómo funciona',
+    lead: 'Sesiones cortas, progreso duradero. Toca para ganar, invierte tus PAW en activos que siguen generando, colecciona personajes y escala por las ligas.',
+    steps: [
+      {
+        title: 'Toca',
+        text: 'Gana recompensas jugando activamente.',
+        detail: 'Cada toque gasta 1 de energía. Tienes 5.000 y se recargan a +3 por segundo.',
+      },
+      {
+        title: 'Mejora',
+        text: 'Avanza en tu progreso y desbloquea nuevas posibilidades.',
+        detail: '59 activos en cuatro grupos generan PAW cada hora, incluso sin conexión, hasta 3 horas.',
+      },
+      {
+        title: 'Colecciona',
+        text: 'Descubre gatos únicos, skins y personajes raros.',
+        detail: 'Las skins cambian el aspecto de tu gato, nunca la economía: estilo, no pay-to-win.',
+      },
+      {
+        title: 'Compite',
+        text: 'Sube por las ligas y demuestra tu lugar en el mundo.',
+        detail: 'Diez ligas según todo lo que has ganado, de Bronze a Lord.',
+      },
+    ],
+    boosts: [
+      { title: 'Turbo', text: '×5 por toque durante 60 s, sin gastar energía · 3 al día' },
+      { title: 'Energía completa', text: 'Recarga al máximo al instante · 6 al día' },
+    ],
+    energy: 'Energía',
+    turboOn: 'Turbo · sin energía',
+    turbo: 'Turbo ×{x}',
+    turboAria: 'Turbo: te quedan {left} de {total} hoy',
+    demo: 'Demo del juego',
+    tapHint: 'Toca al gato',
+    noEnergy: 'Sin energía',
+  },
+  collection: {
+    label: 'Conoce a los gatos',
+    title: 'Cada gato tiene una historia',
+    lead: 'Desde asesinos silenciosos hasta emperadores cósmicos, cada personaje representa una parte distinta del mundo. Cada gato forma parte de una colección que no para de crecer: descubre nuevos personajes, desbloquea skins raras y arma un equipo que cuente tu viaje.',
+    rarity: 'Rareza',
+    type: 'Tipo',
+    power: 'Poder',
+    prev: 'Gato anterior',
+    next: 'Gato siguiente',
+    list: 'Gatos',
+    tiers: 'Niveles de rareza',
+    tierText: {
+      COMMON: 'Donde empieza toda colección.',
+      RARE: 'Aspecto distintivo, más difícil de encontrar.',
+      EPIC: 'Personajes con mundos propios.',
+      LEGENDARY: 'Iconos del universo.',
+      MYTHIC: 'Casi fuera de alcance.',
+    },
+    note: 'La rareza es cuestión de aspecto, no de poder en la economía. Los efectos de toque se desbloquean al subir de nivel.',
+    explore: 'Ver la colección →',
+  },
+  rarity: { COMMON: 'Común', RARE: 'Raro', EPIC: 'Épico', LEGENDARY: 'Legendario', MYTHIC: 'Mítico' },
+  cats: {
+    stealth_assassin: {
+      name: 'Asesino Sigiloso',
+      subtitle: 'El cazador silencioso',
+      world: 'Distrito Sombrío',
+      story:
+        'Un maestro de la precisión y la paciencia. Este gato legendario se mueve entre las sombras a la espera del momento perfecto para atacar.',
+      type: 'Asesino',
+    },
+    galaxy_emperor: {
+      name: 'Emperador Galáctico',
+      subtitle: 'El soberano más allá de las estrellas',
+      world: 'Frontera Galáctica',
+      story:
+        'Un soberano cósmico rodeado de energía ancestral. Su poder procede de mundos mucho más allá del universo conocido.',
+      type: 'Cósmico',
+    },
+    ocean_guardian: {
+      name: 'Guardián del Océano',
+      subtitle: 'Custodio de las profundidades',
+      world: 'Reino Oceánico',
+      story: 'Un guardián ancestral que protege los secretos ocultos bajo las aguas más profundas.',
+      type: 'Guardián',
+    },
+    cyber_samurai: {
+      name: 'Ciber Samurái',
+      subtitle: 'La hoja de neón',
+      world: 'Santuario de Neón',
+      story:
+        'Un guerrero forjado entre la tradición y la tecnología. Rápido, preciso e imposible de predecir.',
+      type: 'Guerrero',
+    },
+    inferno: {
+      name: 'Inferno',
+      subtitle: 'Guardián de la última chispa',
+      world: 'Cuevas de Brasas',
+      story:
+        'Nació en el corazón de un volcán. Por donde pasa, la piedra conserva el calor durante mucho tiempo.',
+      type: 'Fuego',
+    },
+    toxic: {
+      name: 'Tóxico',
+      subtitle: 'Ingeniero de reactores',
+      world: 'Planta de Neón',
+      story:
+        'Repara los reactores a los que nadie más se atreve a acercarse. No se quita las gafas ni para dormir.',
+      type: 'Ingeniero',
+    },
+    desert_nomad: {
+      name: 'Nómada del Desierto',
+      subtitle: 'Guía entre las tormentas',
+      world: 'Ciudadela de Arena',
+      story:
+        'Conoce cada senda hacia la ciudadela del horizonte. Sus gafas recuerdan una caravana que nunca abandonó.',
+      type: 'Explorador',
+    },
+    sakura_blossom: {
+      name: 'Sakura',
+      subtitle: 'La voz del santuario en flor',
+      world: 'Santuario de los Cerezos',
+      story:
+        'Guardiana de los torii rojos. El viento le trae pétalos de todos los jardines que aún la recuerdan.',
+      type: 'Espíritu',
+    },
+    lunar_witch: {
+      name: 'Bruja Lunar',
+      subtitle: 'Hechizos de luna llena',
+      world: 'Ciudad de la Luna',
+      story: 'Lanza fuego violeta sobre los tejados de la ciudad antigua. Su bastón recuerda cien hechizos.',
+      type: 'Místico',
+    },
+    crystal_prince: {
+      name: 'Príncipe de Cristal',
+      subtitle: 'Heredero de la corona enterrada',
+      world: 'Ruinas de Amatista',
+      story: 'El último de la estirpe real. Brotan cristales allí donde se detiene más de un minuto.',
+      type: 'Cristal',
+    },
+  },
+  rewards: {
+    label: 'Progreso y recompensas',
+    title: 'Tu viaje importa',
+    lead: 'Tu actividad, tu progreso y tu participación forman parte de tu viaje por el ecosistema. Sigue jugando. Completa actividades. Haz crecer tu colección. Mantente activo.',
+    daily: 'Recompensa diaria · día {day} de {total}',
+    day: 'Día {day}',
+    dayAria: 'Día {day}: {amount} PAW',
+    claim: '{label} — reclamar',
+    everyDay: 'Cada día',
+    tasks: [
+      { title: 'Combo diario', text: 'Encuentra los tres activos del día', reward: 'desde 50.000' },
+      { title: 'Cifrado diario', text: 'Teclea la palabra del día en código Morse', reward: 'desde 10.000' },
+      { title: 'Invita a amigos', text: 'Bonificación para los dos · 25.000 con Premium', reward: '5.000' },
+    ],
+    pillars: [
+      { title: 'Actividad', text: 'Juega con regularidad y mantén tu racha.' },
+      { title: 'Progreso', text: 'Niveles, ligas y mejoras.' },
+      { title: 'Logros', text: 'Tareas e hitos que completas.' },
+      { title: 'Comunidad', text: 'Los amigos que traes contigo.' },
+    ],
+    progress: 'Airdrop · progreso del viaje',
+    example: 'Jugador de ejemplo',
+    reqs: {
+      league: 'Llega a la liga Platinum',
+      level: 'Alcanza el nivel 10',
+      friends: 'Invita a 3 amigos',
+      streak: 'Racha de 7 días',
+      cards: 'Desbloquea 6 activos',
+      tasks: 'Completa 5 tareas',
+    },
+    fine: 'Detalles del airdrop: próximamente, se anunciarán a medida que el sistema evolucione. Nada de lo que aparece aquí es una promesa de recompensas.',
+  },
+  roadmap: {
+    label: 'Hoja de ruta',
+    title: 'Un mundo sin nivel final',
+    lead: 'Más allá del juego principal se extiende un universo en crecimiento de personajes, lugares, eventos y descubrimientos. Los nuevos mundos traerán nuevos personajes, mecánicas y formas de jugar. El juego principal ya está disponible; las siguientes fases están en desarrollo.',
+    phase: 'Fase {n}',
+    states: { done: 'Disponible', next: 'Siguiente', later: 'Más adelante', unknown: 'Desconocido' },
+    phases: [
+      {
+        title: 'Génesis',
+        items: ['Juego principal', 'Mini App de Telegram', 'Primeros personajes', 'Colección'],
+      },
+      {
+        title: 'Expansión',
+        items: ['Nuevos personajes', 'Nuevas skins', 'Más mejoras', 'Eventos', 'Nuevos mundos'],
+      },
+      {
+        title: 'Ecosistema',
+        items: ['Funciones de comunidad', 'Mecánicas competitivas', 'Nuevos sistemas de juego'],
+      },
+      { title: 'El siguiente mundo', items: ['???'] },
+    ],
+    worlds: 'Mundos en desarrollo',
+    soon: 'Próximamente',
+    undiscovered: 'Sin descubrir',
+    worldList: [
+      {
+        name: 'Distrito Sombrío',
+        text: 'Una ciudad gobernada por cazadores silenciosos y secretos ocultos.',
+      },
+      { name: 'Frontera Galáctica', text: 'Un mundo lejano donde la energía cósmica lo moldea todo.' },
+      { name: 'Reino Oceánico', text: 'Un reino ancestral oculto bajo aguas infinitas.' },
+      { name: 'Lo desconocido', text: 'Algo espera más allá del mundo conocido.' },
+    ],
+  },
+  community: {
+    label: 'Comunidad',
+    title: 'El mundo es mejor en compañía',
+    lead: 'Sigue el viaje, descubre nuevos personajes y forma parte de la comunidad mientras el universo sigue creciendo.',
+    faq: 'Preguntas frecuentes',
+    items: [
+      {
+        q: '¿Qué es el juego?',
+        a: 'Un juego de Telegram centrado en coleccionar, progresar y un universo de personajes en constante evolución.',
+      },
+      { q: '¿Cómo empiezo a jugar?', a: 'Abre la Mini App en Telegram y comienza tu viaje.' },
+      { q: '¿Qué puedo coleccionar?', a: 'Personajes, skins, recompensas y otros objetos del juego.' },
+      {
+        q: '¿Habrá nuevos personajes?',
+        a: 'Sí. La colección y el universo están pensados para ampliarse con el tiempo.',
+      },
+      {
+        q: '¿Cómo funciona el airdrop?',
+        a: 'La participación y el progreso forman parte de la experiencia actual del ecosistema. Se podrán anunciar más detalles a medida que el sistema evolucione.',
+      },
+    ],
+  },
+  final: { title: 'El mundo apenas comienza', lead: 'Tu viaje empieza con un solo toque.' },
+  footer: {
+    about: 'Un juego de Telegram sobre gatos, coleccionismo y un universo en crecimiento.',
+    fine: 'Los PAW y los activos del juego son objetos del juego: no se pueden retirar, vender ni transferir.',
+    nav: 'Pie de página',
+  },
+};

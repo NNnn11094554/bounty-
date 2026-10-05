@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { RARITY_COLOR } from '../../game/skins';
 import { MINI_APP_URL } from '../../lib/links';
-import { CATS, RARITY_LABEL, catIcon } from '../cats';
+import { CATS, catIcon } from '../cats';
 import { TIERS, sectionIndex } from '../content';
+import { useT, type Dict } from '../i18n';
+
+type CatId = keyof Dict['cats'];
 import { useSite } from '../store';
 import { useAtStation } from './hooks';
 import { ArrowIcon } from './icons';
@@ -17,9 +20,11 @@ const count = String(CATS.length).padStart(2, '0');
  * свайпом по сцене или клавишами ← →. Карточка персонажа собирается заново при каждой смене.
  */
 export function CollectionSection() {
+  const t = useT();
   const selected = useSite((s) => s.selected);
   const select = useSite((s) => s.select);
   const cat = CATS[selected]!;
+  const text = t.cats[cat.id as CatId];
   const go = (step: number) => select((selected + step + CATS.length) % CATS.length);
   const thumbsRef = useRef<HTMLDivElement>(null);
 
@@ -43,12 +48,10 @@ export function CollectionSection() {
         pass
         head={
           <>
-            <Label>Meet the cats</Label>
-            <Words text="Every cat has a story" />
+            <Label>{t.collection.label}</Label>
+            <Words text={t.collection.title} />
             <p className="lead" data-rv="up" style={k(2)}>
-              From silent assassins to cosmic emperors, each character represents a different part of the
-              world. Every cat is part of a growing collection — discover new characters, unlock rare skins
-              and build a lineup that represents your journey.
+              {t.collection.lead}
             </p>
           </>
         }
@@ -61,26 +64,26 @@ export function CollectionSection() {
           {/* key — карточка собирается заново для каждого кота */}
           <div key={cat.id} className="cat-card-body">
             <span className="tag swap-in" style={k(0)}>
-              {String(selected + 1).padStart(2, '0')} / {count} · {cat.world}
+              {String(selected + 1).padStart(2, '0')} / {count} · {text.world}
             </span>
-            <Title className="cat-name" text={cat.name} letters />
+            <Title className="cat-name" text={text.name} letters />
             <p className="cat-subtitle swap-in" style={{ ...k(1), color: cat.accent2 }}>
-              {cat.subtitle}
+              {text.subtitle}
             </p>
             <p className="small cat-story swap-in" style={k(2)}>
-              {cat.story}
+              {text.story}
             </p>
             <dl className="cat-stats swap-in" style={k(3)}>
               <div>
-                <dt>Rarity</dt>
-                <dd className="rarity">{RARITY_LABEL[cat.rarity]}</dd>
+                <dt>{t.collection.rarity}</dt>
+                <dd className="rarity">{t.rarity[cat.rarity]}</dd>
               </div>
               <div>
-                <dt>Type</dt>
-                <dd>{cat.element}</dd>
+                <dt>{t.collection.type}</dt>
+                <dd>{text.type}</dd>
               </div>
               <div>
-                <dt>Power</dt>
+                <dt>{t.collection.power}</dt>
                 <dd>
                   <span className="tabular">{cat.power}</span>
                   <span className="cat-power" aria-hidden>
@@ -91,10 +94,10 @@ export function CollectionSection() {
             </dl>
           </div>
           <div className="cat-picker">
-            <button type="button" className="arrow" aria-label="Previous cat" onClick={() => go(-1)}>
+            <button type="button" className="arrow" aria-label={t.collection.prev} onClick={() => go(-1)}>
               <ArrowIcon dir={-1} />
             </button>
-            <div className="thumbs" ref={thumbsRef} role="tablist" aria-label="Cats">
+            <div className="thumbs" ref={thumbsRef} role="tablist" aria-label={t.collection.list}>
               {CATS.map((c, i) => (
                 <button
                   key={c.id}
@@ -103,7 +106,7 @@ export function CollectionSection() {
                   className="thumb"
                   aria-selected={i === selected}
                   aria-current={i === selected}
-                  aria-label={c.name}
+                  aria-label={t.cats[c.id as CatId].name}
                   style={{ ['--c' as string]: c.accent }}
                   onClick={() => select(i)}
                 >
@@ -119,31 +122,31 @@ export function CollectionSection() {
                 </button>
               ))}
             </div>
-            <button type="button" className="arrow" aria-label="Next cat" onClick={() => go(1)}>
+            <button type="button" className="arrow" aria-label={t.collection.next} onClick={() => go(1)}>
               <ArrowIcon />
             </button>
           </div>
         </div>
         <div className="tiers-block" data-rv="up" style={k(4)}>
-          <p className="tag">Rarity tiers</p>
+          <p className="tag">{t.collection.tiers}</p>
           <ul className="tiers">
-            {TIERS.map((t) => (
+            {TIERS.map((rarity) => (
               <li
-                key={t.rarity}
+                key={rarity}
                 className="tier"
-                data-rarity={t.rarity}
-                style={{ ['--r' as string]: RARITY_COLOR[t.rarity] }}
-                title={t.text}
+                data-rarity={rarity}
+                style={{ ['--r' as string]: RARITY_COLOR[rarity] }}
+                title={t.collection.tierText[rarity]}
               >
                 <span className="tier-gem" aria-hidden />
-                <span className="tier-name">{RARITY_LABEL[t.rarity]}</span>
+                <span className="tier-name">{t.rarity[rarity]}</span>
               </li>
             ))}
           </ul>
           <p className="small">
-            Rarity is about look, not power in the economy. Tap effects unlock as you level up.{' '}
+            {t.collection.note}{' '}
             <a className="inline-link" href={MINI_APP_URL} target="_blank" rel="noopener noreferrer">
-              Explore collection →
+              {t.collection.explore}
             </a>
           </p>
         </div>

@@ -27,20 +27,12 @@ export interface IdleProfile {
   shoulders: number;
 }
 
+/** Персонаж сайта: тексты (имя, подзаголовок, мир, история, тип) — в словарях i18n (cats.<id>). */
 export interface SiteCat {
   id: string;
-  name: string;
-  /** атмосферный подзаголовок одной строкой */
-  subtitle: string;
   rarity: Rarity;
-  /** мир персонажа — подпись к атмосфере */
-  world: string;
-  /** лор: 1–2 предложения */
-  story: string;
   /** сила персонажа в лоре (на экономику игры скины не влияют) */
   power: number;
-  /** стихия / тип */
-  element: string;
   /** основной цвет света, частиц и интерфейса */
   accent: string;
   /** второй цвет: блики, край проявления */
@@ -57,14 +49,8 @@ export interface SiteCat {
 export const CATS: readonly SiteCat[] = [
   {
     id: 'stealth_assassin',
-    name: 'Stealth Assassin',
-    subtitle: 'The Silent Hunter',
     rarity: 'LEGENDARY',
-    world: 'Shadow District',
-    story:
-      'A master of precision and patience. Moving through the shadows, this legendary cat waits for the perfect moment to strike.',
     power: 94,
-    element: 'Assassin',
     accent: '#5fe0ff',
     accent2: '#c6f4ff',
     fog: '#04080d',
@@ -72,14 +58,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'galaxy_emperor',
-    name: 'Galaxy Emperor',
-    subtitle: 'The Ruler Beyond the Stars',
     rarity: 'MYTHIC',
-    world: 'Galaxy Frontier',
-    story:
-      'A cosmic sovereign surrounded by ancient energy. His power comes from worlds far beyond the known universe.',
     power: 98,
-    element: 'Cosmic',
     accent: '#9b7bff',
     accent2: '#ffd98f',
     fog: '#070519',
@@ -87,13 +67,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'ocean_guardian',
-    name: 'Ocean Guardian',
-    subtitle: 'Keeper of the Deep',
     rarity: 'LEGENDARY',
-    world: 'Ocean Realm',
-    story: 'An ancient guardian protecting the secrets hidden beneath the deepest waters.',
     power: 91,
-    element: 'Guardian',
     accent: '#2fd2c9',
     accent2: '#a8fff4',
     fog: '#031012',
@@ -109,13 +84,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'cyber_samurai',
-    name: 'Cyber Samurai',
-    subtitle: 'The Neon Blade',
     rarity: 'LEGENDARY',
-    world: 'Neon Shrine',
-    story: 'A warrior forged between tradition and technology. Fast, precise and impossible to predict.',
     power: 95,
-    element: 'Warrior',
     accent: '#ff3d5a',
     accent2: '#ffb3c0',
     fog: '#12040a',
@@ -123,13 +93,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'inferno',
-    name: 'Inferno',
-    subtitle: 'Keeper of the Last Spark',
     rarity: 'LEGENDARY',
-    world: 'Ember Caves',
-    story: 'Born in the heart of a volcano. Wherever he walks, the stone stays warm for a long time.',
     power: 92,
-    element: 'Fire',
     accent: '#ff7a1a',
     accent2: '#ffc35a',
     fog: '#120603',
@@ -137,13 +102,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'toxic',
-    name: 'Toxic',
-    subtitle: 'Reactor Engineer',
     rarity: 'EPIC',
-    world: 'Neon Plant',
-    story: 'Repairs the reactors no one else dares to approach. Never takes the goggles off, even asleep.',
     power: 78,
-    element: 'Engineer',
     accent: '#7dff3a',
     accent2: '#d4ff5a',
     fog: '#050c05',
@@ -151,13 +111,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'desert_nomad',
-    name: 'Desert Nomad',
-    subtitle: 'Guide Through the Storms',
     rarity: 'RARE',
-    world: 'Sand Citadel',
-    story: 'Knows every path to the citadel on the horizon. His goggles remember a caravan he never left.',
     power: 63,
-    element: 'Explorer',
     accent: '#f2a65a',
     accent2: '#ffd9a0',
     fog: '#130b06',
@@ -165,13 +120,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'sakura_blossom',
-    name: 'Sakura',
-    subtitle: 'Voice of the Blooming Shrine',
     rarity: 'EPIC',
-    world: 'Blossom Shrine',
-    story: 'Keeper of the red torii. The wind brings her petals from every garden that remembers her.',
     power: 74,
-    element: 'Spirit',
     accent: '#ff7eb6',
     accent2: '#ffd1e6',
     fog: '#160a12',
@@ -179,13 +129,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'lunar_witch',
-    name: 'Lunar Witch',
-    subtitle: 'Spells of the Full Moon',
     rarity: 'LEGENDARY',
-    world: 'Moonlit City',
-    story: 'She casts violet fire over the rooftops of the old city. Her staff remembers a hundred spells.',
     power: 88,
-    element: 'Mystic',
     accent: '#b04dff',
     accent2: '#e3b8ff',
     fog: '#0b0620',
@@ -193,13 +138,8 @@ export const CATS: readonly SiteCat[] = [
   },
   {
     id: 'crystal_prince',
-    name: 'Crystal Prince',
-    subtitle: 'Heir to the Buried Crown',
     rarity: 'MYTHIC',
-    world: 'Amethyst Ruins',
-    story: 'The last of the royal line. Crystals grow wherever he stands for longer than a minute.',
     power: 97,
-    element: 'Crystal',
     accent: '#8f7bff',
     accent2: '#8fd8ff',
     fog: '#07071a',
@@ -209,14 +149,6 @@ export const CATS: readonly SiteCat[] = [
 
 /** Главный персонаж сайта — чёрный кот Inferno. */
 export const HERO_CAT = catById('inferno');
-
-export const RARITY_LABEL: Record<Rarity, string> = {
-  COMMON: 'Common',
-  RARE: 'Rare',
-  EPIC: 'Epic',
-  LEGENDARY: 'Legendary',
-  MYTHIC: 'Mythic',
-};
 
 /** Самый сильный персонаж — фон финального экрана. */
 export const STRONGEST_CAT = catById('galaxy_emperor');

@@ -1,5 +1,6 @@
 import { CoinIcon } from '../../components/icons';
-import { AIRDROP_REQS, DAILY_TASKS, JOURNEY_PILLARS, sectionIndex } from '../content';
+import { AIRDROP_REQS, JOURNEY_PILLARS, sectionIndex } from '../content';
+import { useT } from '../i18n';
 import { CountUp } from './CountUp';
 import { DailyRewards } from './DailyRewards';
 import { PILLAR_ICONS } from './iconSets';
@@ -15,6 +16,7 @@ const AIRDROP = sectionIndex('airdrop');
  * В сцене — монета PAW в кольцах, без котов.
  */
 export function RewardsSection() {
+  const t = useT();
   const ready = AIRDROP_REQS.reduce((s, r) => s + r.demo, 0) / AIRDROP_REQS.length;
   return (
     <Section
@@ -23,11 +25,10 @@ export function RewardsSection() {
       className="rewards"
       head={
         <>
-          <Label>Progress &amp; rewards</Label>
-          <Words text="Your journey matters" />
+          <Label>{t.rewards.label}</Label>
+          <Words text={t.rewards.title} />
           <p className="lead center" data-rv="up" style={k(2)}>
-            Your activity, progression and participation become part of your journey through the ecosystem.
-            Keep playing. Complete activities. Build your collection. Stay active.
+            {t.rewards.lead}
           </p>
         </>
       }
@@ -38,16 +39,16 @@ export function RewardsSection() {
             <DailyRewards />
           </div>
           <div className="glass tasks" data-rv="up" style={k(1)}>
-            <p className="tag">Every day</p>
-            {DAILY_TASKS.map((t) => (
-              <div key={t.title} className="task">
+            <p className="tag">{t.rewards.everyDay}</p>
+            {t.rewards.tasks.map((task) => (
+              <div key={task.title} className="task">
                 <div className="min-w-0 flex-1">
-                  <p className="h4">{t.title}</p>
-                  <p className="small">{t.text}</p>
+                  <p className="h4">{task.title}</p>
+                  <p className="small">{task.text}</p>
                 </div>
                 <span className="chip text-[color:var(--gold)]">
                   <CoinIcon size={14} />
-                  {t.reward}
+                  {task.reward}
                 </span>
               </div>
             ))}
@@ -55,9 +56,9 @@ export function RewardsSection() {
         </div>
         <div className="rewards-col">
           <ul className="pillars">
-            {JOURNEY_PILLARS.map((p, i) => (
-              <li key={p.title} className="card pillar" data-rv="rise" style={k(2 + i * 0.5)}>
-                <span className="pillar-icon">{PILLAR_ICONS[p.title]}</span>
+            {t.rewards.pillars.map((p, i) => (
+              <li key={i} className="card pillar" data-rv="rise" style={k(2 + i * 0.5)}>
+                <span className="pillar-icon">{PILLAR_ICONS[JOURNEY_PILLARS[i]!]}</span>
                 <div className="min-w-0">
                   <p className="h4">{p.title}</p>
                   <p className="small">{p.text}</p>
@@ -68,12 +69,12 @@ export function RewardsSection() {
           <div className="glass progress-card" data-rv="up" style={k(4)}>
             <div className="mb-2 flex items-end justify-between gap-4">
               <div>
-                <p className="tag">Airdrop · journey progress</p>
+                <p className="tag">{t.rewards.progress}</p>
                 <p className="stat-big">
                   <CountUp to={Math.round(ready * 100)} station={AIRDROP} />%
                 </p>
               </div>
-              <span className="soon">Example player</span>
+              <span className="soon">{t.rewards.example}</span>
             </div>
             <div className="reqs">
               {AIRDROP_REQS.map((r, i) => (
@@ -82,7 +83,7 @@ export function RewardsSection() {
                     {r.demo >= 1 && <CheckIcon />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="req-label">{r.label}</p>
+                    <p className="req-label">{t.rewards.reqs[r.id]}</p>
                     {r.demo < 1 && (
                       <div
                         className="bar req-bar mt-1.5"
@@ -100,10 +101,7 @@ export function RewardsSection() {
                 </div>
               ))}
             </div>
-            <p className="fine">
-              Airdrop details: coming soon, announced as the system develops. Nothing here is a promise of
-              rewards.
-            </p>
+            <p className="fine">{t.rewards.fine}</p>
           </div>
         </div>
       </div>

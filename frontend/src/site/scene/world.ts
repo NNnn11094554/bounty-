@@ -750,7 +750,7 @@ export class SiteWorld {
     const upgrades = this.stations[3]!;
     for (const [i, asset] of FLOATING_ASSETS.entries()) {
       const coin = await svgCanvas(tokenSvg(`token/${asset.ticker}/${asset.palette}`, 256), 256);
-      const map = this.bank.canvas(tokenCard(coin, asset.ticker, asset.group));
+      const map = this.bank.canvas(tokenCard(coin, asset.ticker));
       const card = new Mesh(new PlaneGeometry(1.3, 1.69), panelMaterial(map, '#d4ff5a'));
       card.renderOrder = 12;
       card.userData.index = i;
@@ -1151,8 +1151,8 @@ const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const easeOutCubic = (t: number) => 1 - (1 - clamp01(t)) ** 3;
 const easeInOut = (t: number) => t * t * (3 - 2 * t);
 
-/** Карточка актива: стекло, монета токена из игры, тикер и категория. */
-function tokenCard(coin: HTMLCanvasElement, ticker: string, group: string): HTMLCanvasElement {
+/** Карточка актива: стекло, монета токена из игры и тикер (без слов — сцена одна на все языки). */
+function tokenCard(coin: HTMLCanvasElement, ticker: string): HTMLCanvasElement {
   const W = 520;
   const H = 676;
   const [canvas, ctx] = makeCanvas(W, H);
@@ -1185,9 +1185,6 @@ function tokenCard(coin: HTMLCanvasElement, ticker: string, group: string): HTML
   ctx.fillStyle = '#fff';
   ctx.font = '700 78px "Unbounded Variable", "Arial Black", sans-serif';
   ctx.fillText(ticker, W / 2, 470);
-  ctx.fillStyle = 'rgba(220,255,200,0.62)';
-  ctx.font = '600 26px "Manrope Variable", sans-serif';
-  ctx.fillText(group.toUpperCase(), W / 2, 520);
   for (let i = 0; i < 5; i++) {
     ctx.fillStyle = i < 3 ? 'rgba(212,255,90,0.9)' : 'rgba(255,255,255,0.14)';
     ctx.beginPath();

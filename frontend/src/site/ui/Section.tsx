@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { SectionId } from '../content';
 import { sectionIndex } from '../content';
+import { headingParts } from './headings';
 import { k } from './reveal';
 
 interface SectionProps {
@@ -49,7 +50,7 @@ export function Label({ children, style }: { children: ReactNode; style?: CSSPro
 
 /**
  * Заголовок со словами, проявляющимися из-под маски (каждое слово — снизу вверх, по очереди).
- * Слова не рвутся: размер ограничен шириной колонки и самым длинным словом (--chars).
+ * Слова не рвутся: размер ограничен шириной колонки и самой длинной частью (--chars).
  */
 export function Words({
   text,
@@ -63,20 +64,20 @@ export function Words({
   /** главная: проявляется вместе со вступлением, а не при прокрутке */
   intro?: boolean;
 }) {
-  const words = text.split(' ');
-  const chars = Math.max(...words.map((w) => w.length));
+  const parts = headingParts(text);
+  const chars = Math.max(...parts.map((w) => w.text.length));
   return (
     <Tag
       className={`words ${className}`}
       data-rv={intro ? undefined : 'mask'}
-      aria-label={text}
+      aria-label={text.replaceAll('|', '')}
       style={{ ['--chars' as string]: chars }}
     >
-      {words.map((word, i) => (
+      {parts.map((part, i) => (
         <span key={i} aria-hidden>
-          {i > 0 && ' '}
+          {part.space && ' '}
           <span className="w">
-            <span style={k(i)}>{word}</span>
+            <span style={k(i)}>{part.text}</span>
           </span>
         </span>
       ))}

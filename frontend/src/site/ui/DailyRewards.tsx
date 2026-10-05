@@ -4,6 +4,7 @@ import { CoinIcon } from '../../components/icons';
 import { RollingNumber } from '../../components/RollingNumber';
 import { GAME_FACTS } from '../content';
 import { demoAdd, demoBalance } from '../demo';
+import { fmt, useT } from '../i18n';
 
 /** день серии, который «сегодня» в демо */
 const TODAY = 4;
@@ -13,6 +14,7 @@ const TODAY = 4;
  * перелетают к балансу, число прокручивается. Всё — transform и opacity (Web Animations), без раскладки.
  */
 export function DailyRewards() {
+  const t = useT();
   const [claimed, setClaimed] = useState(false);
   const balanceRef = useRef<HTMLSpanElement>(null);
   const todayRef = useRef<HTMLButtonElement>(null);
@@ -36,7 +38,7 @@ export function DailyRewards() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="tag">Daily reward · day {TODAY} of 10</p>
+        <p className="tag">{fmt(t.rewards.daily, { day: TODAY, total: GAME_FACTS.daily.length })}</p>
         <span className="chip text-[color:var(--gold)]" ref={balanceRef}>
           <CoinIcon size={14} />
           <RollingNumber getValue={demoBalance} glowOnJump={false} />
@@ -46,10 +48,10 @@ export function DailyRewards() {
         {GAME_FACTS.daily.map((amount, i) => {
           const day = i + 1;
           const state = day < TODAY || (day === TODAY && claimed) ? 'done' : day === TODAY ? 'today' : 'next';
-          const label = `Day ${day}: ${formatInt(amount)} PAW`;
+          const label = fmt(t.rewards.dayAria, { day, amount: formatInt(amount) });
           const body = (
             <>
-              <p className="tag text-[9px]">Day {day}</p>
+              <p className="tag text-[9px]">{fmt(t.rewards.day, { day })}</p>
               <CoinIcon size={18} className="mx-auto my-1" />
               <p className="tabular text-[12px] font-bold">{formatShort(amount)}</p>
             </>
@@ -61,7 +63,7 @@ export function DailyRewards() {
               type="button"
               className="day day-claim"
               data-state={state}
-              aria-label={`${label} — claim`}
+              aria-label={fmt(t.rewards.claim, { label })}
               onClick={claim}
             >
               {body}

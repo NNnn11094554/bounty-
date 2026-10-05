@@ -3,7 +3,8 @@ import { useEffect, useRef } from 'react';
 import { TurboIcon } from '../../components/boostIcons';
 import { BoltIcon, CoinIcon } from '../../components/icons';
 import { RollingNumber } from '../../components/RollingNumber';
-import { BOOSTS, GAME_FACTS, HOW_STEPS, KEY_FACTS, STORY_STEPS, sectionIndex } from '../content';
+import { GAME_FACTS, HOW_STEPS, sectionIndex } from '../content';
+import { fmt, useT } from '../i18n';
 import { demoBalance, demoEnergy, demoTap, isTurbo, startTurbo, turboSeconds, useDemo } from '../demo';
 import { sceneApi } from '../store';
 import { flyTo, nearness, onTick } from '../timeline';
@@ -17,21 +18,21 @@ const PLAY = sectionIndex('play');
 
 /** 1. Главная: заголовок проявляется вместе со сценой, кот — справа (на телефоне — под заголовком). */
 export function HeroSection() {
+  const t = useT();
   return (
     <section id="home" data-station={0} className="sec hero">
       <div className="hero-text">
         <p className="label intro-fade" style={k(0)}>
-          Telegram Mini App
+          {t.hero.label}
         </p>
-        <Words as="h1" className="hero-title" text="Enter the world of Meowgul" intro />
+        <Words as="h1" className="hero-title" text={t.hero.title} intro />
         <p className="lead intro-fade hero-lead" style={k(1)}>
-          A living Telegram game where every tap, every upgrade and every discovery takes you deeper into a
-          growing universe.
+          {t.hero.lead}
         </p>
         <div className="actions intro-fade hero-actions-wide" style={k(2)}>
           <PlayButton />
           <button type="button" className="btn btn-ghost" onClick={() => flyTo(sectionIndex('world'))}>
-            Explore the world
+            {t.cta.explore}
           </button>
         </div>
       </div>
@@ -39,12 +40,12 @@ export function HeroSection() {
         <div className="actions intro-fade" style={k(2)}>
           <PlayButton className="flex-1" />
           <button type="button" className="btn btn-ghost" onClick={() => flyTo(sectionIndex('world'))}>
-            Explore the world
+            {t.cta.explore}
           </button>
         </div>
       </div>
       <div className="scroll-hint intro-fade" style={k(4)} aria-hidden>
-        Scroll
+        {t.hero.scroll}
         <i />
       </div>
     </section>
@@ -56,28 +57,27 @@ export function HeroSection() {
  * В сцене — Странник на краю своего мира (не тот кот, что на главной).
  */
 export function WorldSection() {
+  const t = useT();
   return (
     <Section
       id="world"
       layout="right"
       head={
         <>
-          <Label>Our story</Label>
-          <Words text="A world built one cat at a time" />
+          <Label>{t.world.label}</Label>
+          <Words text={t.world.title} />
           <p className="lead" data-rv="up" style={k(2)}>
-            What started as a simple tap became something much bigger. A universe of unique cats, mysterious
-            worlds, rare characters and endless progression — built directly inside Telegram. Every character
-            has its own identity. Every world has its own story.
+            {t.world.lead}
           </p>
           <p className="motto" data-rv="up" style={k(3)}>
-            Collect. Upgrade. Discover.
+            {t.world.motto}
           </p>
         </>
       }
     >
       <dl className="facts">
-        {KEY_FACTS.map((f, i) => (
-          <div key={f.label} className="fact" data-rv="rise" style={k(i)}>
+        {t.world.facts.map((f, i) => (
+          <div key={i} className="fact" data-rv="rise" style={k(i)}>
             <dt>
               <span className="fact-value">{f.value}</span>
               <span className="tag">{f.label}</span>
@@ -86,9 +86,9 @@ export function WorldSection() {
           </div>
         ))}
       </dl>
-      <ol className="milestones" data-rv="up" style={k(4)} aria-label="The journey so far">
-        {STORY_STEPS.map((step, i) => (
-          <li key={step.title}>
+      <ol className="milestones" data-rv="up" style={k(4)} aria-label={t.world.journey}>
+        {t.world.steps.map((step, i) => (
+          <li key={i}>
             <span className="milestone-num">{String(i + 1).padStart(2, '0')}</span>
             <div className="min-w-0">
               <p className="h4">{step.title}</p>
@@ -106,6 +106,7 @@ export function WorldSection() {
  * карточек-активов: его можно тапать (искры у пальца и +1 к балансу; сам кот не реагирует).
  */
 export function PlaySection() {
+  const t = useT();
   return (
     <>
       <TapLayer />
@@ -115,20 +116,19 @@ export function PlaySection() {
         pass
         head={
           <>
-            <Label>Gameplay</Label>
-            <Words text="How it works" />
+            <Label>{t.play.label}</Label>
+            <Words text={t.play.title} />
             <p className="lead" data-rv="up" style={k(2)}>
-              Short sessions, lasting progress. Tap to earn, put your PAW into assets that keep earning,
-              collect characters and climb the leagues.
+              {t.play.lead}
             </p>
           </>
         }
       >
         <div className="steps">
-          {HOW_STEPS.map((step, i) => (
-            <article key={step.title} className="card step pe" data-rv="rise" style={k(i)}>
+          {t.play.steps.map((step, i) => (
+            <article key={i} className="card step pe" data-rv="rise" style={k(i)}>
               <div className="step-top">
-                <span className="step-icon">{STEP_ICONS[step.title]}</span>
+                <span className="step-icon">{STEP_ICONS[HOW_STEPS[i]!]}</span>
                 <h3 className="h3">{step.title}</h3>
               </div>
               <p className="small">{step.text}</p>
@@ -145,6 +145,7 @@ export function PlaySection() {
 
 /** Демо игры: баланс, энергия и Turbo — меняются от тапов по Токсику. */
 function DemoStrip() {
+  const t = useT();
   const turboLeft = useDemo((s) => s.turboLeft);
   const turboOn = useDemo((s) => s.turboActive);
   const fillRef = useRef<HTMLElement>(null);
@@ -160,17 +161,20 @@ function DemoStrip() {
         if (fillRef.current)
           fillRef.current.style.transform = `scaleX(${(turbo ? 1 : e / GAME_FACTS.energy.max).toFixed(4)})`;
         const text = turbo
-          ? 'Turbo · no energy'
+          ? t.play.turboOn
           : `${formatInt(Math.floor(e))} / ${formatInt(GAME_FACTS.energy.max)}`;
         if (textRef.current && textRef.current.textContent !== text) textRef.current.textContent = text;
         const sec = Math.ceil(turboSeconds());
-        const label = sec > 0 ? `0:${String(sec).padStart(2, '0')}` : `Turbo ×${GAME_FACTS.turbo.multiplier}`;
+        const label =
+          sec > 0
+            ? `0:${String(sec).padStart(2, '0')}`
+            : fmt(t.play.turbo, { x: GAME_FACTS.turbo.multiplier });
         if (turboRef.current && turboRef.current.textContent !== label) turboRef.current.textContent = label;
       }),
-    [],
+    [t],
   );
   return (
-    <div className="demo glass pe" data-rv="up" style={k(4)} aria-label="Game demo">
+    <div className="demo glass pe" data-rv="up" style={k(4)} aria-label={t.play.demo}>
       <div className="demo-row">
         <div className="demo-balance">
           <CoinIcon size={24} />
@@ -182,7 +186,7 @@ function DemoStrip() {
           data-active={turboOn}
           disabled={turboLeft <= 0 && !turboOn}
           onClick={() => startTurbo()}
-          aria-label={`Turbo, ${turboLeft} of ${GAME_FACTS.turbo.perDay} left today`}
+          aria-label={fmt(t.play.turboAria, { left: turboLeft, total: GAME_FACTS.turbo.perDay })}
         >
           <TurboIcon size={22} />
           <span ref={turboRef} />
@@ -192,7 +196,7 @@ function DemoStrip() {
         <div className="mb-1.5 flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[color:var(--gold)]">
             <BoltIcon size={15} />
-            <span className="tag">Energy</span>
+            <span className="tag">{t.play.energy}</span>
           </span>
           <span className="small tabular" ref={textRef} />
         </div>
@@ -201,7 +205,7 @@ function DemoStrip() {
         </div>
       </div>
       <ul className="boosts">
-        {BOOSTS.map((b) => (
+        {t.play.boosts.map((b) => (
           <li key={b.title}>
             <b>{b.title}</b> {b.text}
           </li>
@@ -219,6 +223,7 @@ const MAX_FLOATS = 28;
  * Мышь — сразу по нажатию; касание — по отпусканию без сдвига (свайп листает страницу, а не тапает).
  */
 function TapLayer() {
+  const t = useT();
   const active = useAtStation(PLAY);
   const touches = useRef(new Map<number, { x: number; y: number; t: number }>());
   const floats = useRef(0);
@@ -232,7 +237,7 @@ function TapLayer() {
     const el = document.createElement('div');
     el.className = 'float-reward';
     el.dataset.turbo = String(turbo);
-    el.textContent = value === null ? 'No energy' : `+${value}`;
+    el.textContent = value === null ? t.play.noEnergy : `+${value}`;
     if (value === null) el.style.fontSize = '16px';
     document.body.appendChild(el);
     floats.current++;
@@ -277,6 +282,7 @@ function TapLayer() {
 
 /** «Tap the cat» на коте, пока не было ни одного тапа. */
 function TapHint() {
+  const t = useT();
   const taps = useDemo((s) => s.taps);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -297,7 +303,7 @@ function TapHint() {
   if (taps > 0) return null;
   return (
     <div ref={ref} className="tap-hint" style={{ opacity: 0 }}>
-      Tap the cat
+      {t.play.tapHint}
     </div>
   );
 }
