@@ -274,6 +274,12 @@ body {
   transform: translate3d(0, calc(100% + 0.6em), 0);
 }
 /* главная: слова заголовка — со вступлением */
+/* до готовности шрифтов главная скрыта целиком (а не только прозрачна): подмена шрифта меняет высоту строк,
+   и скрытые visibility элементы не дают сдвига раскладки (CLS) — вступление начинается как прежде */
+[data-intro='off'] .hero-text,
+[data-intro='off'] .hero-bottom {
+  visibility: hidden;
+}
 [data-intro='off'] .hero-title .w > span {
   transform: translate3d(0, calc(100% + 0.6em), 0);
 }
@@ -293,13 +299,23 @@ body {
   transition-delay: calc(700ms + var(--k, 0) * 120ms);
 }
 
+/* бесконечные и долгие CSS-анимации в секциях вдали от камеры не идут (SiteApp: data-active) */
+.sec:not([data-active]) *,
+.sec:not([data-active]) *::before,
+.sec:not([data-active]) *::after {
+  animation-play-state: paused !important;
+}
+
 /* ───────────── сцена ───────────── */
 
 .stage {
   position: fixed;
-  inset: 0;
+  inset: 0 0 auto 0;
   width: 100%;
   height: 100%;
+  /* на телефоне — высота «большого» экрана: адресная строка браузера при прокрутке прячется и появляется,
+     а холст от этого не меняет размер (пересоздание буфера WebGL посреди прокрутки — рывок) */
+  height: 100lvh;
   display: block;
   z-index: 0;
   touch-action: pan-y;
@@ -1205,18 +1221,39 @@ body {
   white-space: nowrap;
   transition: opacity 400ms ease;
 }
+/* точка и расходящееся от неё кольцо: кольцо — отдельный слой, анимируются только transform и opacity
+   (анимация тени перерисовывала бы точку в главном потоке каждый кадр, рядом с 3D-сценой) */
 .tap-hint::before {
   content: '';
   width: 10px;
   height: 10px;
+  flex: none;
   border-radius: 50%;
   background: var(--gold);
-  box-shadow: 0 0 0 0 rgba(255, 201, 60, 0.6);
+}
+.tap-hint[style*='hidden']::after {
+  animation-play-state: paused;
+}
+.tap-hint::after {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  margin-top: -19px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 201, 60, 0.6) 26%, rgba(255, 201, 60, 0) 27%);
   animation: pulse 1.6s ease-out infinite;
 }
 @keyframes pulse {
+  from {
+    transform: scale(0.27);
+    opacity: 1;
+  }
   to {
-    box-shadow: 0 0 0 14px rgba(255, 201, 60, 0);
+    transform: scale(1);
+    opacity: 0;
   }
 }
 
@@ -1265,7 +1302,19 @@ body {
   from {
     opacity: 0;
     transform: translate3d(0, 0.4em, 0);
-    filter: blur(8px);
+  }
+}
+/* размытие букв при смене кота — только на ПК: на телефоне фильтр на каждую букву поверх WebGL дорог */
+@media (hover: hover) and (pointer: fine) {
+  .cat-name .letter {
+    animation-name: letter-in-blur;
+  }
+  @keyframes letter-in-blur {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 0.4em, 0);
+      filter: blur(8px);
+    }
   }
 }
 .cat-subtitle {
@@ -1518,19 +1567,39 @@ button.day {
   color: inherit;
   cursor: pointer;
 }
-/* сегодняшняя награда дышит — спокойно, только transform и тень */
+/* сегодняшняя награда дышит: масштаб и свечение. Свечение — отдельный слой с тенью, у которого меняется
+   только прозрачность (сама тень не анимируется — иначе перерисовка в главном потоке каждый кадр) */
 .day-claim {
+  position: relative;
+  box-shadow: 0 0 18px -8px rgba(255, 201, 60, 0.55);
   animation: day-pulse 2.6s ease-in-out infinite;
+}
+.day-claim::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 26px -6px rgba(255, 201, 60, 0.85);
+  opacity: 0;
+  animation: day-glow 2.6s ease-in-out infinite;
 }
 @keyframes day-pulse {
   0%,
   100% {
     transform: scale(1);
-    box-shadow: 0 0 18px -8px rgba(255, 201, 60, 0.55);
   }
   50% {
     transform: scale(1.04);
-    box-shadow: 0 0 26px -6px rgba(255, 201, 60, 0.85);
+  }
+}
+@keyframes day-glow {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
   }
 }
 .day-claim:active {

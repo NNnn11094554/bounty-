@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CATS, HERO_CAT, catAsset } from './cats';
 import { applyDocumentLocale, useLang, useT } from './i18n';
 import { useSite } from './store';
-import { startTimeline, view } from './timeline';
+import { onTick, startTimeline, view } from './timeline';
 import { CollectionSection } from './ui/CatSections';
 import { Nav } from './ui/Chrome';
 import { CommunitySection, Footer, PartnersSection, RoadmapSection } from './ui/EndSections';
@@ -35,6 +35,20 @@ export function SiteApp() {
     return startTimeline(pageRef.current!);
   }, []);
   useReveal(useCallback(() => pageRef.current, []));
+
+  // секции у камеры (стоит или летит к ней) помечены data-active: CSS-анимации остальных стоят на паузе
+  useEffect(() => {
+    const sections = [...pageRef.current!.querySelectorAll<HTMLElement>('[data-station]')];
+    const on = sections.map(() => false);
+    return onTick((v) => {
+      sections.forEach((el, i) => {
+        const near = Math.abs(v.pos - i) < 1;
+        if (near === on[i]) return;
+        on[i] = near;
+        el.toggleAttribute('data-active', near);
+      });
+    });
+  }, []);
 
   // 3D-сцена — отдельный чанк (three.js)
   useEffect(() => {

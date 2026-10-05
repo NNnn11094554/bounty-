@@ -295,12 +295,17 @@ export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial
         // смещение мип-уровня −0.5: шерсть и глаза чётче, когда кот на экране меньше файла
         vec4 c = texture2D(map, uv, -0.5);
         if (c.a < 0.003) discard;
-        // лёгкая резкость: шерсть и швы одежды чётче (без ореолов — сила небольшая)
-        vec3 blur4 = (texture2D(map, uv + vec2(uTexel.x, 0.0), -0.5).rgb + texture2D(map, uv - vec2(uTexel.x, 0.0), -0.5).rgb
-          + texture2D(map, uv + vec2(0.0, uTexel.y), -0.5).rgb + texture2D(map, uv - vec2(0.0, uTexel.y), -0.5).rgb) * 0.25;
-        c.rgb = max(c.rgb + (c.rgb - blur4) * 0.32, 0.0);
+        #ifdef REFLECT
+          // отражение (30% яркости, у пола): резкость и контровой свет в нём не видны — 1 выборка вместо 6
+          float rim = 0.0;
+        #else
+          // лёгкая резкость: шерсть и швы одежды чётче (без ореолов — сила небольшая)
+          vec3 blur4 = (texture2D(map, uv + vec2(uTexel.x, 0.0), -0.5).rgb + texture2D(map, uv - vec2(uTexel.x, 0.0), -0.5).rgb
+            + texture2D(map, uv + vec2(0.0, uTexel.y), -0.5).rgb + texture2D(map, uv - vec2(0.0, uTexel.y), -0.5).rgb) * 0.25;
+          c.rgb = max(c.rgb + (c.rgb - blur4) * 0.32, 0.0);
+          float rim = clamp(c.a - texture2D(map, uv + uLight, -0.5).a, 0.0, 1.0);
+        #endif
         c.rgb *= 1.0 - lash * 0.55;
-        float rim = clamp(c.a - texture2D(map, uv + uLight, -0.5).a, 0.0, 1.0);
         // свет мира: у пола темнее (земля закрывает свет), низ подсвечен цветом пола и мира
         float ground = mix(0.74, 1.0, smoothstep(0.0, 0.3, vUv.y));
         float bounce = (1.0 - smoothstep(0.0, 0.45, vUv.y)) * uAmbientStrength;
@@ -326,6 +331,7 @@ export function catMaterial(life: LifeUniforms, reflect = false): ShaderMaterial
       }
     `,
   });
+  if (reflect) material.defines = { REFLECT: 1 };
   material.depthWrite = false;
   return premultiplied(material) as ShaderMaterial & { uniforms: CatUniforms };
 }
@@ -600,10 +606,11 @@ export function panelMaterial(map: Texture, edge: string): ShaderMaterial {
 }
 
 /** Пол: тёмное мокрое стекло, лужа света под персонажем, к краям — туман. */
-export function floorMaterial(): ShaderMaterial {
+export function floorMaterial(noise: Texture): ShaderMaterial {
   return premultiplied(
     new ShaderMaterial({
       uniforms: {
+        uNoise: { value: noise },
         uPool: { value: new Color('#ff7a1a') },
         uPoolStrength: { value: 0.5 },
         uOpacity: { value: 1 },
@@ -614,19 +621,21 @@ export function floorMaterial(): ShaderMaterial {
       },
       vertexShader: DEPTH_VERTEX,
       fragmentShader: /* glsl */ `
+        uniform sampler2D uNoise;
         uniform vec3 uPool;
         uniform float uPoolStrength;
         uniform float uOpacity;
         uniform float uTime;
         varying vec2 vUv;
         varying float vDepth;
-        ${NOISE}
         ${FOG}
         void main() {
           vec2 p = (vUv - 0.5) * 2.0;
           float d = length(p * vec2(1.0, 1.6));
           float pool = exp(-d * d * 7.0);
-          float wet = fbm(vUv * 24.0 + uTime * 0.02) * 0.35;
+          // мокрое стекло: шум из бесшовной текстуры (noiseCanvas, 8 ячеек на плитку — 24 на пол, как раньше),
+          // а не 4 октавы шума на каждый пиксель каждый кадр; медленно ползёт, как прежде
+          float wet = texture2D(uNoise, vUv * 3.0 + uTime * 0.0025).r * 0.35;
           vec3 col = uPool * pool * uPoolStrength * (0.75 + wet);
           float a = (1.0 - smoothstep(0.35, 1.0, d)) * 0.92;
           col = mix(col, uFog * a, fogAmount(vDepth) * 0.8);

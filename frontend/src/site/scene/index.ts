@@ -24,8 +24,10 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
     return () => {};
   }
   world.resize();
+  // следим за размером холста, а не окна: адресная строка телефона меняет окно, но не холст
   const onResize = () => world.resize();
-  window.addEventListener('resize', onResize);
+  const sizeObserver = new ResizeObserver(onResize);
+  sizeObserver.observe(canvas);
   const onLost = (e: Event) => {
     e.preventDefault();
     useSite.getState().setNoWebgl();
@@ -37,6 +39,8 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
     selected = s.selected;
   });
   const stop = onTick((v) => world.frame(v, selected));
+  // замеры производительности (?perf): сцена доступна из консоли и автотестов — посетителям не видна
+  if (new URLSearchParams(location.search).has('perf')) Object.assign(window, { __world: world });
   sceneApi.set({
     tap: (x, y, turbo) => world.tap(x, y, turbo),
     catRect: () => world.catRect(),
@@ -59,7 +63,7 @@ export async function startScene(canvas: HTMLCanvasElement): Promise<() => void>
     stop();
     unsubscribe();
     sceneApi.set(null);
-    window.removeEventListener('resize', onResize);
+    sizeObserver.disconnect();
     canvas.removeEventListener('webglcontextlost', onLost);
     world.dispose();
   };

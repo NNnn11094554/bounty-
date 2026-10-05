@@ -3,6 +3,7 @@ import { MINI_APP_URL } from '../../lib/links';
 import { LINKS, NAV, sectionIndex, type SectionId } from '../content';
 import { flyTo, LAST_STATION, onTick } from '../timeline';
 import { useActiveStation } from './hooks';
+import { setStyle } from './style';
 import { useLang, useT } from '../i18n';
 import { CommunityIcon, TelegramIcon, XIcon } from './icons';
 import { LangSwitch } from './LangSwitch';
@@ -222,7 +223,7 @@ function ProgressLine() {
   useEffect(
     () =>
       onTick((v) => {
-        if (ref.current) ref.current.style.transform = `scaleX(${(v.pos / LAST_STATION).toFixed(4)})`;
+        if (ref.current) setStyle(ref.current, 'transform', `scaleX(${(v.pos / LAST_STATION).toFixed(4)})`);
       }),
     [],
   );
